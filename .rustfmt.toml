@@ -1,0 +1,4 @@
+# Important: some features may require `nightly` rustfmt version
+
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
