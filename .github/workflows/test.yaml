@@ -2,14 +2,14 @@ name: Test
 
 on: [ push ]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.3.0
+        with:
+          packages: lld librust-alsa-sys-dev
       - uses: dtolnay/rust-toolchain@1.72.0
       - run: cargo test --all-features
