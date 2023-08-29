@@ -16,7 +16,7 @@ repository = "https://github.com/rjacraft/rjacraft"
 
 [workspace.dependencies]
 # Bevy game engine
-bevy = "0.11.2"
+bevy = { version = "0.11.2", default-features = false }
 
 # Documentation
 document-features = "0.2.7"
@@ -26,11 +26,11 @@ rjacraft_core = { path = "crates/core", version = "0.0.1" }
 
 # Bevy-specific profile setup aimed at better performace while developing
 
-#[profile.dev]
-#opt-level = 1
-#
-#[profile.dev.package."*"]
-#opt-level = 3
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
 
 [package]
 name = "rjacraft"
