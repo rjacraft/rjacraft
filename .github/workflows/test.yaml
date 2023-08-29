@@ -10,6 +10,6 @@ jobs:
       - uses: actions/checkout@v3.6.0
       - uses: awalsh128/cache-apt-pkgs-action@v1.3.0
         with:
-          packages: lld librust-alsa-sys-dev
+          packages: lld librust-alsa-sys-dev libudev-dev
       - uses: dtolnay/rust-toolchain@1.72.0
       - run: cargo test --all-features

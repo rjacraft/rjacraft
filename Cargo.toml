@@ -26,11 +26,11 @@ rjacraft_core = { path = "crates/core", version = "0.0.1" }
 
 # Bevy-specific profile setup aimed at better performace while developing
 
-[profile.dev]
-opt-level = 1
-
-[profile.dev.package."*"]
-opt-level = 3
+#[profile.dev]
+#opt-level = 1
+#
+#[profile.dev.package."*"]
+#opt-level = 3
 
 [package]
 name = "rjacraft"
