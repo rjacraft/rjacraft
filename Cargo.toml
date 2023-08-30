@@ -16,7 +16,7 @@ repository = "https://github.com/rjacraft/rjacraft"
 
 [workspace.dependencies]
 # Bevy game engine
-bevy = "0.11.2"
+bevy = { version = "0.11.2", default-features = false }
 
 # Documentation
 document-features = "0.2.7"
