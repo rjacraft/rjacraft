@@ -1,6 +1,5 @@
 [package]
-name = "rjacraft_core"
-description = "Core components of rjacraft"
+name = "rjacraft_protocol"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,4 +9,12 @@ categories.workspace = true
 homepage.workspace = true
 repository.workspace = true
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [dependencies]
+tokio.workspace = true
+anyhow = "1"
+byteorder = "1"
+thiserror = "1"
+bytes = "1"
+uuid = "1"

@@ -1,0 +1,22 @@
+[package]
+name = "rjacraft_network"
+description = "Network components of rjacraft"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+rjacraft_protocol.workspace = true
+bevy_ecs.workspace = true
+bevy_app.workspace = true
+bytes = "1"
+anyhow = "1"
+thiserror = "1"
+flume = "0.11"
+tracing = "0.1"

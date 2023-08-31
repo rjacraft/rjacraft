@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "crates/core"
+    "crates/*"
 ]
 
 [workspace.package]
@@ -13,16 +13,23 @@ keywords = ["minecraft", "server", "api", "plugins"]
 categories = ["game-development"]
 homepage = "https://github.com/rjacraft"
 repository = "https://github.com/rjacraft/rjacraft"
+include = ["/src", "/examples"]
 
 [workspace.dependencies]
 # Bevy game engine
-bevy = "0.11.2"
+bevy_ecs = "0.11.2"
+bevy_app = "0.11.2"
+tokio = "1.32.0"
+byteorder = "1.4.3"
+serde_json = "1.0.105"
 
 # Documentation
 document-features = "0.2.7"
 
 # Own crates
 rjacraft_core = { path = "crates/core", version = "0.0.1" }
+rjacraft_network = { path = "crates/network", version = "0.0.1" }
+rjacraft_protocol = { path = "crates/protocol", version = "0.0.1" }
 
 # Bevy-specific profile setup aimed at better performace while developing
 
@@ -47,6 +54,11 @@ repository.workspace = true
 [dependencies]
 # Rjacraft components
 rjacraft_core = { workspace = true, optional = true }
+rjacraft_network = { workspace = true }
+rjacraft_protocol = { workspace = true }
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+serde_json.workspace = true
 
 # Documentation
 document-features.workspace = true

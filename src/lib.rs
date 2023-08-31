@@ -10,3 +10,5 @@
 
 #[cfg(feature = "core")]
 pub use rjacraft_core as core;
+pub use rjacraft_network as network;
+pub use rjacraft_protocol as protocol;
