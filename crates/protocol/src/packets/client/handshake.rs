@@ -1,9 +1,7 @@
 use std::io::Cursor;
 
-use crate::io::Decoder;
-use crate::Encoder;
-
 use super::*;
+use crate::{io::Decoder, Encoder};
 
 packets!(
     Handshake {

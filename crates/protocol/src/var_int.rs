@@ -1,5 +1,7 @@
-use std::io::{Cursor, Read, Write};
-use std::num::TryFromIntError;
+use std::{
+    io::{Cursor, Read, Write},
+    num::TryFromIntError,
+};
 
 use byteorder::ReadBytesExt;
 use thiserror::Error;
