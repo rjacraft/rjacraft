@@ -1,8 +1,6 @@
 use uuid::Uuid;
 
-use crate::io::Decoder;
-use crate::VarInt;
-use crate::{LengthInferredVecU8, VarIntPrefixedVec};
+use crate::{io::Decoder, LengthInferredVecU8, VarInt, VarIntPrefixedVec};
 
 macro_rules! user_type {
     (VarInt) => {
@@ -82,7 +80,7 @@ macro_rules! packets {
             #[allow(clippy::useless_conversion)]
             #[allow(unused_imports)]
             #[allow(unused_variables)]
-            impl crate::Encoder for $packet {
+            impl $crate::Encoder for $packet {
                 fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
                     use anyhow::Context;
 
@@ -111,9 +109,9 @@ macro_rules! enum_packets {
             )*
         }
 
-        impl crate::Decoder for $ident {
+        impl $crate::Decoder for $ident {
             fn decode(buffer: &mut std::io::Cursor<&[u8]>) -> anyhow::Result<Self> {
-                let opcode = crate::VarInt::decode(buffer)?.0;
+                let opcode = $crate::VarInt::decode(buffer)?.0;
                 match opcode {
                     $(
                         $opcode => Ok($ident::$packet($packet::decode(buffer)?)),
@@ -123,12 +121,12 @@ macro_rules! enum_packets {
             }
         }
 
-        impl crate::Encoder for $ident {
+        impl $crate::Encoder for $ident {
             fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
                 match self {
                     $(
                         $ident::$packet(packet) => {
-                            crate::VarInt($opcode).encode(buffer)?;
+                            $crate::VarInt($opcode).encode(buffer)?;
                             packet.encode(buffer)?;
                         }
                     )*

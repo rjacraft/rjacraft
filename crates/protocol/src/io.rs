@@ -1,7 +1,9 @@
-use std::borrow::Cow;
-use std::io::{Cursor, Read};
-use std::iter;
-use std::marker::PhantomData;
+use std::{
+    borrow::Cow,
+    io::{Cursor, Read},
+    iter,
+    marker::PhantomData,
+};
 
 use anyhow::{bail, Context};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -277,7 +279,7 @@ impl<'a> Decoder for LengthInferredVecU8<'a> {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
         let mut vec = Vec::new();
         buffer.read_to_end(&mut vec)?;
-        Ok(LengthInferredVecU8(Cow::Owned(vec)))
+        Ok(Self(Cow::Owned(vec)))
     }
 }
 

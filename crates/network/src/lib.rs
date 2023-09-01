@@ -1,28 +1,27 @@
-use std::fmt::Debug;
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{fmt::Debug, net::SocketAddr, sync::Arc, time::Duration};
 
 use bevy_app::{App, Plugin, PostStartup, PreUpdate, Update};
-use bevy_ecs::event::EventWriter;
-use bevy_ecs::prelude::{Commands, Component, Entity, Event, EventReader, Query, Res, World};
-use bevy_ecs::system::{Resource, SystemState};
+use bevy_ecs::{
+    event::EventWriter,
+    prelude::{Commands, Component, Entity, Event, EventReader, Query, Res, World},
+    system::{Resource, SystemState},
+};
 use bytes::{Bytes, BytesMut};
 use flume::{Receiver, Sender, TryRecvError, TrySendError};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::runtime::Runtime;
-use tokio::task::JoinHandle;
-use tokio::time::Instant;
+use rjacraft_protocol::{
+    packets::client::{ClientHandshakePacket, ClientStatusPacket, HandshakeState},
+    Decoder, Encoder,
+};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+    runtime::Runtime,
+    task::JoinHandle,
+    time::Instant,
+};
 use tracing::{debug, error, info, warn};
 
-use rjacraft_protocol::packets::client::{
-    ClientHandshakePacket, ClientStatusPacket, HandshakeState,
-};
-use rjacraft_protocol::{Decoder, Encoder};
-
-use crate::decode::PacketDecoder;
-use crate::encode::PacketEncoder;
+use crate::{decode::PacketDecoder, encode::PacketEncoder};
 
 mod decode;
 mod encode;
@@ -31,44 +30,35 @@ pub struct NetworkPlugin;
 
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        if let Err(e) = build_plugin(app) {
-            error!("Failed to build network plugin: {e:#}");
-        }
+        let runtime = Runtime::new().unwrap();
+
+        let (new_connections_send, new_connections_recv) = flume::bounded::<RemoteConnection>(64);
+        let shared = SharedNetworkState(Arc::new(SharedNetworkStateInner {
+            new_connections_send,
+            new_connections_recv,
+        }));
+
+        app.insert_resource(shared.clone());
+
+        let accept_loop_system = move |shared: Res<SharedNetworkState>| {
+            let _guard = runtime.handle().enter();
+            tokio::spawn(accept_loop(shared.clone()));
+        };
+
+        let spawn_new_connections = move |world: &mut World| {
+            while let Ok(connection) = shared.0.new_connections_recv.try_recv() {
+                world.spawn(connection);
+            }
+        };
+
+        app.add_event::<PacketReceivedEvent>()
+            .add_event::<DisconnectEvent>()
+            .add_event::<HandshakeEvent>()
+            .add_event::<ClientStatusRequestEvent>()
+            .add_systems(PostStartup, accept_loop_system)
+            .add_systems(PreUpdate, spawn_new_connections)
+            .add_systems(Update, (run_packet_event_loop, connection_event_handler));
     }
-}
-
-fn build_plugin(app: &mut App) -> anyhow::Result<()> {
-    let runtime = Runtime::new()?;
-
-    let (new_connections_send, new_connections_recv) = flume::bounded::<RemoteConnection>(64);
-    let shared = SharedNetworkState(Arc::new(SharedNetworkStateInner {
-        new_connections_send,
-        new_connections_recv,
-    }));
-
-    app.insert_resource(shared.clone());
-
-    let accept_loop_system = move |shared: Res<SharedNetworkState>| {
-        let _guard = runtime.handle().enter();
-        tokio::spawn(accept_loop(shared.clone()));
-    };
-
-    let spawn_new_connections = move |world: &mut World| {
-        while let Ok(connection) = shared.0.new_connections_recv.try_recv() {
-            world.spawn(connection);
-        }
-    };
-
-    app.add_systems(PostStartup, accept_loop_system);
-    app.add_systems(PreUpdate, spawn_new_connections);
-    app.add_event::<PacketReceivedEvent>();
-    app.add_event::<DisconnectEvent>();
-    app.add_event::<HandshakeEvent>();
-    app.add_event::<ClientStatusRequestEvent>();
-    app.add_systems(Update, run_packet_event_loop);
-    app.add_systems(Update, connection_event_handler);
-
-    Ok(())
 }
 
 async fn accept_loop(shared: SharedNetworkState) {
@@ -103,7 +93,7 @@ async fn accept_loop(shared: SharedNetworkState) {
                 });
             }
             Err(e) => {
-                println!("Failed to accept connection: {e}");
+                error!("Failed to accept connection: {e}");
             }
         }
     }
@@ -119,14 +109,14 @@ pub struct PacketFrame {
 
 async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote_addr: SocketAddr) {
     if let Err(e) = stream.set_nodelay(true) {
-        error!("Failed to set TCP_NODELAY: {e}");
+        warn!("Failed to set TCP_NODELAY: {e}");
     }
     let (mut reader, mut writer) = stream.into_split();
 
     let (incoming_sender, incoming_receiver) = flume::unbounded::<PacketFrame>();
     let recv_task = tokio::spawn(async move {
         let mut buf = BytesMut::new();
-        let mut decoder = PacketDecoder::new();
+        let mut decoder = PacketDecoder::default();
 
         loop {
             let payload = match decoder.try_next_frame() {
@@ -185,7 +175,7 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
         remote_addr,
         recv: incoming_receiver,
         send: outgoing_sender,
-        encoder: PacketEncoder::new(),
+        encoder: PacketEncoder::default(),
         recv_task,
         send_task,
         state: HandshakeState::Handshaking,
@@ -219,7 +209,7 @@ fn run_packet_event_loop(
             }
             Err(TryRecvError::Empty) => {}
             Err(TryRecvError::Disconnected) => {
-                debug!("Client disconnected");
+                info!("Client disconnected");
                 disconnect_events.send(DisconnectEvent { connection: entity });
                 commands.entity(entity).remove::<RemoteConnection>();
             }
@@ -274,7 +264,7 @@ fn connection_event_handler(
                                             }
                                         )
                                     ).unwrap();
-                                connection.flush_packets();
+                                connection.flush_packets().unwrap();
                             }
                         },
                         Err(e) => {
@@ -320,10 +310,11 @@ impl RemoteConnection {
 
     pub fn flush_packets(&mut self) -> Result<(), TrySendError<BytesMut>> {
         let bytes = self.encoder.take();
-        if !bytes.is_empty() {
-            self.send.try_send(bytes)
-        } else {
+
+        if bytes.is_empty() {
             Ok(())
+        } else {
+            self.send.try_send(bytes)
         }
     }
 
@@ -337,7 +328,7 @@ impl RemoteConnection {
 
 impl Drop for RemoteConnection {
     fn drop(&mut self) {
-        println!("dropping connection {}", self.remote_addr);
+        info!("dropping connection {}", self.remote_addr);
         _ = self.flush_packets();
         self.recv_task.abort();
         self.send_task.abort();
@@ -357,11 +348,11 @@ pub struct DisconnectEvent {
 
 #[derive(Event, Clone, Debug)]
 pub struct HandshakeEvent {
-    connection: Entity,
-    protocol_version: i32,
-    server_address: String,
-    server_port: u16,
-    next_state: HandshakeState,
+    pub connection: Entity,
+    pub protocol_version: i32,
+    pub server_address: String,
+    pub server_port: u16,
+    pub next_state: HandshakeState,
 }
 
 impl HandshakeEvent {

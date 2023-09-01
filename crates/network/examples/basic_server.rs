@@ -1,17 +1,18 @@
 use bevy_app::{App, RunMode, ScheduleRunnerPlugin, Update};
 use bevy_ecs::prelude::{EventReader, Query};
-use serde_json::json;
-
 use rjacraft_network::*;
 use rjacraft_protocol::packets::server::*;
+use serde_json::json;
 
 fn main() {
-    println!("start server");
+    tracing_subscriber::fmt::init();
     App::new()
-        .add_plugins(NetworkPlugin)
-        .add_plugins(ScheduleRunnerPlugin {
-            run_mode: RunMode::Loop { wait: None },
-        })
+        .add_plugins((
+            NetworkPlugin,
+            ScheduleRunnerPlugin {
+                run_mode: RunMode::Loop { wait: None },
+            },
+        ))
         .add_systems(Update, handle_status_requests)
         .run();
 }
@@ -29,14 +30,14 @@ fn handle_status_requests(
                         "protocol": 763,
                         "name": "Rjacraft 1.20.1",
                     },
-                        "players":{
-                            "online": 0,
-                            "max": 100,
-                            "sample": []
-                        },
-                        "description":{
-                            "text": "Rjacraft"
-                        }
+                    "players": {
+                        "online": 0,
+                        "max": 100,
+                        "sample": []
+                    },
+                    "description": {
+                        "text": "Rjacraft"
+                    }
                 })
                 .to_string(),
             });

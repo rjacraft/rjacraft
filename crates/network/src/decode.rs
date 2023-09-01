@@ -1,19 +1,13 @@
 use anyhow::bail;
 use bytes::{Buf, BytesMut};
+use rjacraft_protocol::{var_int::VarIntDecodeError, VarInt};
 
-use rjacraft_protocol::var_int::VarIntDecodeError;
-use rjacraft_protocol::VarInt;
-
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 pub struct PacketDecoder {
-    buf: BytesMut,
+    pub buf: BytesMut,
 }
 
 impl PacketDecoder {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn try_next_frame(&mut self) -> anyhow::Result<Option<BytesMut>> {
         let mut r = &self.buf[..];
 
