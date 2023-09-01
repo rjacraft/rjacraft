@@ -14,7 +14,7 @@ use rjacraft_protocol::{
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::{TcpListener, TcpStream},
+    net::{TcpListener, TcpStream, ToSocketAddrs},
     runtime::Runtime,
     task::JoinHandle,
     time::Instant,
@@ -26,9 +26,12 @@ use crate::{decode::PacketDecoder, encode::PacketEncoder};
 mod decode;
 mod encode;
 
-pub struct NetworkPlugin;
+pub struct NetworkPlugin<A>(pub A);
 
-impl Plugin for NetworkPlugin {
+impl<A> Plugin for NetworkPlugin<A>
+where
+    A: ToSocketAddrs + Clone + Send + Sync + 'static,
+{
     fn build(&self, app: &mut App) {
         let runtime = Runtime::new().unwrap();
 
@@ -40,9 +43,11 @@ impl Plugin for NetworkPlugin {
 
         app.insert_resource(shared.clone());
 
+        let addr = self.0.clone();
         let accept_loop_system = move |shared: Res<SharedNetworkState>| {
+            let addr = addr.clone();
             let _guard = runtime.handle().enter();
-            tokio::spawn(accept_loop(shared.clone()));
+            tokio::spawn(accept_loop(addr, shared.clone()));
         };
 
         let spawn_new_connections = move |world: &mut World| {
@@ -61,11 +66,10 @@ impl Plugin for NetworkPlugin {
     }
 }
 
-async fn accept_loop(shared: SharedNetworkState) {
-    let addr = "0.0.0.0:25565";
+async fn accept_loop(addr: impl ToSocketAddrs, shared: SharedNetworkState) {
     let listener = match TcpListener::bind(addr).await {
         Ok(listener) => {
-            info!("Listening at: {addr}");
+            info!("Listening on: {}", listener.local_addr().unwrap());
             listener
         }
         Err(e) => {

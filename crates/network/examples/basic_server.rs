@@ -8,7 +8,7 @@ fn main() {
     tracing_subscriber::fmt::init();
     App::new()
         .add_plugins((
-            NetworkPlugin,
+            NetworkPlugin("0.0.0.0:25565"),
             ScheduleRunnerPlugin {
                 run_mode: RunMode::Loop { wait: None },
             },
