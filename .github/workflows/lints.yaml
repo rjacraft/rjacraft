@@ -1,0 +1,19 @@
+name: Lints
+
+on: [ push ]
+
+jobs:
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.3.0
+        with:
+          packages: lld
+      - uses: dtolnay/rust-toolchain@1.72.0
+        with:
+          components: clippy
+      - uses: auguwu/clippy-action@1.2.2
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
