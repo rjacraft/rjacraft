@@ -33,6 +33,7 @@ impl PacketEncoder {
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 

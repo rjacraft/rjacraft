@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::{io::Decoder, LengthInferredVecU8, VarInt, VarIntPrefixedVec};
+use crate::{LengthInferredVecU8, VarInt, VarIntPrefixedVec};
 
 macro_rules! user_type {
     (VarInt) => {

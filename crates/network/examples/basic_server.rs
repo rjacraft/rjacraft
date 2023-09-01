@@ -13,7 +13,7 @@ fn main() {
                 run_mode: RunMode::Loop { wait: None },
             },
         ))
-        .add_systems(Update, handle_status_requests)
+        .add_systems(Update, (handle_status_requests, handle_disconnect))
         .run();
 }
 

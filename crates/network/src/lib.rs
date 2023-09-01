@@ -19,7 +19,6 @@ use tokio::{
     task::JoinHandle,
     time::Instant,
 };
-use tracing::{debug, error, info, warn};
 
 use crate::{decode::PacketDecoder, encode::PacketEncoder};
 
@@ -69,11 +68,11 @@ where
 async fn accept_loop(addr: impl ToSocketAddrs, shared: SharedNetworkState) {
     let listener = match TcpListener::bind(addr).await {
         Ok(listener) => {
-            info!("Listening on: {}", listener.local_addr().unwrap());
+            tracing::info!("Listening on: {}", listener.local_addr().unwrap());
             listener
         }
         Err(e) => {
-            error!("Failed to start TCP listener: {e}");
+            tracing::error!("Failed to start TCP listener: {e}");
             return;
         }
     };
@@ -92,12 +91,12 @@ async fn accept_loop(addr: impl ToSocketAddrs, shared: SharedNetworkState) {
                     )
                     .await
                     {
-                        error!("Connection timed out: {e}");
+                        tracing::error!("Connection timed out: {e}");
                     }
                 });
             }
             Err(e) => {
-                error!("Failed to accept connection: {e}");
+                tracing::error!("Failed to accept connection: {e}");
             }
         }
     }
@@ -113,7 +112,7 @@ pub struct PacketFrame {
 
 async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote_addr: SocketAddr) {
     if let Err(e) = stream.set_nodelay(true) {
-        warn!("Failed to set TCP_NODELAY: {e}");
+        tracing::warn!("Failed to set TCP_NODELAY: {e}");
     }
     let (mut reader, mut writer) = stream.into_split();
 
@@ -134,7 +133,7 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
                         } // Reader is at EOF.
                         Ok(_) => {}
                         Err(e) => {
-                            error!("error reading data from stream: {e}");
+                            tracing::error!("error reading data from stream: {e}");
                             break;
                         }
                     }
@@ -142,7 +141,7 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
                     continue;
                 }
                 Err(e) => {
-                    error!("error decoding packet frame: {e:#}");
+                    tracing::error!("error decoding packet frame: {e:#}");
                     break;
                 }
             };
@@ -153,7 +152,7 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
             };
 
             if let Err(e) = incoming_sender.try_send(frame) {
-                error!("error sending packet frame: {e:#}");
+                tracing::error!("error sending packet frame: {e:#}");
             }
         }
     });
@@ -170,7 +169,7 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
             };
 
             if let Err(e) = writer.write_all(&bytes).await {
-                warn!("error writing data to stream: {e}")
+                tracing::warn!("error writing data to stream: {e}")
             }
         }
     });
@@ -213,7 +212,7 @@ fn run_packet_event_loop(
             }
             Err(TryRecvError::Empty) => {}
             Err(TryRecvError::Disconnected) => {
-                info!("Client disconnected");
+                tracing::info!("Client disconnected");
                 disconnect_events.send(DisconnectEvent { connection: entity });
                 commands.entity(entity).remove::<RemoteConnection>();
             }
@@ -248,7 +247,7 @@ fn connection_event_handler(
                             }
                         },
                         Err(e) => {
-                            error!("error: {:?}", e)
+                            tracing::error!("error: {:?}", e)
                         }
                     };
                 }
@@ -272,7 +271,7 @@ fn connection_event_handler(
                             }
                         },
                         Err(e) => {
-                            error!("error: {:?}", e)
+                            tracing::error!("error: {:?}", e)
                         }
                     };
                 }
@@ -332,7 +331,7 @@ impl RemoteConnection {
 
 impl Drop for RemoteConnection {
     fn drop(&mut self) {
-        info!("dropping connection {}", self.remote_addr);
+        tracing::info!("dropping connection {}", self.remote_addr);
         _ = self.flush_packets();
         self.recv_task.abort();
         self.send_task.abort();
