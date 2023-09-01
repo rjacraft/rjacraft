@@ -3,7 +3,7 @@ name: Lints
 on: [ pull_request ]
 
 jobs:
-  cargo_check:
+  check:
     name: Cargo Check
     runs-on: ubuntu-latest
     steps:
@@ -16,19 +16,19 @@ jobs:
           toolchain: 1.72.0
       - uses: olix0r/cargo-action-fmt/setup@v2.0.1
       - run: cargo check -q --message-format=json | cargo-action-fmt
-  doc:
-    name: Doc
+
+  rustfmt:
+    name: rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.6.0
-      - uses: awalsh128/cache-apt-pkgs-action@v1.3.0
-        with:
-          packages: lld
+      - uses: actions/checkout@v3
       - uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
         with:
           toolchain: 1.72.0
-      - uses: olix0r/cargo-action-fmt/setup@v2.0.1
-      - run: cargo doc --no-deps --message-format=json | cargo-action-fmt
+          components: rustfmt
+      - name: Rustfmt Check
+        uses: actions-rust-lang/rustfmt@v1
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
@@ -44,14 +44,17 @@ jobs:
       - uses: auguwu/clippy-action@1.2.2
         with:
           token: ${{secrets.GITHUB_TOKEN}}
-  rustfmt:
-    name: rustfmt
+
+  doc:
+    name: Doc
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.3.0
+        with:
+          packages: lld
       - uses: actions-rust-lang/setup-rust-toolchain@v1.5.0
         with:
           toolchain: 1.72.0
-          components: rustfmt
-      - name: Rustfmt Check
-        uses: actions-rust-lang/rustfmt@v1
+      - uses: olix0r/cargo-action-fmt/setup@v2.0.1
+      - run: cargo doc --no-deps --message-format=json | cargo-action-fmt
