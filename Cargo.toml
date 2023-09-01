@@ -1,8 +1,6 @@
 [workspace]
 
-members = [
-    "crates/*"
-]
+members = ["crates/*"]
 
 [workspace.package]
 version = "0.0.1"
