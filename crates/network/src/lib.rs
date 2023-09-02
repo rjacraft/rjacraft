@@ -9,8 +9,11 @@ use bevy_ecs::{
 use bytes::{Bytes, BytesMut};
 use flume::{Receiver, Sender, TryRecvError, TrySendError};
 use rjacraft_protocol::{
-    packets::client::{ClientHandshakePacket, ClientStatusPacket, HandshakeState},
-    Decoder, Encoder,
+    packets::{
+        client::{ClientHandshakePacket, ClientStatusPacket, HandshakeState},
+        server::{self, ServerStatusPacket},
+    },
+    Decode, Encode,
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -19,8 +22,6 @@ use tokio::{
     task::JoinHandle,
     time::Instant,
 };
-
-use crate::{decode::PacketDecoder, encode::PacketEncoder};
 
 mod decode;
 mod encode;
@@ -119,7 +120,7 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
     let (incoming_sender, incoming_receiver) = flume::unbounded::<PacketFrame>();
     let recv_task = tokio::spawn(async move {
         let mut buf = BytesMut::new();
-        let mut decoder = PacketDecoder::default();
+        let mut decoder = decode::PacketDecoder::default();
 
         loop {
             let payload = match decoder.try_next_frame() {
@@ -178,7 +179,7 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
         remote_addr,
         recv: incoming_receiver,
         send: outgoing_sender,
-        encoder: PacketEncoder::default(),
+        encoder: encode::PacketEncoder::default(),
         recv_task,
         send_task,
         state: HandshakeState::Handshaking,
@@ -260,13 +261,11 @@ fn connection_event_handler(
                                 })
                             }
                             ClientStatusPacket::Ping(ping) => {
-                                connection.send_packet(
-                                        rjacraft_protocol::packets::server::ServerStatusPacket::Pong(
-                                            rjacraft_protocol::packets::server::Pong {
-                                                payload: ping.payload
-                                            }
-                                        )
-                                    ).unwrap();
+                                connection
+                                    .send_packet(ServerStatusPacket::Pong(server::Pong {
+                                        payload: ping.payload,
+                                    }))
+                                    .unwrap();
                                 connection.flush_packets().unwrap();
                             }
                         },
@@ -296,7 +295,7 @@ pub struct RemoteConnection {
     pub remote_addr: SocketAddr,
     recv: Receiver<PacketFrame>,
     send: Sender<BytesMut>,
-    encoder: PacketEncoder,
+    encoder: encode::PacketEncoder,
     recv_task: JoinHandle<()>,
     send_task: JoinHandle<()>,
     pub state: HandshakeState,
@@ -321,10 +320,7 @@ impl RemoteConnection {
         }
     }
 
-    pub fn send_packet<T>(&mut self, packet: T) -> anyhow::Result<()>
-    where
-        T: Encoder + Debug,
-    {
+    pub fn send_packet(&mut self, packet: impl Encode) -> anyhow::Result<()> {
         self.encoder.append_packet(packet)
     }
 }

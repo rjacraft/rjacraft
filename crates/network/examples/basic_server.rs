@@ -23,7 +23,7 @@ fn handle_status_requests(
 ) {
     for event in events.iter() {
         if let Ok(mut connection) = connections.get_mut(event.connection) {
-            println!("status for connection: {:?}", connection.remote_addr);
+            tracing::info!("status for connection: {:?}", connection.remote_addr);
             let packet = ServerStatusPacket::Response(Response {
                 response: json!({
                     "version": {
@@ -44,7 +44,7 @@ fn handle_status_requests(
 
             let _ = connection.send_packet(packet);
             if let Err(e) = connection.flush_packets() {
-                println!("Can't flush: {}", e)
+                tracing::warn!("Can't flush: {}", e)
             };
         }
     }
@@ -52,6 +52,6 @@ fn handle_status_requests(
 
 fn handle_disconnect(mut events: EventReader<DisconnectEvent>) {
     for event in events.iter() {
-        println!("disconnect: {:?}", event);
+        tracing::info!("disconnect: {:?}", event);
     }
 }

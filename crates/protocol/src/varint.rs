@@ -6,7 +6,7 @@ use std::{
 use byteorder::ReadBytesExt;
 use thiserror::Error;
 
-use crate::io::{Decoder, Encoder};
+use crate::io::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub struct VarInt(pub i32);
@@ -21,13 +21,13 @@ impl VarInt {
         }
     }
 
-    pub fn decode_partial(mut r: impl Read) -> Result<i32, VarIntDecodeError> {
+    pub fn decode_partial(mut r: impl Read) -> Result<Self, VarIntDecodeError> {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {
             let byte = r.read_u8().map_err(|_| VarIntDecodeError::Incomplete)?;
             val |= (byte as i32 & 0b01111111) << (i * 7);
             if byte & 0b10000000 == 0 {
-                return Ok(val);
+                return Ok(Self(val));
             }
         }
 
@@ -62,7 +62,7 @@ impl VarInt {
 
 impl From<i32> for VarInt {
     fn from(value: i32) -> Self {
-        VarInt(value)
+        Self(value)
     }
 }
 
@@ -84,13 +84,13 @@ impl TryFrom<usize> for VarInt {
     type Error = TryFromIntError;
 
     fn try_from(value: usize) -> Result<Self, Self::Error> {
-        value.try_into().map(VarInt)
+        value.try_into().map(Self)
     }
 }
 
-impl Decoder for VarInt {
+impl Decode for VarInt {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
-        Ok(VarInt(VarInt::decode_partial(buffer)?))
+        Ok(Self::decode_partial(buffer)?)
     }
 }
 
@@ -102,7 +102,7 @@ pub enum VarIntDecodeError {
     TooLarge,
 }
 
-impl Encoder for VarInt {
+impl Encode for VarInt {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
         self.encode_write(buffer)
     }

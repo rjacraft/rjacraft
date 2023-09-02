@@ -1,7 +1,7 @@
 use std::io::Cursor;
 
 use super::*;
-use crate::{io::Decoder, Encoder};
+use crate::io::{Decode, Encode};
 
 packets!(
     Handshake {
@@ -21,12 +21,12 @@ pub enum HandshakeState {
     Play = 4,
 }
 
-impl Decoder for HandshakeState {
+impl Decode for HandshakeState {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
         let discriminant = VarInt::decode(buffer)?.0;
         match discriminant {
-            1 => Ok(HandshakeState::Status),
-            2 => Ok(HandshakeState::Login),
+            1 => Ok(Self::Status),
+            2 => Ok(Self::Login),
             _ => Err(anyhow::anyhow!(
                 concat!(
                     "invalid discriminant ",
@@ -40,14 +40,14 @@ impl Decoder for HandshakeState {
     }
 }
 
-impl Encoder for HandshakeState {
+impl Encode for HandshakeState {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
         let discriminant = match self {
-            HandshakeState::Handshaking => 0,
-            HandshakeState::Status => 1,
-            HandshakeState::Login => 2,
-            HandshakeState::Configuration => 3,
-            HandshakeState::Play => 4,
+            Self::Handshaking => 0,
+            Self::Status => 1,
+            Self::Login => 2,
+            Self::Configuration => 3,
+            Self::Play => 4,
         };
         VarInt(discriminant).encode(buffer)
     }

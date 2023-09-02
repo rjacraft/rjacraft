@@ -1,5 +1,5 @@
 use bytes::{BufMut, BytesMut};
-use rjacraft_protocol::{Encoder, VarInt};
+use rjacraft_protocol::{Encode, VarInt};
 
 #[derive(Clone, Debug, Default)]
 pub struct PacketEncoder {
@@ -8,7 +8,12 @@ pub struct PacketEncoder {
 
 impl PacketEncoder {
     pub fn append_frame(&mut self, bytes: &[u8]) -> anyhow::Result<()> {
-        let data_len = VarInt(bytes.len().try_into().unwrap());
+        let data_len = VarInt(
+            bytes
+                .len()
+                .try_into()
+                .map_err(|_| anyhow::anyhow!("packet too big"))?,
+        );
         let start_len = self.buf.len();
         let data_len_size = data_len.written_size();
 
@@ -19,10 +24,7 @@ impl PacketEncoder {
         Ok(())
     }
 
-    pub fn append_packet<P>(&mut self, packet: P) -> anyhow::Result<()>
-    where
-        P: Encoder,
-    {
+    pub fn append_packet(&mut self, packet: impl Encode) -> anyhow::Result<()> {
         let mut buf = vec![];
         packet.encode(&mut buf)?;
         self.append_frame(&buf)

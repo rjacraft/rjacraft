@@ -1,6 +1,6 @@
 use anyhow::bail;
 use bytes::{Buf, BytesMut};
-use rjacraft_protocol::{var_int::VarIntDecodeError, VarInt};
+use rjacraft_protocol::{varint::VarIntDecodeError, VarInt};
 
 #[derive(Clone, Debug, Default)]
 pub struct PacketDecoder {
@@ -11,7 +11,7 @@ impl PacketDecoder {
     pub fn try_next_frame(&mut self) -> anyhow::Result<Option<BytesMut>> {
         let mut r = &self.buf[..];
 
-        let len = match VarInt::decode_partial(&mut r) {
+        let VarInt(len) = match VarInt::decode_partial(&mut r) {
             Ok(len) => len,
             Err(VarIntDecodeError::Incomplete) => return Ok(None),
             Err(VarIntDecodeError::TooLarge) => bail!("malformed packet length VarInt"),

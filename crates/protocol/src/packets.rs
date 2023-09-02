@@ -59,7 +59,7 @@ macro_rules! packets {
             #[allow(clippy::useless_conversion)]
             #[allow(unused_imports)]
             #[allow(unused_variables)]
-            impl crate::Decoder for $packet {
+            impl crate::Decode for $packet {
                 fn decode(buffer: &mut std::io::Cursor<&[u8]>) -> anyhow::Result<Self> {
                     use anyhow::Context;
 
@@ -80,7 +80,7 @@ macro_rules! packets {
             #[allow(clippy::useless_conversion)]
             #[allow(unused_imports)]
             #[allow(unused_variables)]
-            impl $crate::Encoder for $packet {
+            impl $crate::Encode for $packet {
                 fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
                     use anyhow::Context;
 
@@ -109,7 +109,7 @@ macro_rules! enum_packets {
             )*
         }
 
-        impl $crate::Decoder for $ident {
+        impl $crate::Decode for $ident {
             fn decode(buffer: &mut std::io::Cursor<&[u8]>) -> anyhow::Result<Self> {
                 let opcode = $crate::VarInt::decode(buffer)?.0;
                 match opcode {
@@ -121,7 +121,7 @@ macro_rules! enum_packets {
             }
         }
 
-        impl $crate::Encoder for $ident {
+        impl $crate::Encode for $ident {
             fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
                 match self {
                     $(

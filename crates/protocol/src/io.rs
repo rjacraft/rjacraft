@@ -10,26 +10,26 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::var_int::VarInt;
+use crate::varint::VarInt;
 
-pub trait Decoder: Sized {
+pub trait Decode: Sized {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self>;
 }
 
-pub trait Encoder {
+pub trait Encode {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()>;
 }
 
 macro_rules! integer_impl {
     ($($int:ty, $read_fn:tt, $write_fn:tt),* $(,)?) => {
         $(
-            impl Decoder for $int {
+            impl Decode for $int {
                 fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
                     buffer.$read_fn::<BigEndian>().map_err(anyhow::Error::from)
                 }
             }
 
-            impl Encoder for $int {
+            impl Encode for $int {
                 fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
                     buffer.$write_fn::<BigEndian>(*self)?;
                     Ok(())
@@ -52,39 +52,39 @@ integer_impl! {
     f64, read_f64, write_f64,
 }
 
-impl Decoder for u8 {
+impl Decode for u8 {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
         buffer.read_u8().map_err(anyhow::Error::from)
     }
 }
 
-impl Encoder for u8 {
+impl Encode for u8 {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
         buffer.write_u8(*self)?;
         Ok(())
     }
 }
 
-impl Decoder for i8 {
+impl Decode for i8 {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
         buffer.read_i8().map_err(anyhow::Error::from)
     }
 }
 
-impl Encoder for i8 {
+impl Encode for i8 {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
         buffer.write_i8(*self)?;
         Ok(())
     }
 }
 
-impl Decoder for bool {
+impl Decode for bool {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
         Ok(buffer.read_u8()? != 0)
     }
 }
 
-impl Encoder for bool {
+impl Encode for bool {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
         buffer.write_u8(if *self { 1 } else { 0 })?;
         Ok(())
@@ -93,7 +93,7 @@ impl Encoder for bool {
 
 const STRING_MAX_LENGTH: usize = 32767;
 
-impl Decoder for String {
+impl Decode for String {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
         let len = VarInt::decode(buffer)
             .context("failed to decode string length")?
@@ -118,7 +118,7 @@ impl Decoder for String {
     }
 }
 
-impl Encoder for String {
+impl Encode for String {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
         let bytes = self.as_bytes();
         if bytes.len() > STRING_MAX_LENGTH {
@@ -135,7 +135,7 @@ impl Encoder for String {
     }
 }
 
-impl Decoder for Uuid {
+impl Decode for Uuid {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
         let mut bytes = [0u8; 16];
         buffer
@@ -146,16 +146,16 @@ impl Decoder for Uuid {
     }
 }
 
-impl Encoder for Uuid {
+impl Encode for Uuid {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
         buffer.extend_from_slice(self.as_bytes());
         Ok(())
     }
 }
 
-impl<T> Decoder for Option<T>
+impl<T> Decode for Option<T>
 where
-    T: Decoder,
+    T: Decode,
 {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
         let present = bool::decode(buffer)?;
@@ -167,9 +167,9 @@ where
     }
 }
 
-impl<T> Encoder for Option<T>
+impl<T> Encode for Option<T>
 where
-    T: Encoder,
+    T: Encode,
 {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
         match self {
@@ -197,11 +197,11 @@ pub struct LengthPrefixedVec<'a, P, T>(pub Cow<'a, [T]>, PhantomData<P>)
 where
     [T]: ToOwned<Owned = Vec<T>>;
 
-impl<'a, P, T> Decoder for LengthPrefixedVec<'a, P, T>
+impl<'a, P, T> Decode for LengthPrefixedVec<'a, P, T>
 where
-    T: Decoder,
+    T: Decode,
     [T]: ToOwned<Owned = Vec<T>>,
-    P: Decoder + TryInto<usize>,
+    P: Decode + TryInto<usize>,
     P::Error: std::error::Error + Send + Sync + 'static,
 {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
@@ -223,21 +223,24 @@ where
     }
 }
 
-impl<'a, P, T> Encoder for LengthPrefixedVec<'a, P, T>
+impl<'a, P, T> Encode for LengthPrefixedVec<'a, P, T>
 where
-    T: Encoder,
+    T: Encode,
     [T]: ToOwned<Owned = Vec<T>>,
-    P: Encoder + TryFrom<usize>,
+    P: Encode + TryFrom<usize>,
     P::Error: std::error::Error + Send + Sync + 'static,
 {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
         P::try_from(self.0.len())?.encode(buffer)?;
 
-        self.0.iter().enumerate().for_each(|(index, item)| {
-            item.encode(buffer)
-                .context(format!("failed to encode element at index {}", index))
-                .unwrap();
-        });
+        self.0
+            .iter()
+            .enumerate()
+            .map(|(index, item)| {
+                item.encode(buffer)
+                    .context(format!("failed to encode element at index {}", index))
+            })
+            .collect::<Result<_, _>>()?;
 
         Ok(())
     }
@@ -275,7 +278,7 @@ pub type ShortPrefixedVec<'a, T> = LengthPrefixedVec<'a, u16, T>;
 
 pub struct LengthInferredVecU8<'a>(pub Cow<'a, [u8]>);
 
-impl<'a> Decoder for LengthInferredVecU8<'a> {
+impl<'a> Decode for LengthInferredVecU8<'a> {
     fn decode(buffer: &mut Cursor<&[u8]>) -> anyhow::Result<Self> {
         let mut vec = Vec::new();
         buffer.read_to_end(&mut vec)?;
@@ -283,7 +286,7 @@ impl<'a> Decoder for LengthInferredVecU8<'a> {
     }
 }
 
-impl<'a> Encoder for LengthInferredVecU8<'a> {
+impl<'a> Encode for LengthInferredVecU8<'a> {
     fn encode(&self, buffer: &mut Vec<u8>) -> anyhow::Result<()> {
         buffer.extend_from_slice(&self.0);
         Ok(())
