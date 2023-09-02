@@ -10,3 +10,5 @@
 
 #[cfg(feature = "core")]
 pub use rjacraft_core as core;
+#[cfg(feature = "types")]
+pub use rjacraft_types as types;

@@ -1,0 +1,14 @@
+[package]
+name = "rjacraft_types"
+description = "Types for rjacraft"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[build-dependencies]
+rjacraft_data_generator = { path = "../data-generator" }

@@ -1,0 +1,2236 @@
+{
+  "minecraft:acacia_button": {
+    "properties": {
+      "face": [
+        "floor",
+        "wall",
+        "ceiling"
+      ],
+      "facing": [
+        "north",
+        "south",
+        "west",
+        "east"
+      ],
+      "powered": [
+        "true",
+        "false"
+      ]
+    },
+    "states": [
+      {
+        "id": 8707,
+        "properties": {
+          "face": "floor",
+          "facing": "north",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8708,
+        "properties": {
+          "face": "floor",
+          "facing": "north",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8709,
+        "properties": {
+          "face": "floor",
+          "facing": "south",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8710,
+        "properties": {
+          "face": "floor",
+          "facing": "south",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8711,
+        "properties": {
+          "face": "floor",
+          "facing": "west",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8712,
+        "properties": {
+          "face": "floor",
+          "facing": "west",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8713,
+        "properties": {
+          "face": "floor",
+          "facing": "east",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8714,
+        "properties": {
+          "face": "floor",
+          "facing": "east",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8715,
+        "properties": {
+          "face": "wall",
+          "facing": "north",
+          "powered": "true"
+        }
+      },
+      {
+        "default": true,
+        "id": 8716,
+        "properties": {
+          "face": "wall",
+          "facing": "north",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8717,
+        "properties": {
+          "face": "wall",
+          "facing": "south",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8718,
+        "properties": {
+          "face": "wall",
+          "facing": "south",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8719,
+        "properties": {
+          "face": "wall",
+          "facing": "west",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8720,
+        "properties": {
+          "face": "wall",
+          "facing": "west",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8721,
+        "properties": {
+          "face": "wall",
+          "facing": "east",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8722,
+        "properties": {
+          "face": "wall",
+          "facing": "east",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8723,
+        "properties": {
+          "face": "ceiling",
+          "facing": "north",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8724,
+        "properties": {
+          "face": "ceiling",
+          "facing": "north",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8725,
+        "properties": {
+          "face": "ceiling",
+          "facing": "south",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8726,
+        "properties": {
+          "face": "ceiling",
+          "facing": "south",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8727,
+        "properties": {
+          "face": "ceiling",
+          "facing": "west",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8728,
+        "properties": {
+          "face": "ceiling",
+          "facing": "west",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8729,
+        "properties": {
+          "face": "ceiling",
+          "facing": "east",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8730,
+        "properties": {
+          "face": "ceiling",
+          "facing": "east",
+          "powered": "false"
+        }
+      }
+    ]
+  },
+  "minecraft:bamboo": {
+    "properties": {
+      "age": [
+        "0",
+        "1"
+      ],
+      "leaves": [
+        "none",
+        "small",
+        "large"
+      ],
+      "stage": [
+        "0",
+        "1"
+      ]
+    },
+    "states": [
+      {
+        "default": true,
+        "id": 12945,
+        "properties": {
+          "age": "0",
+          "leaves": "none",
+          "stage": "0"
+        }
+      },
+      {
+        "id": 12946,
+        "properties": {
+          "age": "0",
+          "leaves": "none",
+          "stage": "1"
+        }
+      },
+      {
+        "id": 12947,
+        "properties": {
+          "age": "0",
+          "leaves": "small",
+          "stage": "0"
+        }
+      },
+      {
+        "id": 12948,
+        "properties": {
+          "age": "0",
+          "leaves": "small",
+          "stage": "1"
+        }
+      },
+      {
+        "id": 12949,
+        "properties": {
+          "age": "0",
+          "leaves": "large",
+          "stage": "0"
+        }
+      },
+      {
+        "id": 12950,
+        "properties": {
+          "age": "0",
+          "leaves": "large",
+          "stage": "1"
+        }
+      },
+      {
+        "id": 12951,
+        "properties": {
+          "age": "1",
+          "leaves": "none",
+          "stage": "0"
+        }
+      },
+      {
+        "id": 12952,
+        "properties": {
+          "age": "1",
+          "leaves": "none",
+          "stage": "1"
+        }
+      },
+      {
+        "id": 12953,
+        "properties": {
+          "age": "1",
+          "leaves": "small",
+          "stage": "0"
+        }
+      },
+      {
+        "id": 12954,
+        "properties": {
+          "age": "1",
+          "leaves": "small",
+          "stage": "1"
+        }
+      },
+      {
+        "id": 12955,
+        "properties": {
+          "age": "1",
+          "leaves": "large",
+          "stage": "0"
+        }
+      },
+      {
+        "id": 12956,
+        "properties": {
+          "age": "1",
+          "leaves": "large",
+          "stage": "1"
+        }
+      }
+    ]
+  },
+  "minecraft:cactus": {
+    "properties": {
+      "age": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15"
+      ]
+    },
+    "states": [
+      {
+        "default": true,
+        "id": 5782,
+        "properties": {
+          "age": "0"
+        }
+      },
+      {
+        "id": 5783,
+        "properties": {
+          "age": "1"
+        }
+      },
+      {
+        "id": 5784,
+        "properties": {
+          "age": "2"
+        }
+      },
+      {
+        "id": 5785,
+        "properties": {
+          "age": "3"
+        }
+      },
+      {
+        "id": 5786,
+        "properties": {
+          "age": "4"
+        }
+      },
+      {
+        "id": 5787,
+        "properties": {
+          "age": "5"
+        }
+      },
+      {
+        "id": 5788,
+        "properties": {
+          "age": "6"
+        }
+      },
+      {
+        "id": 5789,
+        "properties": {
+          "age": "7"
+        }
+      },
+      {
+        "id": 5790,
+        "properties": {
+          "age": "8"
+        }
+      },
+      {
+        "id": 5791,
+        "properties": {
+          "age": "9"
+        }
+      },
+      {
+        "id": 5792,
+        "properties": {
+          "age": "10"
+        }
+      },
+      {
+        "id": 5793,
+        "properties": {
+          "age": "11"
+        }
+      },
+      {
+        "id": 5794,
+        "properties": {
+          "age": "12"
+        }
+      },
+      {
+        "id": 5795,
+        "properties": {
+          "age": "13"
+        }
+      },
+      {
+        "id": 5796,
+        "properties": {
+          "age": "14"
+        }
+      },
+      {
+        "id": 5797,
+        "properties": {
+          "age": "15"
+        }
+      }
+    ]
+  },
+  "minecraft:damaged_anvil": {
+    "properties": {
+      "facing": [
+        "north",
+        "south",
+        "west",
+        "east"
+      ]
+    },
+    "states": [
+      {
+        "default": true,
+        "id": 9115,
+        "properties": {
+          "facing": "north"
+        }
+      },
+      {
+        "id": 9116,
+        "properties": {
+          "facing": "south"
+        }
+      },
+      {
+        "id": 9117,
+        "properties": {
+          "facing": "west"
+        }
+      },
+      {
+        "id": 9118,
+        "properties": {
+          "facing": "east"
+        }
+      }
+    ]
+  },
+  "minecraft:emerald_block": {
+    "states": [
+      {
+        "default": true,
+        "id": 7665
+      }
+    ]
+  },
+  "minecraft:farmland": {
+    "properties": {
+      "moisture": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7"
+      ]
+    },
+    "states": [
+      {
+        "default": true,
+        "id": 4286,
+        "properties": {
+          "moisture": "0"
+        }
+      },
+      {
+        "id": 4287,
+        "properties": {
+          "moisture": "1"
+        }
+      },
+      {
+        "id": 4288,
+        "properties": {
+          "moisture": "2"
+        }
+      },
+      {
+        "id": 4289,
+        "properties": {
+          "moisture": "3"
+        }
+      },
+      {
+        "id": 4290,
+        "properties": {
+          "moisture": "4"
+        }
+      },
+      {
+        "id": 4291,
+        "properties": {
+          "moisture": "5"
+        }
+      },
+      {
+        "id": 4292,
+        "properties": {
+          "moisture": "6"
+        }
+      },
+      {
+        "id": 4293,
+        "properties": {
+          "moisture": "7"
+        }
+      }
+    ]
+  },
+  "minecraft:gilded_blackstone": {
+    "states": [
+      {
+        "default": true,
+        "id": 20285
+      }
+    ]
+  },
+  "minecraft:hanging_roots": {
+    "properties": {
+      "waterlogged": [
+        "true",
+        "false"
+      ]
+    },
+    "states": [
+      {
+        "id": 22586,
+        "properties": {
+          "waterlogged": "true"
+        }
+      },
+      {
+        "default": true,
+        "id": 22587,
+        "properties": {
+          "waterlogged": "false"
+        }
+      }
+    ]
+  },
+  "minecraft:ice": {
+    "states": [
+      {
+        "default": true,
+        "id": 5780
+      }
+    ]
+  },
+  "minecraft:jack_o_lantern": {
+    "properties": {
+      "facing": [
+        "north",
+        "south",
+        "west",
+        "east"
+      ]
+    },
+    "states": [
+      {
+        "default": true,
+        "id": 5871,
+        "properties": {
+          "facing": "north"
+        }
+      },
+      {
+        "id": 5872,
+        "properties": {
+          "facing": "south"
+        }
+      },
+      {
+        "id": 5873,
+        "properties": {
+          "facing": "west"
+        }
+      },
+      {
+        "id": 5874,
+        "properties": {
+          "facing": "east"
+        }
+      }
+    ]
+  },
+  "minecraft:kelp": {
+    "properties": {
+      "age": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25"
+      ]
+    },
+    "states": [
+      {
+        "default": true,
+        "id": 12760,
+        "properties": {
+          "age": "0"
+        }
+      },
+      {
+        "id": 12761,
+        "properties": {
+          "age": "1"
+        }
+      },
+      {
+        "id": 12762,
+        "properties": {
+          "age": "2"
+        }
+      },
+      {
+        "id": 12763,
+        "properties": {
+          "age": "3"
+        }
+      },
+      {
+        "id": 12764,
+        "properties": {
+          "age": "4"
+        }
+      },
+      {
+        "id": 12765,
+        "properties": {
+          "age": "5"
+        }
+      },
+      {
+        "id": 12766,
+        "properties": {
+          "age": "6"
+        }
+      },
+      {
+        "id": 12767,
+        "properties": {
+          "age": "7"
+        }
+      },
+      {
+        "id": 12768,
+        "properties": {
+          "age": "8"
+        }
+      },
+      {
+        "id": 12769,
+        "properties": {
+          "age": "9"
+        }
+      },
+      {
+        "id": 12770,
+        "properties": {
+          "age": "10"
+        }
+      },
+      {
+        "id": 12771,
+        "properties": {
+          "age": "11"
+        }
+      },
+      {
+        "id": 12772,
+        "properties": {
+          "age": "12"
+        }
+      },
+      {
+        "id": 12773,
+        "properties": {
+          "age": "13"
+        }
+      },
+      {
+        "id": 12774,
+        "properties": {
+          "age": "14"
+        }
+      },
+      {
+        "id": 12775,
+        "properties": {
+          "age": "15"
+        }
+      },
+      {
+        "id": 12776,
+        "properties": {
+          "age": "16"
+        }
+      },
+      {
+        "id": 12777,
+        "properties": {
+          "age": "17"
+        }
+      },
+      {
+        "id": 12778,
+        "properties": {
+          "age": "18"
+        }
+      },
+      {
+        "id": 12779,
+        "properties": {
+          "age": "19"
+        }
+      },
+      {
+        "id": 12780,
+        "properties": {
+          "age": "20"
+        }
+      },
+      {
+        "id": 12781,
+        "properties": {
+          "age": "21"
+        }
+      },
+      {
+        "id": 12782,
+        "properties": {
+          "age": "22"
+        }
+      },
+      {
+        "id": 12783,
+        "properties": {
+          "age": "23"
+        }
+      },
+      {
+        "id": 12784,
+        "properties": {
+          "age": "24"
+        }
+      },
+      {
+        "id": 12785,
+        "properties": {
+          "age": "25"
+        }
+      }
+    ]
+  },
+  "minecraft:ladder": {
+    "properties": {
+      "facing": [
+        "north",
+        "south",
+        "west",
+        "east"
+      ],
+      "waterlogged": [
+        "true",
+        "false"
+      ]
+    },
+    "states": [
+      {
+        "id": 4654,
+        "properties": {
+          "facing": "north",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "default": true,
+        "id": 4655,
+        "properties": {
+          "facing": "north",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4656,
+        "properties": {
+          "facing": "south",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4657,
+        "properties": {
+          "facing": "south",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4658,
+        "properties": {
+          "facing": "west",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4659,
+        "properties": {
+          "facing": "west",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4660,
+        "properties": {
+          "facing": "east",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4661,
+        "properties": {
+          "facing": "east",
+          "waterlogged": "false"
+        }
+      }
+    ]
+  },
+  "minecraft:magenta_banner": {
+    "properties": {
+      "rotation": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15"
+      ]
+    },
+    "states": [
+      {
+        "default": true,
+        "id": 10791,
+        "properties": {
+          "rotation": "0"
+        }
+      },
+      {
+        "id": 10792,
+        "properties": {
+          "rotation": "1"
+        }
+      },
+      {
+        "id": 10793,
+        "properties": {
+          "rotation": "2"
+        }
+      },
+      {
+        "id": 10794,
+        "properties": {
+          "rotation": "3"
+        }
+      },
+      {
+        "id": 10795,
+        "properties": {
+          "rotation": "4"
+        }
+      },
+      {
+        "id": 10796,
+        "properties": {
+          "rotation": "5"
+        }
+      },
+      {
+        "id": 10797,
+        "properties": {
+          "rotation": "6"
+        }
+      },
+      {
+        "id": 10798,
+        "properties": {
+          "rotation": "7"
+        }
+      },
+      {
+        "id": 10799,
+        "properties": {
+          "rotation": "8"
+        }
+      },
+      {
+        "id": 10800,
+        "properties": {
+          "rotation": "9"
+        }
+      },
+      {
+        "id": 10801,
+        "properties": {
+          "rotation": "10"
+        }
+      },
+      {
+        "id": 10802,
+        "properties": {
+          "rotation": "11"
+        }
+      },
+      {
+        "id": 10803,
+        "properties": {
+          "rotation": "12"
+        }
+      },
+      {
+        "id": 10804,
+        "properties": {
+          "rotation": "13"
+        }
+      },
+      {
+        "id": 10805,
+        "properties": {
+          "rotation": "14"
+        }
+      },
+      {
+        "id": 10806,
+        "properties": {
+          "rotation": "15"
+        }
+      }
+    ]
+  },
+  "minecraft:nether_brick_fence": {
+    "properties": {
+      "east": [
+        "true",
+        "false"
+      ],
+      "north": [
+        "true",
+        "false"
+      ],
+      "south": [
+        "true",
+        "false"
+      ],
+      "waterlogged": [
+        "true",
+        "false"
+      ],
+      "west": [
+        "true",
+        "false"
+      ]
+    },
+    "states": [
+      {
+        "id": 7273,
+        "properties": {
+          "east": "true",
+          "north": "true",
+          "south": "true",
+          "waterlogged": "true",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7274,
+        "properties": {
+          "east": "true",
+          "north": "true",
+          "south": "true",
+          "waterlogged": "true",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7275,
+        "properties": {
+          "east": "true",
+          "north": "true",
+          "south": "true",
+          "waterlogged": "false",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7276,
+        "properties": {
+          "east": "true",
+          "north": "true",
+          "south": "true",
+          "waterlogged": "false",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7277,
+        "properties": {
+          "east": "true",
+          "north": "true",
+          "south": "false",
+          "waterlogged": "true",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7278,
+        "properties": {
+          "east": "true",
+          "north": "true",
+          "south": "false",
+          "waterlogged": "true",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7279,
+        "properties": {
+          "east": "true",
+          "north": "true",
+          "south": "false",
+          "waterlogged": "false",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7280,
+        "properties": {
+          "east": "true",
+          "north": "true",
+          "south": "false",
+          "waterlogged": "false",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7281,
+        "properties": {
+          "east": "true",
+          "north": "false",
+          "south": "true",
+          "waterlogged": "true",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7282,
+        "properties": {
+          "east": "true",
+          "north": "false",
+          "south": "true",
+          "waterlogged": "true",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7283,
+        "properties": {
+          "east": "true",
+          "north": "false",
+          "south": "true",
+          "waterlogged": "false",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7284,
+        "properties": {
+          "east": "true",
+          "north": "false",
+          "south": "true",
+          "waterlogged": "false",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7285,
+        "properties": {
+          "east": "true",
+          "north": "false",
+          "south": "false",
+          "waterlogged": "true",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7286,
+        "properties": {
+          "east": "true",
+          "north": "false",
+          "south": "false",
+          "waterlogged": "true",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7287,
+        "properties": {
+          "east": "true",
+          "north": "false",
+          "south": "false",
+          "waterlogged": "false",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7288,
+        "properties": {
+          "east": "true",
+          "north": "false",
+          "south": "false",
+          "waterlogged": "false",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7289,
+        "properties": {
+          "east": "false",
+          "north": "true",
+          "south": "true",
+          "waterlogged": "true",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7290,
+        "properties": {
+          "east": "false",
+          "north": "true",
+          "south": "true",
+          "waterlogged": "true",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7291,
+        "properties": {
+          "east": "false",
+          "north": "true",
+          "south": "true",
+          "waterlogged": "false",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7292,
+        "properties": {
+          "east": "false",
+          "north": "true",
+          "south": "true",
+          "waterlogged": "false",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7293,
+        "properties": {
+          "east": "false",
+          "north": "true",
+          "south": "false",
+          "waterlogged": "true",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7294,
+        "properties": {
+          "east": "false",
+          "north": "true",
+          "south": "false",
+          "waterlogged": "true",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7295,
+        "properties": {
+          "east": "false",
+          "north": "true",
+          "south": "false",
+          "waterlogged": "false",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7296,
+        "properties": {
+          "east": "false",
+          "north": "true",
+          "south": "false",
+          "waterlogged": "false",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7297,
+        "properties": {
+          "east": "false",
+          "north": "false",
+          "south": "true",
+          "waterlogged": "true",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7298,
+        "properties": {
+          "east": "false",
+          "north": "false",
+          "south": "true",
+          "waterlogged": "true",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7299,
+        "properties": {
+          "east": "false",
+          "north": "false",
+          "south": "true",
+          "waterlogged": "false",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7300,
+        "properties": {
+          "east": "false",
+          "north": "false",
+          "south": "true",
+          "waterlogged": "false",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7301,
+        "properties": {
+          "east": "false",
+          "north": "false",
+          "south": "false",
+          "waterlogged": "true",
+          "west": "true"
+        }
+      },
+      {
+        "id": 7302,
+        "properties": {
+          "east": "false",
+          "north": "false",
+          "south": "false",
+          "waterlogged": "true",
+          "west": "false"
+        }
+      },
+      {
+        "id": 7303,
+        "properties": {
+          "east": "false",
+          "north": "false",
+          "south": "false",
+          "waterlogged": "false",
+          "west": "true"
+        }
+      },
+      {
+        "default": true,
+        "id": 7304,
+        "properties": {
+          "east": "false",
+          "north": "false",
+          "south": "false",
+          "waterlogged": "false",
+          "west": "false"
+        }
+      }
+    ]
+  },
+  "minecraft:oak_button": {
+    "properties": {
+      "face": [
+        "floor",
+        "wall",
+        "ceiling"
+      ],
+      "facing": [
+        "north",
+        "south",
+        "west",
+        "east"
+      ],
+      "powered": [
+        "true",
+        "false"
+      ]
+    },
+    "states": [
+      {
+        "id": 8611,
+        "properties": {
+          "face": "floor",
+          "facing": "north",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8612,
+        "properties": {
+          "face": "floor",
+          "facing": "north",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8613,
+        "properties": {
+          "face": "floor",
+          "facing": "south",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8614,
+        "properties": {
+          "face": "floor",
+          "facing": "south",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8615,
+        "properties": {
+          "face": "floor",
+          "facing": "west",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8616,
+        "properties": {
+          "face": "floor",
+          "facing": "west",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8617,
+        "properties": {
+          "face": "floor",
+          "facing": "east",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8618,
+        "properties": {
+          "face": "floor",
+          "facing": "east",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8619,
+        "properties": {
+          "face": "wall",
+          "facing": "north",
+          "powered": "true"
+        }
+      },
+      {
+        "default": true,
+        "id": 8620,
+        "properties": {
+          "face": "wall",
+          "facing": "north",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8621,
+        "properties": {
+          "face": "wall",
+          "facing": "south",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8622,
+        "properties": {
+          "face": "wall",
+          "facing": "south",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8623,
+        "properties": {
+          "face": "wall",
+          "facing": "west",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8624,
+        "properties": {
+          "face": "wall",
+          "facing": "west",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8625,
+        "properties": {
+          "face": "wall",
+          "facing": "east",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8626,
+        "properties": {
+          "face": "wall",
+          "facing": "east",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8627,
+        "properties": {
+          "face": "ceiling",
+          "facing": "north",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8628,
+        "properties": {
+          "face": "ceiling",
+          "facing": "north",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8629,
+        "properties": {
+          "face": "ceiling",
+          "facing": "south",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8630,
+        "properties": {
+          "face": "ceiling",
+          "facing": "south",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8631,
+        "properties": {
+          "face": "ceiling",
+          "facing": "west",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8632,
+        "properties": {
+          "face": "ceiling",
+          "facing": "west",
+          "powered": "false"
+        }
+      },
+      {
+        "id": 8633,
+        "properties": {
+          "face": "ceiling",
+          "facing": "east",
+          "powered": "true"
+        }
+      },
+      {
+        "id": 8634,
+        "properties": {
+          "face": "ceiling",
+          "facing": "east",
+          "powered": "false"
+        }
+      }
+    ]
+  },
+  "minecraft:packed_ice": {
+    "states": [
+      {
+        "default": true,
+        "id": 10746
+      }
+    ]
+  },
+  "minecraft:quartz_block": {
+    "states": [
+      {
+        "default": true,
+        "id": 9235
+      }
+    ]
+  },
+  "minecraft:rail": {
+    "properties": {
+      "shape": [
+        "north_south",
+        "east_west",
+        "ascending_east",
+        "ascending_west",
+        "ascending_north",
+        "ascending_south",
+        "south_east",
+        "south_west",
+        "north_west",
+        "north_east"
+      ],
+      "waterlogged": [
+        "true",
+        "false"
+      ]
+    },
+    "states": [
+      {
+        "id": 4662,
+        "properties": {
+          "shape": "north_south",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "default": true,
+        "id": 4663,
+        "properties": {
+          "shape": "north_south",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4664,
+        "properties": {
+          "shape": "east_west",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4665,
+        "properties": {
+          "shape": "east_west",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4666,
+        "properties": {
+          "shape": "ascending_east",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4667,
+        "properties": {
+          "shape": "ascending_east",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4668,
+        "properties": {
+          "shape": "ascending_west",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4669,
+        "properties": {
+          "shape": "ascending_west",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4670,
+        "properties": {
+          "shape": "ascending_north",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4671,
+        "properties": {
+          "shape": "ascending_north",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4672,
+        "properties": {
+          "shape": "ascending_south",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4673,
+        "properties": {
+          "shape": "ascending_south",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4674,
+        "properties": {
+          "shape": "south_east",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4675,
+        "properties": {
+          "shape": "south_east",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4676,
+        "properties": {
+          "shape": "south_west",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4677,
+        "properties": {
+          "shape": "south_west",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4678,
+        "properties": {
+          "shape": "north_west",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4679,
+        "properties": {
+          "shape": "north_west",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "id": 4680,
+        "properties": {
+          "shape": "north_east",
+          "waterlogged": "true"
+        }
+      },
+      {
+        "id": 4681,
+        "properties": {
+          "shape": "north_east",
+          "waterlogged": "false"
+        }
+      }
+    ]
+  },
+  "minecraft:sand": {
+    "states": [
+      {
+        "default": true,
+        "id": 112
+      }
+    ]
+  },
+  "minecraft:tall_grass": {
+    "properties": {
+      "half": [
+        "upper",
+        "lower"
+      ]
+    },
+    "states": [
+      {
+        "id": 10755,
+        "properties": {
+          "half": "upper"
+        }
+      },
+      {
+        "default": true,
+        "id": 10756,
+        "properties": {
+          "half": "lower"
+        }
+      }
+    ]
+  },
+  "minecraft:verdant_froglight": {
+    "properties": {
+      "axis": [
+        "x",
+        "y",
+        "z"
+      ]
+    },
+    "states": [
+      {
+        "id": 24252,
+        "properties": {
+          "axis": "x"
+        }
+      },
+      {
+        "default": true,
+        "id": 24253,
+        "properties": {
+          "axis": "y"
+        }
+      },
+      {
+        "id": 24254,
+        "properties": {
+          "axis": "z"
+        }
+      }
+    ]
+  },
+  "minecraft:wall_torch": {
+    "properties": {
+      "facing": [
+        "north",
+        "south",
+        "west",
+        "east"
+      ]
+    },
+    "states": [
+      {
+        "default": true,
+        "id": 2356,
+        "properties": {
+          "facing": "north"
+        }
+      },
+      {
+        "id": 2357,
+        "properties": {
+          "facing": "south"
+        }
+      },
+      {
+        "id": 2358,
+        "properties": {
+          "facing": "west"
+        }
+      },
+      {
+        "id": 2359,
+        "properties": {
+          "facing": "east"
+        }
+      }
+    ]
+  },
+  "minecraft:yellow_banner": {
+    "properties": {
+      "rotation": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15"
+      ]
+    },
+    "states": [
+      {
+        "default": true,
+        "id": 10823,
+        "properties": {
+          "rotation": "0"
+        }
+      },
+      {
+        "id": 10824,
+        "properties": {
+          "rotation": "1"
+        }
+      },
+      {
+        "id": 10825,
+        "properties": {
+          "rotation": "2"
+        }
+      },
+      {
+        "id": 10826,
+        "properties": {
+          "rotation": "3"
+        }
+      },
+      {
+        "id": 10827,
+        "properties": {
+          "rotation": "4"
+        }
+      },
+      {
+        "id": 10828,
+        "properties": {
+          "rotation": "5"
+        }
+      },
+      {
+        "id": 10829,
+        "properties": {
+          "rotation": "6"
+        }
+      },
+      {
+        "id": 10830,
+        "properties": {
+          "rotation": "7"
+        }
+      },
+      {
+        "id": 10831,
+        "properties": {
+          "rotation": "8"
+        }
+      },
+      {
+        "id": 10832,
+        "properties": {
+          "rotation": "9"
+        }
+      },
+      {
+        "id": 10833,
+        "properties": {
+          "rotation": "10"
+        }
+      },
+      {
+        "id": 10834,
+        "properties": {
+          "rotation": "11"
+        }
+      },
+      {
+        "id": 10835,
+        "properties": {
+          "rotation": "12"
+        }
+      },
+      {
+        "id": 10836,
+        "properties": {
+          "rotation": "13"
+        }
+      },
+      {
+        "id": 10837,
+        "properties": {
+          "rotation": "14"
+        }
+      },
+      {
+        "id": 10838,
+        "properties": {
+          "rotation": "15"
+        }
+      }
+    ]
+  },
+  "minecraft:zombie_head": {
+    "properties": {
+      "powered": [
+        "true",
+        "false"
+      ],
+      "rotation": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15"
+      ]
+    },
+    "states": [
+      {
+        "id": 8907,
+        "properties": {
+          "powered": "true",
+          "rotation": "0"
+        }
+      },
+      {
+        "id": 8908,
+        "properties": {
+          "powered": "true",
+          "rotation": "1"
+        }
+      },
+      {
+        "id": 8909,
+        "properties": {
+          "powered": "true",
+          "rotation": "2"
+        }
+      },
+      {
+        "id": 8910,
+        "properties": {
+          "powered": "true",
+          "rotation": "3"
+        }
+      },
+      {
+        "id": 8911,
+        "properties": {
+          "powered": "true",
+          "rotation": "4"
+        }
+      },
+      {
+        "id": 8912,
+        "properties": {
+          "powered": "true",
+          "rotation": "5"
+        }
+      },
+      {
+        "id": 8913,
+        "properties": {
+          "powered": "true",
+          "rotation": "6"
+        }
+      },
+      {
+        "id": 8914,
+        "properties": {
+          "powered": "true",
+          "rotation": "7"
+        }
+      },
+      {
+        "id": 8915,
+        "properties": {
+          "powered": "true",
+          "rotation": "8"
+        }
+      },
+      {
+        "id": 8916,
+        "properties": {
+          "powered": "true",
+          "rotation": "9"
+        }
+      },
+      {
+        "id": 8917,
+        "properties": {
+          "powered": "true",
+          "rotation": "10"
+        }
+      },
+      {
+        "id": 8918,
+        "properties": {
+          "powered": "true",
+          "rotation": "11"
+        }
+      },
+      {
+        "id": 8919,
+        "properties": {
+          "powered": "true",
+          "rotation": "12"
+        }
+      },
+      {
+        "id": 8920,
+        "properties": {
+          "powered": "true",
+          "rotation": "13"
+        }
+      },
+      {
+        "id": 8921,
+        "properties": {
+          "powered": "true",
+          "rotation": "14"
+        }
+      },
+      {
+        "id": 8922,
+        "properties": {
+          "powered": "true",
+          "rotation": "15"
+        }
+      },
+      {
+        "default": true,
+        "id": 8923,
+        "properties": {
+          "powered": "false",
+          "rotation": "0"
+        }
+      },
+      {
+        "id": 8924,
+        "properties": {
+          "powered": "false",
+          "rotation": "1"
+        }
+      },
+      {
+        "id": 8925,
+        "properties": {
+          "powered": "false",
+          "rotation": "2"
+        }
+      },
+      {
+        "id": 8926,
+        "properties": {
+          "powered": "false",
+          "rotation": "3"
+        }
+      },
+      {
+        "id": 8927,
+        "properties": {
+          "powered": "false",
+          "rotation": "4"
+        }
+      },
+      {
+        "id": 8928,
+        "properties": {
+          "powered": "false",
+          "rotation": "5"
+        }
+      },
+      {
+        "id": 8929,
+        "properties": {
+          "powered": "false",
+          "rotation": "6"
+        }
+      },
+      {
+        "id": 8930,
+        "properties": {
+          "powered": "false",
+          "rotation": "7"
+        }
+      },
+      {
+        "id": 8931,
+        "properties": {
+          "powered": "false",
+          "rotation": "8"
+        }
+      },
+      {
+        "id": 8932,
+        "properties": {
+          "powered": "false",
+          "rotation": "9"
+        }
+      },
+      {
+        "id": 8933,
+        "properties": {
+          "powered": "false",
+          "rotation": "10"
+        }
+      },
+      {
+        "id": 8934,
+        "properties": {
+          "powered": "false",
+          "rotation": "11"
+        }
+      },
+      {
+        "id": 8935,
+        "properties": {
+          "powered": "false",
+          "rotation": "12"
+        }
+      },
+      {
+        "id": 8936,
+        "properties": {
+          "powered": "false",
+          "rotation": "13"
+        }
+      },
+      {
+        "id": 8937,
+        "properties": {
+          "powered": "false",
+          "rotation": "14"
+        }
+      },
+      {
+        "id": 8938,
+        "properties": {
+          "powered": "false",
+          "rotation": "15"
+        }
+      }
+    ]
+  }
+}

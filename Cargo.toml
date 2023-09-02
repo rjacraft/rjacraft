@@ -1,7 +1,9 @@
 [workspace]
 
 members = [
-    "crates/core"
+    "crates/core",
+    "crates/types",
+    "crates/data-generator"
 ]
 
 [workspace.package]
@@ -18,11 +20,25 @@ repository = "https://github.com/rjacraft/rjacraft"
 # Bevy game engine
 bevy = { version = "0.11.2", default-features = false }
 
+# Encoding
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+convert_case = "0.6.0"
+numerals = "0.1.4"
+
+# AST manupulation
+syn = { version = "2.0", default-features = false }
+proc-macro2 = "1.0"
+quote = "1.0"
+prettyplease = "0.2.12"
+
 # Documentation
 document-features = "0.2.7"
 
 # Own crates
 rjacraft_core = { path = "crates/core", version = "0.0.1" }
+rjacraft_types = { path = "crates/types", version = "0.0.1" }
 
 # Bevy-specific profile setup aimed at better performace while developing
 
@@ -47,6 +63,7 @@ repository.workspace = true
 [dependencies]
 # Rjacraft components
 rjacraft_core = { workspace = true, optional = true }
+rjacraft_types = { workspace = true, optional = true }
 
 # Documentation
 document-features.workspace = true
@@ -60,3 +77,5 @@ default = ["core"]
 
 ## Enables `core` features
 core = ["dep:rjacraft_core"]
+### Auto-generated blocks, items, biomes and more
+types = ["dep:rjacraft_types"]
