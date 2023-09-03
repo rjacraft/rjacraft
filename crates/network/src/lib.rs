@@ -10,7 +10,7 @@ use tracing::*;
 mod events;
 mod net_thread;
 
-pub use events::*;
+pub use self::events::*;
 
 #[derive(Resource)]
 pub struct Runtime(pub tokio::runtime::Runtime);

@@ -1,10 +1,6 @@
 //! Client-bound packets
 
-use configuration::*;
-use login::*;
-use play::*;
-use status::*;
-
+use self::{configuration::*, login::*, play::*, status::*};
 use super::macros;
 
 pub mod configuration;

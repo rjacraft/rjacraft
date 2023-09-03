@@ -13,15 +13,17 @@ pub mod uuid;
 pub mod varint;
 pub mod version;
 
-pub use bool_option::BoolOption;
-pub use chat::Chat;
-pub use identifier::Identifier;
-pub use json_string::JsonString;
-pub use len_string::LenString;
-pub use len_vec::LenVec;
-pub use primitive::Primitive;
-pub use remaining_byte_array::RemainingByteArray;
-pub use status_object::StatusObject;
-pub use varint::VarInt;
+pub use self::{
+    bool_option::BoolOption,
+    chat::Chat,
+    identifier::Identifier,
+    json_string::JsonString,
+    len_string::LenString,
+    len_vec::LenVec,
+    primitive::Primitive,
+    remaining_byte_array::RemainingByteArray,
+    status_object::StatusObject,
+    varint::VarInt,
+};
 
 // TODO VarLong
