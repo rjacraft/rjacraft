@@ -8,6 +8,7 @@ pub struct PeerConnected {
 
 #[derive(Debug, Event)]
 pub struct PeerDisconnected {
+    /// Might not exist in [`bevy_app::PostUpdate`]
     pub peer: Entity,
 }
 

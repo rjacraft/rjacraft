@@ -73,6 +73,7 @@ where
                     for msg in peer.msg_out.try_iter() {
                         match msg {
                             PeerMsgOut::Disconnected => commands.add(move |world: &mut World| {
+                                // gets deleted later on
                                 world.send_event(PeerDisconnected { peer: entity })
                             }),
                             PeerMsgOut::HandshakeComplete(_, _) => {}
@@ -98,7 +99,8 @@ where
             .add_event::<PlayPacketOut>()
             .add_systems(PostStartup, net_thread_system)
             .add_systems(PreUpdate, new_peer_system)
-            .add_systems(Update, (event_tx_system, drop_system, event_rx_sysetm));
+            .add_systems(Update, (event_tx_system, drop_system, event_rx_sysetm))
+            .add_systems(PostUpdate, delete_disconnects_system);
     }
 }
 
@@ -121,6 +123,13 @@ fn event_rx_sysetm(
         peer.msg_in
             .send(net_thread::PeerMsgIn::PlayPacket(event.packet.clone()))
             .unwrap();
+    }
+}
+
+fn delete_disconnects_system(mut events: EventReader<PeerDisconnected>, mut commands: Commands) {
+    for event in events.into_iter() {
+        debug!("despawning the peer entity");
+        commands.entity(event.peer).despawn();
     }
 }
 
