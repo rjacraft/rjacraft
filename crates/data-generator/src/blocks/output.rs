@@ -1,4 +1,5 @@
 pub(crate) use block_convert::*;
+pub(crate) use block_default::*;
 pub(crate) use block_struct::*;
 
 mod block_struct {
@@ -68,6 +69,44 @@ mod block_struct {
 
             // "pub open: SpruceDoorOpen,"
             tokens.extend(quote!(pub #prop_name: #prop_enum_name,))
+        }
+    }
+}
+
+mod block_default {
+    use proc_macro2::{Ident, Span, TokenStream};
+    use quote::{quote, ToTokens};
+
+    use crate::blocks::model::Block;
+
+    use super::block_convert::BlockStateInst;
+
+    pub struct BlockDefault {
+        pub block_name: String, // PascalCase
+        pub block_state_default: BlockStateInst,
+    }
+
+    impl From<&Block> for BlockDefault {
+        fn from(block: &Block) -> Self {
+            BlockDefault {
+                block_name: block.name.clone(),
+                block_state_default: (&block.default_state).into(),
+            }
+        }
+    }
+
+    impl ToTokens for BlockDefault {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            let block_name = Ident::new(&self.block_name, Span::call_site());
+            let block_inst = self.block_state_default.to_token_stream();
+
+            tokens.extend(quote! {
+                impl Default for #block_name {
+                    fn default() -> Self {
+                        #block_inst
+                    }
+                }
+            });
         }
     }
 }

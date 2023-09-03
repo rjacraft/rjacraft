@@ -22,13 +22,16 @@ pub(crate) fn gen_block_structs(
     use quote::ToTokens;
     use syn::parse2;
 
-    use self::output::{BlockConvert, BlockStruct};
+    use self::output::{BlockConvert, BlockDefault, BlockStruct};
 
     for block in json::parse_block_registry(json_data)? {
         let mut stream = TokenStream::new();
 
         let block_struct: BlockStruct = BlockStruct::from(&block);
         block_struct.to_tokens(&mut stream);
+
+        let block_default = BlockDefault::from(&block);
+        block_default.to_tokens(&mut stream);
 
         let block_conv = BlockConvert::from(&block);
         block_conv.from_u32().to_tokens(&mut stream);
