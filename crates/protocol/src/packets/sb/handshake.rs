@@ -1,7 +1,6 @@
 use bytes::{Buf, BufMut};
 
-use crate::packets::prelude::*;
-use crate::{error, types, ProtocolType};
+use crate::{error, packets::prelude::*, types, ProtocolType};
 
 packets_struct! {
     Handshake {

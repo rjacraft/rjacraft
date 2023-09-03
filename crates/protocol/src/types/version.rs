@@ -2,9 +2,7 @@
 
 use bytes::{Buf, BufMut};
 
-use crate::version::ProtocolVersion;
-
-use crate::{error, ProtocolType};
+use crate::{error, version::ProtocolVersion, ProtocolType};
 
 impl ProtocolType for ProtocolVersion {
     type DecodeError = super::varint::DecodeError;

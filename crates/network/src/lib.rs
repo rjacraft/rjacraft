@@ -2,11 +2,10 @@ use std::net::SocketAddr;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use net_thread::{PeerMsgIn, PeerMsgOut};
 use rjacraft_protocol::packets::*;
 use tokio::net;
 use tracing::*;
-
-use net_thread::{PeerMsgIn, PeerMsgOut};
 
 mod events;
 mod net_thread;
