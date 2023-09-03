@@ -19,7 +19,7 @@ pub fn derive_from_never(input: proc_macro::TokenStream) -> proc_macro::TokenStr
             #generic_where
         {
             fn from(x: ::core::convert::Infallible) -> Self {
-                ::core::unreachable!()
+                match x {}
             }
         }
     })
