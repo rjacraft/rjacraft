@@ -1,4 +1,4 @@
-//! A string of typed, [`serde`]-powered JSON.
+//! A string of typed, [`serde`]-powered JSON
 
 use bytes::{Buf, BufMut};
 

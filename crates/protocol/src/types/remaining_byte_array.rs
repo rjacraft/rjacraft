@@ -1,4 +1,4 @@
-//! A byte array that takes everything that's left in the packet.
+//! A byte array that takes everything that's left in the packet
 
 use bytes::{Buf, BufMut};
 

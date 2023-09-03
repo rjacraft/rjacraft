@@ -1,4 +1,4 @@
-//! A protocol version number backed by [`crate::ProtocolVersion`].
+//! A protocol version number backed by [`crate::ProtocolVersion`]
 
 use bytes::{Buf, BufMut};
 

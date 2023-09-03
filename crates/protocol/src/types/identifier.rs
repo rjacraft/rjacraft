@@ -1,3 +1,5 @@
+//! Minecraft's identifier type
+
 use std::{fmt, str::FromStr};
 
 use bytes::{Buf, BufMut};
@@ -6,10 +8,21 @@ use crate::{error, ProtocolType};
 
 const MAX_SIZE: usize = 1 << 15;
 
+/// The way to construct this is by calling [`FromStr`].
 #[derive(Debug, Clone)]
 pub struct Identifier {
     namespace: String,
     location: String,
+}
+
+impl Identifier {
+    pub fn namespace(&self) -> &str {
+        &self.namespace
+    }
+
+    pub fn location(&self) -> &str {
+        &self.namespace
+    }
 }
 
 impl fmt::Display for Identifier {

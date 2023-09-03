@@ -1,4 +1,4 @@
-//! A binary UUID composed of 16 bytes.
+//! A binary UUID composed of 16 bytes
 
 use bytes::{Buf, BufMut};
 

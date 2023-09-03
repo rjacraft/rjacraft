@@ -1,4 +1,4 @@
-//! The variable-length integer type. Backed by an [`i32`].
+//! The variable-length integer type. Backed by an [`i32`]
 
 use bytes::{Buf, BufMut};
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};

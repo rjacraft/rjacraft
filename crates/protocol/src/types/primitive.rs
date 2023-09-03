@@ -1,4 +1,4 @@
-//! A wrapper for the most intuitive implementations of the primitive types.
+//! A wrapper for the most intuitive implementations of the primitive types
 
 use bytes::{Buf, BufMut};
 

@@ -1,4 +1,4 @@
-//! An element that comes after a boolean indicating whether it'll be present.
+//! An element that comes after a boolean indicating whether it'll be present
 
 use bytes::{Buf, BufMut};
 

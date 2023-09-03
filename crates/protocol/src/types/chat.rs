@@ -1,3 +1,5 @@
+//! Minecraft's formatted chat type
+
 use serde::{Deserialize, Serialize};
 
 fn is_false(x: &bool) -> bool {

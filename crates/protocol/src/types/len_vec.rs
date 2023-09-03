@@ -1,4 +1,4 @@
-//! A length-prefixed array (prefixed by a [`super::VarInt`]).
+//! A length-prefixed array (prefixed by a [`super::VarInt`])
 
 use bytes::{Buf, BufMut};
 
