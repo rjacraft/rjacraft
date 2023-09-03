@@ -18,6 +18,5 @@ uuid.workspace = true
 from_never.workspace = true
 paste.workspace = true
 async-trait.workspace = true
-# serde.workspace = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serde = { version = "1", features = ["derive"] }
