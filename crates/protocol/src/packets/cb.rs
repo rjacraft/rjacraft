@@ -1,34 +1,34 @@
-pub use configuration::*;
-pub use login::*;
-pub use play::*;
-pub use status::*;
+//! Client-bound packets
 
-use super::*;
+use configuration::*;
+use login::*;
+use play::*;
+use status::*;
+
+use super::macros;
 
 pub mod configuration;
 pub mod login;
 pub mod play;
 pub mod status;
 
-enum_packets!(
-    ServerStatusPacket {
+macros::packet_sumtype! {
+    HandshakePacket {}
+
+    StatusPacket {
         0x00 = Response,
         0x01 = Pong,
     }
-);
 
-enum_packets!(
-    ServerLoginPacket {
+    LoginPacket {
         0x00 = DisconnectLogin,
         0x01 = EncryptionRequest,
         0x02 = LoginSuccess,
         0x03 = SetCompression,
         0x04 = LoginPluginRequest,
     }
-);
 
-enum_packets!(
-    ServerConfigurationPacket {
+    ConfigurationPacket {
         0x00 = PluginMessage,
         0x01 = Disconnect,
         0x02 = FinishConfiguration,
@@ -39,10 +39,8 @@ enum_packets!(
         0x07 = FeatureFlags,
         0x08 = UpdateTags,
     }
-);
 
-enum_packets!(
-    ServerPlayPacket {
+    PlayPacket {
         0x2A = JoinGame,
     }
-);
+}

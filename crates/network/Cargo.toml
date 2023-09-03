@@ -1,12 +1,12 @@
 [package]
 name = "rjacraft_network"
-description = "Network components of rjacraft"
+description = "Minecraft server networking for bevy_ecs."
+categories = ["network-programming", "asynchronous", "game-development"]
+keywords = ["rjacraft", "tokio", "bevy", "minecraft"]
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-keywords.workspace = true
-categories.workspace = true
 homepage.workspace = true
 repository.workspace = true
 
@@ -16,6 +16,7 @@ tokio = { workspace = true, features = [
     "io-util",
     "net",
     "time",
+    "macros",
 ] }
 rjacraft_protocol.workspace = true
 bevy_ecs.workspace = true
@@ -24,7 +25,9 @@ bytes.workspace = true
 thiserror.workspace = true
 flume.workspace = true
 tracing.workspace = true
-anyhow = "1"
+from_never.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

@@ -1,57 +1,46 @@
-use bevy_app::{App, RunMode, ScheduleRunnerPlugin, Update};
-use bevy_ecs::prelude::{EventReader, Query};
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
 use rjacraft_network::*;
-use rjacraft_protocol::packets::server::*;
-use serde_json::json;
+use tracing::*;
 
 fn main() {
     tracing_subscriber::fmt::init();
     App::new()
+        .insert_resource(Runtime(
+            tokio::runtime::Runtime::new().expect("Failed to create a Tokio lifetime"),
+        ))
         .add_plugins((
-            NetworkPlugin("0.0.0.0:25565"),
-            ScheduleRunnerPlugin {
-                run_mode: RunMode::Loop { wait: None },
+            NetworkPlugin {
+                addr: "0.0.0.0:25565",
+                status: IntoSystem::into_system(status_system),
+            },
+            bevy_app::ScheduleRunnerPlugin {
+                run_mode: bevy_app::RunMode::Loop { wait: None },
             },
         ))
-        .add_systems(Update, (handle_status_requests, handle_disconnect))
+        .add_systems(Update, handle_disconnect)
         .run();
 }
 
-fn handle_status_requests(
-    mut connections: Query<&mut RemoteConnection>,
-    mut events: EventReader<ClientStatusRequestEvent>,
-) {
-    for event in events.iter() {
-        if let Ok(mut connection) = connections.get_mut(event.connection) {
-            tracing::info!("status for connection: {:?}", connection.remote_addr);
-            let packet = ServerStatusPacket::Response(Response {
-                response: json!({
-                    "version": {
-                        "protocol": 763,
-                        "name": "Rjacraft 1.20.1",
-                    },
-                    "players": {
-                        "online": 0,
-                        "max": 100,
-                        "sample": []
-                    },
-                    "description": {
-                        "text": "Rjacraft"
-                    }
-                })
-                .to_string(),
-            });
-
-            let _ = connection.send_packet(packet);
-            if let Err(e) = connection.flush_packets() {
-                tracing::warn!("Can't flush: {}", e)
-            };
+fn status_system(_peer: In<Entity>) -> serde_json::Value {
+    serde_json::json!({
+        "version": {
+            "protocol": 763,
+            "name": "Rjacraft 1.20.1",
+        },
+        "players": {
+            "online": 0,
+            "max": 100,
+            "sample": []
+        },
+        "description": {
+            "text": "Rjacraft"
         }
-    }
+    })
 }
 
-fn handle_disconnect(mut events: EventReader<DisconnectEvent>) {
+fn handle_disconnect(mut events: EventReader<PeerDisconnected>) {
     for event in events.iter() {
-        tracing::info!("disconnect: {:?}", event);
+        info!("disconnect: {:?}", event);
     }
 }

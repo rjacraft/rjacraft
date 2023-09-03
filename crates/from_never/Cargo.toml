@@ -1,0 +1,12 @@
+[package]
+name = "from_never"
+version = "0.1.0"
+description = "#[derive(FromNever)]"
+edition.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "2"
+quote = "1"
