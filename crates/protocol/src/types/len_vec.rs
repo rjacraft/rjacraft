@@ -9,7 +9,7 @@ use crate::{error, ProtocolType};
 ///   - One for anything that's [`ProtocolType`] and can of be any length
 ///   - One just for bytes (faster than decoding [`super::Primitive<u8>`])
 #[derive(Debug, Clone)]
-pub struct LengthVec<T>(pub Vec<T>);
+pub struct LenVec<T>(pub Vec<T>);
 
 #[derive(Debug, thiserror::Error, from_never::FromNever)]
 pub enum DecodeError<E: std::error::Error> {
@@ -29,7 +29,7 @@ pub enum EncodeError<E: std::error::Error> {
 
 // # Generic implementation for complex items
 
-impl<T: ProtocolType> ProtocolType for LengthVec<T> {
+impl<T: ProtocolType> ProtocolType for LenVec<T> {
     type DecodeError = DecodeError<T::DecodeError>;
     type EncodeError = EncodeError<T::EncodeError>;
 
@@ -53,7 +53,7 @@ impl<T: ProtocolType> ProtocolType for LengthVec<T> {
     }
 }
 
-impl<P: ProtocolType, F> From<Vec<F>> for LengthVec<P>
+impl<P: ProtocolType, F> From<Vec<F>> for LenVec<P>
 where
     P: From<F>,
 {
@@ -62,18 +62,18 @@ where
     }
 }
 
-impl<P: ProtocolType, F> From<LengthVec<P>> for Vec<F>
+impl<P: ProtocolType, F> From<LenVec<P>> for Vec<F>
 where
     F: From<P>,
 {
-    fn from(value: LengthVec<P>) -> Self {
+    fn from(value: LenVec<P>) -> Self {
         value.0.into_iter().map(|x| x.into()).collect()
     }
 }
 
 // # Special impl for byte vectors (faster than Primitive<u8>)
 
-impl ProtocolType for LengthVec<u8> {
+impl ProtocolType for LenVec<u8> {
     type DecodeError = DecodeError<error::Eof>;
     type EncodeError = error::Infallible;
 
@@ -94,14 +94,14 @@ impl ProtocolType for LengthVec<u8> {
     }
 }
 
-impl From<Vec<u8>> for LengthVec<u8> {
+impl From<Vec<u8>> for LenVec<u8> {
     fn from(value: Vec<u8>) -> Self {
         Self(value)
     }
 }
 
-impl From<LengthVec<u8>> for Vec<u8> {
-    fn from(value: LengthVec<u8>) -> Self {
+impl From<LenVec<u8>> for Vec<u8> {
+    fn from(value: LenVec<u8>) -> Self {
         value.0
     }
 }

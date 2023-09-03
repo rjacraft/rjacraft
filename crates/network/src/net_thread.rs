@@ -104,7 +104,7 @@ async fn peer_loop(
 
                         msg_out
                             .send(PeerMsgOut::HandshakeComplete(
-                                hs.server_address,
+                                hs.server_address.into(),
                                 hs.server_port.into(),
                             ))
                             .unwrap();

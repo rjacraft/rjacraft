@@ -35,12 +35,16 @@ fn status_system(_peer: In<Entity>) -> status_object::StatusObject {
             sample: vec![],
         },
         description: chat::Chat {
-            text: "Example: basic server".into(),
-            attrs: chat::Attrs {
-                bold: true,
-                ..Default::default()
-            },
-            extra: vec![],
+            text: "Example: ".into(),
+            attrs: Default::default(),
+            extra: vec![Box::new(chat::Chat {
+                text: "basic server".into(),
+                attrs: chat::Attrs {
+                    bold: true,
+                    ..Default::default()
+                },
+                extra: vec![],
+            })],
         },
         favicon: None,
         enforces_secure_chat: false,

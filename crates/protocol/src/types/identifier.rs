@@ -2,12 +2,14 @@ use std::{fmt, str::FromStr};
 
 use bytes::{Buf, BufMut};
 
-use crate::ProtocolType;
+use crate::{error, ProtocolType};
+
+const MAX_SIZE: usize = 1 << 15;
 
 #[derive(Debug, Clone)]
 pub struct Identifier {
-    pub namespace: String,
-    pub location: String,
+    namespace: String,
+    location: String,
 }
 
 impl fmt::Display for Identifier {
@@ -22,20 +24,28 @@ pub enum IdentifierError {
     NotEnoughColons,
     #[error("Too many colons")]
     TooManyColons,
+    #[error("The identifier is too long: {0} > {}", MAX_SIZE)]
+    TooLong(usize),
 }
 
 impl FromStr for Identifier {
     type Err = IdentifierError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() > MAX_SIZE {
+            Err(IdentifierError::TooLong(s.len()))?;
+        }
+
         let mut split = s.split(":");
 
         let left = split.next().unwrap();
         let right = split.next().ok_or(IdentifierError::NotEnoughColons)?;
 
         if split.next().is_some() {
-            Err(IdentifierError::TooManyColons)?
+            Err(IdentifierError::TooManyColons)?;
         }
+
+        // TODO alphanumeric
 
         Ok(Identifier {
             namespace: left.into(),
@@ -47,21 +57,23 @@ impl FromStr for Identifier {
 #[derive(Debug, thiserror::Error)]
 pub enum DecodeError {
     #[error(transparent)]
-    String(#[from] super::string::DecodeError),
+    String(#[from] super::len_string::DecodeError<MAX_SIZE>),
     #[error(transparent)]
     Item(#[from] IdentifierError),
 }
 
 impl ProtocolType for Identifier {
     type DecodeError = DecodeError;
-    type EncodeError = super::string::EncodeError;
+    type EncodeError = error::Infallible;
 
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
-        Ok(Self::from_str(&String::decode(buffer)?)?)
+        Ok(Self::from_str(
+            &super::LenString::<MAX_SIZE>::decode(buffer)?.0,
+        )?)
     }
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
-        self.to_string().encode(buffer)?;
+        super::LenString::<MAX_SIZE>(self.to_string()).encode(buffer)?;
 
         Ok(())
     }

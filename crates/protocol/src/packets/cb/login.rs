@@ -2,25 +2,25 @@ use crate::packets::prelude::*;
 
 packets_struct! {
     DisconnectLogin {
-        reason: String;
+        reason: JsonString<{ 1 << 18 }, Chat>;
     }
 
     EncryptionRequest {
-        server_id: String;
-        public_key: LengthVec<u8>;
-        verify_token: LengthVec<u8>;
+        server_id: LenString<20>;
+        public_key: LenVec<u8>;
+        verify_token: LenVec<u8>;
     }
 
     LoginSuccess {
         uuid: ::uuid::Uuid;
-        username: String;
-        properties: LengthVec<LoginSuccessProperty>;
+        username: LenString<16>;
+        properties: LenVec<LoginSuccessProperty>;
     }
 
     LoginSuccessProperty {
-        name: String;
-        value: String;
-        signature: BoolOption<String>;
+        name: LenString<{ 1 << 15 }>;
+        value: LenString<{ 1 << 15 }>;
+        signature: BoolOption<LenString<{ 1 << 15 }>>;
     }
 
     SetCompression {
@@ -29,7 +29,7 @@ packets_struct! {
 
     LoginPluginRequest {
         message_id: VarInt;
-        channel: String;
+        channel: Identifier;
         data: RemainingByteArray;
     }
 }

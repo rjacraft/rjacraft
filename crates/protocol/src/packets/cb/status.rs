@@ -2,7 +2,7 @@ use crate::packets::prelude::*;
 
 packets_struct! {
     Response {
-        response: JsonString<StatusObject>; // todo struct
+        response: JsonString<{ 1 << 18 }, StatusObject>;
     }
 
     Pong {

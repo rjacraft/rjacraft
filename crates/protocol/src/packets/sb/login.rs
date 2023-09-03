@@ -2,13 +2,13 @@ use crate::packets::prelude::*;
 
 packets_struct! {
     LoginStart {
-        username: String;
+        username: LenString<16>;
         uuid: ::uuid::Uuid;
     }
 
     EncryptionResponse {
-        shared_secret: LengthVec<u8>;
-        verify_token: LengthVec<u8>;
+        shared_secret: LenVec<u8>;
+        verify_token: LenVec<u8>;
     }
 
     LoginPluginResponse {

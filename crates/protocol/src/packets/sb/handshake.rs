@@ -5,7 +5,7 @@ use crate::{error, packets::prelude::*, types, ProtocolType};
 packets_struct! {
     Handshake {
         protocol_version: crate::ProtocolVersion;
-        server_address: String;
+        server_address: LenString<255>;
         server_port: Primitive<u16>;
         next_state: NextState;
     }

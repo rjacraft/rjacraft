@@ -2,12 +2,12 @@ use crate::packets::prelude::*;
 
 packets_struct! {
     PluginMessage {
-        channel: String;
+        channel: LenString<{ 1 << 20 }>;
         data: RemainingByteArray;
     }
 
     Disconnect {
-        reason: String;
+        reason: JsonString<{ 1 << 18 }, Chat>;
     }
 
     FinishConfiguration {}
@@ -25,14 +25,14 @@ packets_struct! {
     }
 
     ResourcePack {
-        url: String;
-        hash: String;
+        url: LenString<{ 1 << 15 }>;
+        hash: LenString<40>;
         forced: Primitive<bool>;
-        prompt_message: BoolOption<String>;
+        prompt_message: BoolOption<JsonString<{ 1 << 18 }, Chat>>;
     }
 
     FeatureFlags {
-        flags: LengthVec<String>;
+        flags: LenVec<Identifier>;
     }
 
     UpdateTags {

@@ -4,43 +4,48 @@ use bytes::{Buf, BufMut};
 
 use crate::ProtocolType;
 
+/// `MAX_SIZE` will not be checked before trying to encode the packet.
 #[derive(Debug, Clone)]
-pub struct JsonString<T>(pub T);
+pub struct JsonString<const MAX_SIZE: usize, T>(pub T);
 
 #[derive(Debug, thiserror::Error)]
-pub enum DecodeError {
+pub enum DecodeError<const MAX_SIZE: usize> {
     #[error(transparent)]
-    String(#[from] super::string::DecodeError),
+    String(#[from] super::len_string::DecodeError<MAX_SIZE>),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum EncodeError {
-    #[error(transparent)]
-    String(#[from] super::string::EncodeError),
+#[derive(Debug, thiserror::Error, from_never::FromNever)]
+pub enum EncodeError<const MAX_SIZE: usize> {
+    #[error("Failed to make a string")]
+    String(#[from] super::len_string::TooLong<MAX_SIZE>),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
 }
 
-impl<T: serde::Serialize + serde::de::DeserializeOwned> ProtocolType for JsonString<T> {
-    type DecodeError = DecodeError;
-    type EncodeError = EncodeError;
+impl<const MAX_SIZE: usize, T: serde::Serialize + serde::de::DeserializeOwned> ProtocolType
+    for JsonString<MAX_SIZE, T>
+{
+    type DecodeError = DecodeError<MAX_SIZE>;
+    type EncodeError = EncodeError<MAX_SIZE>;
 
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
-        let string = String::decode(buffer)?;
+        let string = super::LenString::<MAX_SIZE>::decode(buffer)?;
 
-        Ok(JsonString(serde_json::from_str(&string)?))
+        Ok(JsonString(serde_json::from_str(string.as_ref())?))
     }
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
-        serde_json::to_string(&self.0)?.encode(buffer)?;
+        let serialized = serde_json::to_string(&self.0)?;
+
+        super::LenString::<MAX_SIZE>::try_from(serialized)?.encode(buffer)?;
 
         Ok(())
     }
 }
 
-impl<T> From<T> for JsonString<T> {
+impl<const MAX_SIZE: usize, T> From<T> for JsonString<MAX_SIZE, T> {
     fn from(value: T) -> Self {
         Self(value)
     }
