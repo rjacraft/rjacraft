@@ -46,8 +46,8 @@ impl<T> From<T> for JsonString<T> {
     }
 }
 
-// impl<T> Into<T> for JsonString<T> {
-//     fn into(self) -> T {
-//         self.0
+// impl<T> From<JsonString<T>> for T {
+//     fn from(value: JsonString<T>) -> Self {
+//         value.0
 //     }
 // }

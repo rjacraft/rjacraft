@@ -50,8 +50,8 @@ impl<T> From<Option<T>> for BoolOption<T> {
     }
 }
 
-impl<T> Into<Option<T>> for BoolOption<T> {
-    fn into(self) -> Option<T> {
-        self.0
+impl<T> From<BoolOption<T>> for Option<T> {
+    fn from(value: BoolOption<T>) -> Self {
+        value.0
     }
 }

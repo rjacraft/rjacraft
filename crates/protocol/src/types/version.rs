@@ -11,10 +11,10 @@ impl ProtocolType for ProtocolVersion {
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
         let super::VarInt(numeric) = super::VarInt::decode(buffer)?;
 
-        Ok(Self::from(numeric))
+        Ok(numeric.into())
     }
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
-        super::VarInt((*self).into()).encode(buffer)
+        super::VarInt(i32::from(*self)).encode(buffer)
     }
 }

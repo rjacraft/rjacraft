@@ -55,19 +55,19 @@ impl<T: ProtocolType> ProtocolType for LengthVec<T> {
 
 impl<P: ProtocolType, F> From<Vec<F>> for LengthVec<P>
 where
-    F: Into<P>,
+    P: From<F>,
 {
     fn from(value: Vec<F>) -> Self {
         Self(value.into_iter().map(|x| x.into()).collect())
     }
 }
 
-impl<P: ProtocolType, F> Into<Vec<F>> for LengthVec<P>
+impl<P: ProtocolType, F> From<LengthVec<P>> for Vec<F>
 where
-    P: Into<F>,
+    F: From<P>,
 {
-    fn into(self) -> Vec<F> {
-        self.0.into_iter().map(|x| x.into()).collect()
+    fn from(value: LengthVec<P>) -> Self {
+        value.0.into_iter().map(|x| x.into()).collect()
     }
 }
 
@@ -100,8 +100,8 @@ impl From<Vec<u8>> for LengthVec<u8> {
     }
 }
 
-impl Into<Vec<u8>> for LengthVec<u8> {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<LengthVec<u8>> for Vec<u8> {
+    fn from(value: LengthVec<u8>) -> Self {
+        value.0
     }
 }

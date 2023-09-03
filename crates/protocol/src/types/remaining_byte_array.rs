@@ -29,8 +29,8 @@ impl From<bytes::Bytes> for RemainingByteArray {
     }
 }
 
-impl Into<bytes::Bytes> for RemainingByteArray {
-    fn into(self) -> bytes::Bytes {
-        self.0
+impl From<RemainingByteArray> for bytes::Bytes {
+    fn from(value: RemainingByteArray) -> Self {
+        value.0
     }
 }

@@ -136,8 +136,8 @@ impl From<i32> for VarInt {
     }
 }
 
-impl Into<i32> for VarInt {
-    fn into(self) -> i32 {
-        self.0
+impl From<VarInt> for i32 {
+    fn from(value: VarInt) -> Self {
+        value.0
     }
 }

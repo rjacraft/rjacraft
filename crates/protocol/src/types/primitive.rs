@@ -34,9 +34,9 @@ macro_rules! primitive_impl {
                 }
             }
 
-            impl Into<$type> for Primitive<$type> {
-                fn into(self) -> $type {
-                    self.0
+            impl From<Primitive<$type>> for $type {
+                fn from(value: Primitive<$type>) -> Self {
+                    value.0
                 }
             }
         )*
@@ -82,8 +82,8 @@ impl From<bool> for Primitive<bool> {
     }
 }
 
-impl Into<bool> for Primitive<bool> {
-    fn into(self) -> bool {
-        self.0
+impl From<Primitive<bool>> for bool {
+    fn from(value: Primitive<bool>) -> Self {
+        value.0
     }
 }

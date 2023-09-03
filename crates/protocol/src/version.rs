@@ -7,11 +7,11 @@ pub enum ProtocolVersion {
     Snapshot(i32),
 }
 
-impl Into<i32> for ProtocolVersion {
-    fn into(self) -> i32 {
-        match self {
-            Self::Stable(x) => x,
-            Self::Snapshot(x) => x + SNAPSHOT_FLAG,
+impl From<ProtocolVersion> for i32 {
+    fn from(value: ProtocolVersion) -> Self {
+        match value {
+            ProtocolVersion::Stable(x) => x,
+            ProtocolVersion::Snapshot(x) => x + SNAPSHOT_FLAG,
         }
     }
 }
