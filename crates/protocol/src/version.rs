@@ -25,3 +25,21 @@ impl From<i32> for ProtocolVersion {
         }
     }
 }
+
+impl<'de> serde::Deserialize<'de> for ProtocolVersion {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(i32::deserialize(deserializer)?.into())
+    }
+}
+
+impl serde::Serialize for ProtocolVersion {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        i32::serialize(&(*self).into(), serializer)
+    }
+}

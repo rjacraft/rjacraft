@@ -1,6 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use rjacraft_network::*;
+use rjacraft_protocol::types::{chat, status_object};
 use tracing::*;
 
 fn main() {
@@ -22,21 +23,29 @@ fn main() {
         .run();
 }
 
-fn status_system(_peer: In<Entity>) -> serde_json::Value {
-    serde_json::json!({
-        "version": {
-            "protocol": 763,
-            "name": "Rjacraft 1.20.1",
+fn status_system(_peer: In<Entity>) -> status_object::StatusObject {
+    status_object::StatusObject {
+        version: status_object::Version {
+            name: "Snapshot whatever".into(),
+            protocol: rjacraft_protocol::SUPPORTED_PROTOCOL,
         },
-        "players": {
-            "online": 0,
-            "max": 100,
-            "sample": []
+        players: status_object::Players {
+            max: 100,
+            online: 0,
+            sample: vec![],
         },
-        "description": {
-            "text": "Rjacraft"
-        }
-    })
+        description: chat::Chat {
+            text: "Example: basic server".into(),
+            attrs: chat::Attrs {
+                bold: true,
+                ..Default::default()
+            },
+            extra: vec![],
+        },
+        favicon: None,
+        enforces_secure_chat: false,
+        previews_chat: false,
+    }
 }
 
 fn handle_disconnect(mut events: EventReader<PeerDisconnected>) {
