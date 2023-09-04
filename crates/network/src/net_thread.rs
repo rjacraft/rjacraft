@@ -104,8 +104,7 @@ async fn peer_loop(
                                 hs.protocol_version,
                                 hs.server_address.into(),
                                 hs.server_port.into(),
-                            ))
-                            ;
+                            ));
                     }
                     ConnectionState::Status => {
                         let packet = c2s::StatusPacket::decode(&mut frame)?;
