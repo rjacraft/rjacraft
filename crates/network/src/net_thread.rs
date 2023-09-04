@@ -60,7 +60,7 @@ async fn peer_loop(
         loop {
             let packet = read_frame(&mut read).await?;
 
-            frames_tx.send(packet).unwrap();
+            let _ = frames_tx.send(packet);
         }
     });
 
@@ -71,6 +71,7 @@ async fn peer_loop(
     loop {
         tokio::select! {
             result = &mut read_task => {
+                // if the task panics we panic with it
                 return match result.unwrap() {
                     Ok(()) => Ok(()),
                     Err(e) => Err(e.into())
@@ -98,13 +99,13 @@ async fn peer_loop(
                         debug!("handshake complete, protocol {:?}", hs.protocol_version);
                         debug!("next state: {state:?}");
 
-                        msg_out
+                        let _ = msg_out
                             .send(PeerMsgOut::HandshakeComplete(
                                 hs.protocol_version,
                                 hs.server_address.into(),
                                 hs.server_port.into(),
                             ))
-                            .unwrap();
+                            ;
                     }
                     ConnectionState::Status => {
                         let packet = sb::StatusPacket::decode(&mut frame)?;
@@ -124,7 +125,7 @@ async fn peer_loop(
                                 return Ok(());
                             }
                             sb::StatusPacket::Request(_) => {
-                                msg_out.send(PeerMsgOut::NeedStatus).unwrap();
+                                let _ = msg_out.send(PeerMsgOut::NeedStatus);
                             }
                         }
                     }
@@ -157,7 +158,7 @@ pub async fn network_loop(
         let (msg_in_tx, msg_in_rx) = flume::unbounded();
         let (msg_out_tx, msg_out_rx) = flume::unbounded();
 
-        new_peer_tx.send((addr_in, msg_in_tx, msg_out_rx)).unwrap();
+        let _ = new_peer_tx.send((addr_in, msg_in_tx, msg_out_rx));
 
         tokio::spawn(
             async move {
@@ -167,7 +168,7 @@ pub async fn network_loop(
                     info!("peer loop ended");
                 }
 
-                msg_out_tx.send(PeerMsgOut::Disconnected).unwrap();
+                let _ = msg_out_tx.send(PeerMsgOut::Disconnected);
             }
             .instrument(tracing::info_span!("peer_loop", ?addr_in)),
         );
