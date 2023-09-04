@@ -3,7 +3,7 @@ use crate::packets::prelude::*;
 packets_struct! {
     PluginMessage {
         channel: LenString<{ 1 << 20 }>;
-        data: RemainingByteArray;
+        data: RemainingByteArray<{ 1 << 20 }>;
     }
 
     Disconnect {
@@ -21,7 +21,7 @@ packets_struct! {
     }
 
     RegistryData {
-        todo: RemainingByteArray; // TODO
+        todo: RemainingByteArray<{ 1 << 20 }>; // TODO
     }
 
     ResourcePack {
@@ -36,6 +36,6 @@ packets_struct! {
     }
 
     UpdateTags {
-        todo: RemainingByteArray; // TODO
+        todo: RemainingByteArray<{ 1 << 20 }>; // TODO
     }
 }

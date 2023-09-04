@@ -8,6 +8,10 @@ use std::fmt;
 #[error("Packet ended before we finished parsing")]
 pub struct Eof;
 
+#[derive(Debug, thiserror::Error)]
+#[error("Type is too long: {0} > {}", MAX_SIZE)]
+pub struct Overrun<const MAX_SIZE: usize>(pub usize);
+
 /// An enum-related error (an actual enum, not a sum type)
 #[derive(Debug, thiserror::Error, from_never::FromNever)]
 pub enum EnumError<D: crate::ProtocolType>

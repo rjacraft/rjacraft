@@ -37,8 +37,8 @@ pub enum IdentifierError {
     NotEnoughColons,
     #[error("Too many colons")]
     TooManyColons,
-    #[error("The identifier is too long: {0} > {}", MAX_SIZE)]
-    TooLong(usize),
+    #[error(transparent)]
+    Overrun(#[from] error::Overrun<MAX_SIZE>),
 }
 
 impl FromStr for Identifier {
@@ -46,7 +46,7 @@ impl FromStr for Identifier {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() > MAX_SIZE {
-            Err(IdentifierError::TooLong(s.len()))?;
+            Err(error::Overrun(s.len()))?;
         }
 
         let mut split = s.split(":");

@@ -2,7 +2,7 @@
 
 use bytes::{Buf, BufMut};
 
-use crate::ProtocolType;
+use crate::{error, ProtocolType};
 
 /// `MAX_SIZE` will not be checked before trying to encode the packet.
 #[derive(Debug, Clone)]
@@ -18,8 +18,8 @@ pub enum DecodeError<const MAX_SIZE: usize> {
 
 #[derive(Debug, thiserror::Error, from_never::FromNever)]
 pub enum EncodeError<const MAX_SIZE: usize> {
-    #[error("Failed to make a string")]
-    String(#[from] super::len_string::TooLong<MAX_SIZE>),
+    #[error(transparent)]
+    Overrun(#[from] error::Overrun<MAX_SIZE>),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
 }

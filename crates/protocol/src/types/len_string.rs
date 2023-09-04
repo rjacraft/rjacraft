@@ -16,8 +16,8 @@ pub enum DecodeError<const MAX_SIZE: usize> {
     Eof(#[from] error::Eof),
     #[error("Failed to read string length")]
     Length(#[from] super::varint::DecodeError),
-    #[error("String is too long: {0} > {}", MAX_SIZE)]
-    TooLong(i32),
+    #[error(transparent)]
+    Overrun(#[from] error::Overrun<MAX_SIZE>),
     #[error("UTF-8 error")]
     Utf8(#[from] string::FromUtf8Error),
 }
@@ -30,7 +30,7 @@ impl<const MAX_SIZE: usize> ProtocolType for LenString<MAX_SIZE> {
         let super::VarInt(len) = super::VarInt::decode(buffer)?;
 
         if len as usize > MAX_SIZE {
-            Err(DecodeError::TooLong(len))?;
+            Err(error::Overrun(len as usize))?;
         }
 
         if buffer.remaining() < len as usize {
@@ -52,16 +52,12 @@ impl<const MAX_SIZE: usize> ProtocolType for LenString<MAX_SIZE> {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("String is too long: {0} > {}", MAX_SIZE)]
-pub struct TooLong<const MAX_SIZE: usize>(pub usize);
-
 impl<const MAX_SIZE: usize> TryFrom<String> for LenString<MAX_SIZE> {
-    type Error = TooLong<MAX_SIZE>;
+    type Error = error::Overrun<MAX_SIZE>;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         if value.len() > MAX_SIZE {
-            Err(TooLong(value.len()))
+            Err(error::Overrun(value.len()))
         } else {
             Ok(LenString(value))
         }
