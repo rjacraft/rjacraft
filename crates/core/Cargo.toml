@@ -11,4 +11,3 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-bevy = { workspace = true, default-features = false }

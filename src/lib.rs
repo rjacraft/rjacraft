@@ -1,7 +1,6 @@
-//! Basic components for rjacraft server development.
+//! Basic components for Rjacraft server development.
 //!
 //! # Features
-//!
 #![doc = document_features::document_features!()]
 //!
 
@@ -10,3 +9,7 @@
 
 #[cfg(feature = "core")]
 pub use rjacraft_core as core;
+#[cfg(feature = "network")]
+pub use rjacraft_network as network;
+#[cfg(feature = "protocol")]
+pub use rjacraft_protocol as protocol;

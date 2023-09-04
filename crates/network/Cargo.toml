@@ -1,0 +1,34 @@
+[package]
+name = "rjacraft_network"
+description = "Minecraft server networking for bevy_ecs."
+categories = ["network-programming", "asynchronous", "game-development"]
+keywords = ["rjacraft", "tokio", "bevy", "minecraft"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = [
+    "rt-multi-thread",
+    "io-util",
+    "net",
+    "time",
+    "macros",
+] }
+rjacraft_protocol.workspace = true
+bevy_ecs.workspace = true
+bevy_app.workspace = true
+bytes.workspace = true
+thiserror.workspace = true
+flume.workspace = true
+tracing.workspace = true
+from_never.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tracing-subscriber.workspace = true

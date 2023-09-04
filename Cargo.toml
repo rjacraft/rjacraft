@@ -1,8 +1,6 @@
 [workspace]
 
-members = [
-    "crates/core"
-]
+members = ["crates/*"]
 
 [workspace.package]
 version = "0.0.1"
@@ -13,16 +11,40 @@ keywords = ["minecraft", "server", "api", "plugins"]
 categories = ["game-development"]
 homepage = "https://github.com/rjacraft"
 repository = "https://github.com/rjacraft/rjacraft"
+include = ["/src", "/examples"]
 
 [workspace.dependencies]
 # Bevy game engine
-bevy = { version = "0.11.2", default-features = false }
+bevy_ecs = "0.11"
+bevy_app = "0.11"
+
+# Async
+async-trait = "0.1"
+tokio = { version = "1.32", default-features = false }
+flume = "0.11"
+
+# Encoding
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bytes = "1.4"
+thiserror = "1.0"
+uuid = { version = "1.4", features = ["serde"] }
 
 # Documentation
-document-features = "0.2.7"
+document-features = "0.2"
+
+# Tracing
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Macro utils
+paste = "1.0"
 
 # Own crates
-rjacraft_core = { path = "crates/core", version = "0.0.1" }
+rjacraft_core = { path = "crates/core" }
+rjacraft_network = { path = "crates/network" }
+rjacraft_protocol = { path = "crates/protocol" }
+from_never = { path = "crates/from_never" }
 
 # Bevy-specific profile setup aimed at better performace while developing
 
@@ -47,16 +69,18 @@ repository.workspace = true
 [dependencies]
 # Rjacraft components
 rjacraft_core = { workspace = true, optional = true }
+rjacraft_network = { workspace = true, optional = true }
+rjacraft_protocol = { workspace = true, optional = true }
 
 # Documentation
 document-features.workspace = true
 
 [features]
-
-#! ## Basic features
-
-## Enables the default features
 default = ["core"]
 
-## Enables `core` features
+## Core functionality
 core = ["dep:rjacraft_core"]
+## Networking systems and events
+network = ["dep:rjacraft_network"]
+## The Minecraft protocol
+protocol = ["dep:rjacraft_protocol"]

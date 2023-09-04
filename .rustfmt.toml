@@ -1,4 +1,5 @@
 # Important: some features may require `nightly` rustfmt version
 
 imports_granularity = "Crate"
+imports_layout = "HorizontalVertical"
 group_imports = "StdExternalCrate"
