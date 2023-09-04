@@ -12,7 +12,6 @@ macro_rules! packets_struct {
         )*
     } => {
         paste::paste! { $(
-            #[doc(hidden)]
             #[derive(Debug, thiserror::Error)]
             pub enum [<$ident DecodeError>] {
                 $(
@@ -23,7 +22,6 @@ macro_rules! packets_struct {
                 )*
             }
 
-            #[doc(hidden)]
             #[derive(Debug, thiserror::Error)]
             pub enum [<$ident EncodeError>] {
                 $(
@@ -87,7 +85,6 @@ macro_rules! packet_sumtype {
         )*
     } => {
         paste::paste! { $(
-            #[doc(hidden)]
             #[derive(Debug, thiserror::Error)]
             pub enum [<$ident DecodeError>] {
                 #[error("Failed to parse enum discriminator")]
@@ -102,7 +99,6 @@ macro_rules! packet_sumtype {
                 OutOfRange(i32),
             }
 
-            #[doc(hidden)]
             #[derive(Debug, thiserror::Error, from_never::FromNever)]
             pub enum [<$ident EncodeError>] {
                 $(
