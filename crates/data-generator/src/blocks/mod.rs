@@ -22,7 +22,7 @@ pub(crate) fn gen_block_structs(
     use quote::ToTokens;
     use syn::parse2;
 
-    use self::output::{BlockConvert, BlockDefault, BlockStruct};
+    use self::output::{BlockConvert, BlockDefault, BlockStruct, PropertyStruct};
 
     for block in json::parse_block_registry(json_data)? {
         let mut stream = TokenStream::new();
@@ -36,6 +36,11 @@ pub(crate) fn gen_block_structs(
         let block_conv = BlockConvert::from(&block);
         block_conv.from_u32().to_tokens(&mut stream);
         block_conv.into_u32().to_tokens(&mut stream);
+
+        for prop in block.properties {
+            let prop_struct = PropertyStruct::from(&prop);
+            prop_struct.to_tokens(&mut stream);
+        }
 
         let syn_tree = parse2(stream).expect("parse TokenStream into syn::File");
         let pretty_output = prettyplease::unparse(&syn_tree);

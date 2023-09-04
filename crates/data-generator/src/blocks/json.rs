@@ -33,15 +33,20 @@ pub enum ParseError {
 pub(super) fn parse_block_registry(json_data: String) -> Result<Vec<Block>, ParseError> {
     let registry: BTreeMap<String, SerdeBlock> = serde_json::from_str(&json_data)?;
 
-    fn block_property(prop_name_sc: String, prop_variants: Vec<String>) -> BlockProperty {
+    fn block_property(
+        block_name_pc: String,
+        prop_name_sc: String,
+        prop_variants: Vec<String>,
+    ) -> BlockProperty {
         let prop_variants = prop_variants
             .iter()
             .map(|prop_variant| transform_to_pascal_case(prop_variant))
             .collect();
 
         BlockProperty {
-            name: prop_name_sc,      // snake_case
-            variants: prop_variants, // PascalCase
+            block_name: block_name_pc, // PascalCase
+            prop_name: prop_name_sc,   // snake_case
+            variants: prop_variants,   // snake_case
         }
     }
 
@@ -81,7 +86,9 @@ pub(super) fn parse_block_registry(json_data: String) -> Result<Vec<Block>, Pars
             let block_props = serde_block
                 .properties
                 .into_iter()
-                .map(|(prop_name, prop_variants)| block_property(prop_name, prop_variants))
+                .map(|(prop_name, prop_variants)| {
+                    block_property(block_name_pc.clone(), prop_name, prop_variants)
+                })
                 .collect();
 
             let block_states: Vec<_> = serde_block

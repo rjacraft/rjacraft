@@ -11,7 +11,8 @@ pub struct Block {
 
 #[derive(Debug)]
 pub struct BlockProperty {
-    pub name: String,          // snake_case, dirty
+    pub block_name: String,    // PascalCase, dirty
+    pub prop_name: String,     // snake_case, dirty
     pub variants: Vec<String>, // PascalCase, dirty
 }
 

@@ -1,6 +1,7 @@
 pub(crate) use block_convert::*;
 pub(crate) use block_default::*;
 pub(crate) use block_struct::*;
+pub(crate) use prop_struct::*;
 
 mod block_struct {
     use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream};
@@ -21,11 +22,11 @@ mod block_struct {
                 .properties
                 .iter()
                 .map(|block_prop| {
-                    let prop_name = super::defuse_property_name(&block_prop.name);
-                    let prop_enum_name =
-                        format!("{}{}", &block.name, &prop_name.to_case(Case::Pascal));
+                    let prop_name_sc = super::defuse_property_name(&block_prop.prop_name);
+                    let prop_name_pc = prop_name_sc.to_case(Case::Pascal);
+                    let prop_enum_name = format!("{}{}", &block.name, &prop_name_pc);
                     BlockStructField {
-                        prop_name: prop_name,
+                        prop_name: prop_name_sc,
                         prop_enum_name,
                     }
                 })
@@ -289,6 +290,96 @@ mod block_convert {
     impl ToTokens for Id {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append(Literal::u32_unsuffixed(self.0))
+        }
+    }
+}
+
+mod prop_struct {
+    use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream};
+    use quote::{quote, ToTokens, TokenStreamExt};
+
+    use crate::blocks::model::BlockProperty;
+
+    pub struct PropertyStruct {
+        pub block_name: String, // PascalCase, dirty
+        pub prop_name: String,  // PascalCase, dirty
+        pub prop_variants: Vec<PropertyStructField>,
+    }
+
+    impl From<&BlockProperty> for PropertyStruct {
+        fn from(block_prop: &BlockProperty) -> Self {
+            use convert_case::{Case, Casing as _};
+
+            let block_name_pc = block_prop.block_name.clone();
+            let prop_name_sc = super::defuse_property_name(&block_prop.prop_name);
+            let prop_name_pc = prop_name_sc.to_case(Case::Pascal);
+
+            let prop_variants = block_prop
+                .variants
+                .iter()
+                .enumerate()
+                .map(|(var_ordinal, var_name)| {
+                    let var_name_def = super::defuse_variant_name(var_name);
+                    let var_ordinal = if var_name == &var_name_def {
+                        None
+                    } else {
+                        Some(var_ordinal)
+                    };
+
+                    PropertyStructField {
+                        var_name: var_name_def,
+                        var_ordinal: var_ordinal,
+                    }
+                })
+                .collect();
+
+            Self {
+                block_name: block_name_pc,
+                prop_name: prop_name_pc,
+                prop_variants,
+            }
+        }
+    }
+
+    impl ToTokens for PropertyStruct {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            let prop_name = Ident::new(
+                &format!("{}{}", &self.block_name, &self.prop_name),
+                Span::call_site(),
+            );
+            // "pub enum BubbleCoralFan"
+            tokens.extend(quote! { pub enum #prop_name });
+
+            // It is assumed that there can never be less than two variants.
+            let mut stream = TokenStream::new();
+            self.prop_variants
+                .iter()
+                .for_each(|var| var.to_tokens(&mut stream));
+
+            // "{ North, East, South, West, }"
+            tokens.append(Group::new(Delimiter::Brace, stream));
+        }
+    }
+
+    pub struct PropertyStructField {
+        pub var_name: String, // PascalCase, defused
+        pub var_ordinal: Option<usize>,
+    }
+
+    impl ToTokens for PropertyStructField {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            let struct_name = Ident::new(&self.var_name, Span::call_site());
+            // "CampfireLit"
+            tokens.append(struct_name);
+
+            // "FarmlandMoisture = 5"
+            self.var_ordinal.into_iter().for_each(|ord| {
+                tokens.append(Punct::new('=', Spacing::Alone));
+                tokens.append(Literal::usize_unsuffixed(ord));
+            });
+
+            // ","
+            tokens.append(Punct::new(',', Spacing::Alone));
         }
     }
 }
