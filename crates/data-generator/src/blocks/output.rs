@@ -8,7 +8,7 @@ mod block_struct {
     use crate::blocks::model::Block;
 
     pub struct BlockStruct {
-        pub name: String, // PascalCase
+        pub name: String, // PascalCase, dirty
         pub properties: Vec<BlockStructField>,
     }
 
@@ -19,13 +19,14 @@ mod block_struct {
             let properties = block
                 .properties
                 .iter()
-                .map(|block_prop| BlockStructField {
-                    prop_name: block_prop.name.clone(),
-                    prop_enum_name: format!(
-                        "{}{}",
-                        &block.name,
-                        &block_prop.name.to_case(Case::Pascal)
-                    ),
+                .map(|block_prop| {
+                    let prop_name = super::defuse_property_name(&block_prop.name);
+                    let prop_enum_name =
+                        format!("{}{}", &block.name, &prop_name.to_case(Case::Pascal));
+                    BlockStructField {
+                        prop_name: prop_name,
+                        prop_enum_name,
+                    }
                 })
                 .collect();
 
@@ -56,8 +57,8 @@ mod block_struct {
     }
 
     pub struct BlockStructField {
-        pub prop_name: String,      // snake_case
-        pub prop_enum_name: String, // PascalCase
+        pub prop_name: String,      // snake_case, defused
+        pub prop_enum_name: String, // PascalCase, defused
     }
 
     impl ToTokens for BlockStructField {
@@ -79,7 +80,7 @@ mod block_convert {
 
     #[derive(Debug)]
     pub struct BlockConvert {
-        pub block_name: String, // PascalCase
+        pub block_name: String, // PascalCase, dirty
         pub id_states: Vec<(Id, BlockStateInst)>,
     }
 
@@ -175,7 +176,7 @@ mod block_convert {
 
     #[derive(Debug)]
     pub struct BlockStateInst {
-        pub block_name: String, // PascalCase
+        pub block_name: String, // PascalCase, dirty
         pub properties: Vec<BlockStateProperty>,
     }
 
@@ -187,12 +188,12 @@ mod block_convert {
                 .properties
                 .iter()
                 .map(|block_prop| {
-                    let variant_name = block_prop.variant_name.clone();
-                    let prop_name = block_prop.name.clone();
+                    let variant_name = super::defuse_variant_name(&block_prop.variant_name);
+                    let prop_name = super::defuse_property_name(&block_prop.name);
                     let prop_enum_name = format!(
                         "{}{}",
                         &block_state.block_name,
-                        &block_prop.name.to_case(Case::Pascal)
+                        &prop_name.to_case(Case::Pascal)
                     );
 
                     BlockStateProperty {
@@ -230,9 +231,9 @@ mod block_convert {
 
     #[derive(Debug)]
     pub struct BlockStateProperty {
-        pub prop_name: String,      // snake_case
-        pub prop_enum_name: String, // PascalCase
-        pub variant_name: String,   // PascalCase
+        pub prop_name: String,      // snake_case, defused
+        pub prop_enum_name: String, // PascalCase, defused
+        pub variant_name: String,   // PascalCase, defused
     }
 
     impl ToTokens for BlockStateProperty {
@@ -250,5 +251,35 @@ mod block_convert {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.append(Literal::u32_unsuffixed(self.0))
         }
+    }
+}
+
+fn defuse_property_name(property_name: impl AsRef<str>) -> String {
+    match property_name.as_ref() {
+        "type" => "kind".to_string(),
+        _ => property_name.as_ref().to_string(),
+    }
+}
+
+fn defuse_variant_name(variant_name: impl AsRef<str>) -> String {
+    let variant_name = variant_name.as_ref();
+    let first_char = variant_name.chars().next().expect("variant name not empty");
+
+    if !first_char.is_numeric() {
+        variant_name.into()
+    } else {
+        if variant_name.chars().all(|c| c.is_numeric()) {
+            convert_into_roman(variant_name.parse().unwrap())
+        } else {
+            format!("_{}", variant_name)
+        }
+    }
+}
+
+fn convert_into_roman(n: u32) -> String {
+    use numerals::roman::Roman;
+    match n {
+        0 => "O".to_string(),
+        _ => format!("{:X}", Roman::from(n as i16)),
     }
 }
