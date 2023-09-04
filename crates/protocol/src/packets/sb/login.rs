@@ -14,7 +14,7 @@ packets_struct! {
     LoginPluginResponse {
         message_id: VarInt;
         successful: Primitive<bool>;
-        data: RemainingByteArray<{ 1 << 20 }>;
+        data: RemainingBytes<{ 1 << 20 }>;
     }
 
     LoginAck {}

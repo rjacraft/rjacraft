@@ -3,7 +3,7 @@ use crate::packets::prelude::*;
 packets_struct! {
     PluginMessageConfiguration {
         channel: Identifier;
-        data: RemainingByteArray<{ 1 << 20 }>;
+        data: RemainingBytes<{ 1 << 20 }>;
     }
 
     FinishConfiguration {}

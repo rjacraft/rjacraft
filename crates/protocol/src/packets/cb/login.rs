@@ -30,6 +30,6 @@ packets_struct! {
     LoginPluginRequest {
         message_id: VarInt;
         channel: Identifier;
-        data: RemainingByteArray<{ 1 << 20 }>;
+        data: RemainingBytes<{ 1 << 20 }>;
     }
 }

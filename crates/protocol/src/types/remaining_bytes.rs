@@ -7,9 +7,9 @@ use crate::{error, ProtocolType};
 /// Put this as your last field or you'll always get EOFs.
 /// Guaranteed to be no larger than `MAX_SIZE`.
 #[derive(Debug, Clone)]
-pub struct RemainingByteArray<const MAX_SIZE: usize>(pub(crate) bytes::Bytes);
+pub struct RemainingBytes<const MAX_SIZE: usize>(pub(crate) bytes::Bytes);
 
-impl<const MAX_SIZE: usize> ProtocolType for RemainingByteArray<MAX_SIZE> {
+impl<const MAX_SIZE: usize> ProtocolType for RemainingBytes<MAX_SIZE> {
     type DecodeError = error::Overrun<MAX_SIZE>;
     type EncodeError = error::Infallible;
 
@@ -28,7 +28,7 @@ impl<const MAX_SIZE: usize> ProtocolType for RemainingByteArray<MAX_SIZE> {
     }
 }
 
-impl<const MAX_SIZE: usize> TryFrom<bytes::Bytes> for RemainingByteArray<MAX_SIZE> {
+impl<const MAX_SIZE: usize> TryFrom<bytes::Bytes> for RemainingBytes<MAX_SIZE> {
     type Error = error::Overrun<MAX_SIZE>;
 
     fn try_from(value: bytes::Bytes) -> Result<Self, Self::Error> {
@@ -40,8 +40,8 @@ impl<const MAX_SIZE: usize> TryFrom<bytes::Bytes> for RemainingByteArray<MAX_SIZ
     }
 }
 
-impl<const MAX_SIZE: usize> From<RemainingByteArray<MAX_SIZE>> for bytes::Bytes {
-    fn from(value: RemainingByteArray<MAX_SIZE>) -> Self {
+impl<const MAX_SIZE: usize> From<RemainingBytes<MAX_SIZE>> for bytes::Bytes {
+    fn from(value: RemainingBytes<MAX_SIZE>) -> Self {
         value.0
     }
 }
