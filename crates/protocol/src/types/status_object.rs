@@ -2,6 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 
+fn is_false(x: &bool) -> bool {
+    !x
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Version {
     pub name: String,
@@ -27,10 +31,10 @@ pub struct StatusObject {
     pub version: Version,
     pub players: Players,
     pub description: super::Chat,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub favicon: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub enforces_secure_chat: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub previews_chat: bool,
 }

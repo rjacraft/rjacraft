@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use rjacraft_protocol::{frame::*, packets::*, ProtocolType};
+use rjacraft_protocol::{frame::*, packets::*, ProtocolType, ProtocolVersion};
 use tokio::{io, net, task};
 use tracing::*;
 
@@ -15,7 +15,7 @@ pub enum PeerMsgIn {
 
 pub enum PeerMsgOut {
     Disconnected,
-    HandshakeComplete(String, u16),
+    HandshakeComplete(ProtocolVersion, String, u16),
     NeedStatus,
     // Authenticate(String, Option<uuid::Uuid>),
     // NeedConfiguration,
@@ -26,7 +26,7 @@ pub enum PeerMsgOut {
 enum ConnectionState {
     Handshake,
     Status,
-    Login,
+    Login(ProtocolVersion),
     // Configuration,
     // Play,
 }
@@ -90,20 +90,17 @@ async fn peer_loop(
                     ConnectionState::Handshake => {
                         let sb::HandshakePacket::Handshake(hs) = sb::HandshakePacket::decode(&mut frame)?;
 
-                        if hs.protocol_version != rjacraft_protocol::SUPPORTED_PROTOCOL {
-                            Err(PeerLoopError::WrongVersion(hs.protocol_version))?;
-                        }
-
                         state = match hs.next_state {
                             sb::NextState::Status => ConnectionState::Status,
-                            sb::NextState::Login => ConnectionState::Login,
+                            sb::NextState::Login => ConnectionState::Login(hs.protocol_version),
                         };
 
-                        debug!("handshake complete");
+                        debug!("handshake complete, protocol {:?}", hs.protocol_version);
                         debug!("next state: {state:?}");
 
                         msg_out
                             .send(PeerMsgOut::HandshakeComplete(
+                                hs.protocol_version,
                                 hs.server_address.into(),
                                 hs.server_port.into(),
                             ))
@@ -131,7 +128,11 @@ async fn peer_loop(
                             }
                         }
                     }
-                    _ => {}
+                    ConnectionState::Login(protocol) => {
+                        if protocol != rjacraft_protocol::SUPPORTED_PROTOCOL {
+                            Err(PeerLoopError::WrongVersion(protocol))?;
+                        }
+                    }
                 }
             }
         }

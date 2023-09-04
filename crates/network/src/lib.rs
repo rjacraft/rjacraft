@@ -1,26 +1,19 @@
-use std::net::SocketAddr;
-
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use net_thread::{PeerMsgIn, PeerMsgOut};
 use rjacraft_protocol::packets::*;
 use tokio::net;
 use tracing::*;
 
+use self::net_thread::{PeerMsgIn, PeerMsgOut};
+
+mod components;
 mod events;
 mod net_thread;
 
-pub use self::events::*;
+pub use self::{components::*, events::*};
 
 #[derive(Resource)]
 pub struct Runtime(pub tokio::runtime::Runtime);
-
-#[derive(Component)]
-pub struct Peer {
-    pub addr: SocketAddr,
-    msg_in: flume::Sender<PeerMsgIn>,
-    msg_out: flume::Receiver<PeerMsgOut>,
-}
 
 pub struct NetworkPlugin<Addr, SStatus> {
     pub addr: Addr,
@@ -74,9 +67,19 @@ where
                         match msg {
                             PeerMsgOut::Disconnected => commands.add(move |world: &mut World| {
                                 // gets deleted later on
-                                world.send_event(PeerDisconnected { peer: entity })
+                                world.send_event(PeerDisconnected { peer: entity });
                             }),
-                            PeerMsgOut::HandshakeComplete(_, _) => {}
+                            PeerMsgOut::HandshakeComplete(
+                                protocol_version,
+                                server_address,
+                                server_port,
+                            ) => {
+                                commands.spawn(Handshaken {
+                                    protocol_version,
+                                    server_address,
+                                    server_port,
+                                });
+                            }
                             PeerMsgOut::NeedStatus => {
                                 peer.msg_in
                                     .send(PeerMsgIn::StatusPacket(cb::StatusPacket::Response(
