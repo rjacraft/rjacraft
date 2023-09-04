@@ -34,3 +34,5 @@ pub struct Chat {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub extra: Vec<Box<Chat>>,
 }
+
+pub type JsonChat = super::JsonString<{ 1 << 18 }, Chat>;

@@ -15,7 +15,7 @@ pub mod version;
 
 pub use self::{
     bool_option::BoolOption,
-    chat::Chat,
+    chat::{Chat, JsonChat},
     identifier::Identifier,
     json_string::JsonString,
     len_string::LenString,

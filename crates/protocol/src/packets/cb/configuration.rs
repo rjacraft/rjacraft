@@ -7,7 +7,7 @@ packets_struct! {
     }
 
     Disconnect {
-        reason: JsonString<{ 1 << 18 }, Chat>;
+        reason: JsonChat;
     }
 
     FinishConfiguration {}
@@ -28,7 +28,7 @@ packets_struct! {
         url: LenString<{ 1 << 15 }>;
         hash: LenString<40>;
         forced: Primitive<bool>;
-        prompt_message: BoolOption<JsonString<{ 1 << 18 }, Chat>>;
+        prompt_message: BoolOption<JsonChat>;
     }
 
     FeatureFlags {

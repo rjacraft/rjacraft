@@ -2,7 +2,7 @@ use crate::packets::prelude::*;
 
 packets_struct! {
     DisconnectLogin {
-        reason: JsonString<{ 1 << 18 }, Chat>;
+        reason: JsonChat;
     }
 
     EncryptionRequest {
