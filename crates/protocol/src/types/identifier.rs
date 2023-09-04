@@ -8,6 +8,7 @@ use serde::de;
 use crate::{error, ProtocolType};
 
 const MAX_SIZE: usize = 1 << 15;
+const DEFAULT_NS: &str = "minecraft";
 
 /// The way to construct this is by calling [`FromStr`].
 #[derive(Debug, Clone)]
@@ -34,14 +35,16 @@ impl fmt::Display for Identifier {
 
 #[derive(Debug, thiserror::Error)]
 pub enum IdentifierError {
-    #[error("Not enough colons")]
-    MissingColon,
     #[error("Too many colons")]
     TooManyColons,
     #[error("Invalid character '{0}' in namespace")]
     InvalidNamespace(char),
     #[error("Invalid character '{0}' in location")]
     InvalidLocation(char),
+    #[error("Namespace is empty (remove the : if you want the default)")]
+    EmptyNamespace,
+    #[error("Location is empty")]
+    EmptyLocation,
     #[error(transparent)]
     Overrun(#[from] error::Overrun<MAX_SIZE>),
 }
@@ -57,28 +60,53 @@ impl FromStr for Identifier {
         let mut split = s.split(":");
 
         let left = split.next().unwrap();
-        let right = split.next().ok_or(IdentifierError::MissingColon)?;
+        let right = split.next();
 
         if split.next().is_some() {
             Err(IdentifierError::TooManyColons)?;
         }
 
-        for char in left.chars() {
-            if !matches!(char, '0'..='9' | 'a'..='z' | '_' | '-') {
-                Err(IdentifierError::InvalidNamespace(char))?;
+        if let Some(right) = right {
+            if left.is_empty() {
+                Err(IdentifierError::EmptyNamespace)?;
             }
-        }
 
-        for char in right.chars() {
-            if !matches!(char, '0'..='9' | 'a'..='z' | '_' | '/' | '.' | '-') {
-                Err(IdentifierError::InvalidLocation(char))?;
+            if right.is_empty() {
+                Err(IdentifierError::EmptyLocation)?;
             }
-        }
 
-        Ok(Identifier {
-            namespace: left.into(),
-            location: right.into(),
-        })
+            for char in left.chars() {
+                if !matches!(char, '0'..='9' | 'a'..='z' | '_' | '-') {
+                    Err(IdentifierError::InvalidNamespace(char))?;
+                }
+            }
+
+            for char in right.chars() {
+                if !matches!(char, '0'..='9' | 'a'..='z' | '_' | '/' | '.' | '-') {
+                    Err(IdentifierError::InvalidLocation(char))?;
+                }
+            }
+
+            Ok(Identifier {
+                namespace: left.into(),
+                location: right.into(),
+            })
+        } else {
+            if left.is_empty() {
+                Err(IdentifierError::EmptyLocation)?;
+            }
+
+            for char in left.chars() {
+                if !matches!(char, '0'..='9' | 'a'..='z' | '_' | '/' | '.' | '-') {
+                    Err(IdentifierError::InvalidLocation(char))?;
+                }
+            }
+
+            Ok(Identifier {
+                namespace: DEFAULT_NS.into(),
+                location: left.into(),
+            })
+        }
     }
 }
 
@@ -114,12 +142,8 @@ impl<'de> serde::Deserialize<'de> for Identifier {
     {
         match Self::from_str(<&str>::deserialize(deserializer)?) {
             Ok(x) => Ok(x),
-            Err(IdentifierError::MissingColon) => Err(de::Error::invalid_value(
-                de::Unexpected::Other("missing colon"),
-                &"exactly one colon",
-            )),
             Err(IdentifierError::TooManyColons) => Err(de::Error::invalid_value(
-                de::Unexpected::Other("too many colons"),
+                de::Unexpected::Other("an extra colon"),
                 &"exactly one colon",
             )),
             Err(IdentifierError::InvalidNamespace(x)) => Err(de::Error::invalid_value(
@@ -130,6 +154,8 @@ impl<'de> serde::Deserialize<'de> for Identifier {
                 de::Unexpected::Char(x),
                 &"a location that's lowercase alphanumeric with underscores, slashes, dots and dashes",
             )),
+            Err(IdentifierError::EmptyNamespace) => Err(de::Error::missing_field("namespace")),
+            Err(IdentifierError::EmptyLocation) => Err(de::Error::missing_field("location")),
             Err(IdentifierError::Overrun(e)) => Err(e.as_serde()),
         }
     }
@@ -151,8 +177,11 @@ mod test {
     #[test]
     fn parsing() {
         Identifier::from_str("minecraft:stone").unwrap();
-        Identifier::from_str("stone").unwrap_err();
+        Identifier::from_str("stone").unwrap();
+        Identifier::from_str("stone/special").unwrap();
         Identifier::from_str("").unwrap_err();
+        Identifier::from_str("minecraft:").unwrap_err();
+        Identifier::from_str(":stone").unwrap_err();
         Identifier::from_str("minecraft:stone:special").unwrap_err();
         Identifier::from_str("minecraft:русский_камень").unwrap_err();
         Identifier::from_str("minecraft:stone2").unwrap();
