@@ -1,27 +1,39 @@
+use core::fmt;
+
 const SNAPSHOT_FLAG: i32 = 1 << 30;
 
-/// A protocol version that can be encoded in the numeric format.
+/// A protocol version number with convenient analysis methods.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ProtocolVersion {
-    Stable(i32),
-    Snapshot(i32),
-}
+pub struct ProtocolVersion(pub i32);
 
-impl From<ProtocolVersion> for i32 {
-    fn from(value: ProtocolVersion) -> Self {
-        match value {
-            ProtocolVersion::Stable(x) => x,
-            ProtocolVersion::Snapshot(x) => x + SNAPSHOT_FLAG,
-        }
+impl ProtocolVersion {
+    /// Numbers bigger than 2^30 will not produce valid version numbers, so just please don't hit
+    /// that mark.
+    pub const fn from_release(number: i32) -> Self {
+        Self(number)
+    }
+
+    /// Numbers bigger than 2^30 will not produce valid version numbers, so just please don't hit
+    /// that mark.
+    pub const fn from_snapshot(number: i32) -> Self {
+        Self(number + SNAPSHOT_FLAG)
+    }
+
+    pub fn version(self) -> i32 {
+        self.0 % SNAPSHOT_FLAG
+    }
+
+    pub fn is_snapshot(self) -> bool {
+        self.0 > SNAPSHOT_FLAG
     }
 }
 
-impl From<i32> for ProtocolVersion {
-    fn from(value: i32) -> Self {
-        if value >= SNAPSHOT_FLAG {
-            ProtocolVersion::Snapshot(value - SNAPSHOT_FLAG)
+impl fmt::Display for ProtocolVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_snapshot() {
+            write!(f, "Snapshot protocool {}", self.version())
         } else {
-            ProtocolVersion::Stable(value)
+            write!(f, "Release protocol {}", self.version())
         }
     }
 }
@@ -31,7 +43,7 @@ impl<'de> serde::Deserialize<'de> for ProtocolVersion {
     where
         D: serde::Deserializer<'de>,
     {
-        Ok(i32::deserialize(deserializer)?.into())
+        Ok(Self(i32::deserialize(deserializer)?))
     }
 }
 
@@ -40,6 +52,6 @@ impl serde::Serialize for ProtocolVersion {
     where
         S: serde::Serializer,
     {
-        i32::serialize(&(*self).into(), serializer)
+        i32::serialize(&self.0, serializer)
     }
 }

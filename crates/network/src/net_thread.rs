@@ -96,7 +96,7 @@ async fn peer_loop(
                             sb::NextState::Login => ConnectionState::Login(hs.protocol_version),
                         };
 
-                        debug!("handshake complete, protocol {:?}", hs.protocol_version);
+                        debug!("handshake complete, {}", hs.protocol_version);
                         debug!("next state: {state:?}");
 
                         let _ = msg_out

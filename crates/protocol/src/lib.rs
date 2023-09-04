@@ -38,4 +38,4 @@ mod version;
 pub use self::version::ProtocolVersion;
 
 /// The protocol version that this library supports.
-pub const SUPPORTED_PROTOCOL: ProtocolVersion = ProtocolVersion::Snapshot(147);
+pub const SUPPORTED_PROTOCOL: ProtocolVersion = ProtocolVersion::from_snapshot(147);

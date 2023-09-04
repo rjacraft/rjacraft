@@ -2,7 +2,7 @@
 
 use bytes::{Buf, BufMut};
 
-use crate::{error, version::ProtocolVersion, ProtocolType};
+use crate::{error, ProtocolType, ProtocolVersion};
 
 impl ProtocolType for ProtocolVersion {
     type DecodeError = super::varint::DecodeError;
@@ -11,10 +11,10 @@ impl ProtocolType for ProtocolVersion {
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
         let super::VarInt(numeric) = super::VarInt::decode(buffer)?;
 
-        Ok(numeric.into())
+        Ok(Self(numeric))
     }
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
-        super::VarInt(i32::from(*self)).encode(buffer)
+        super::VarInt(self.0).encode(buffer)
     }
 }
