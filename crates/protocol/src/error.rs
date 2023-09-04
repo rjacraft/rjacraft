@@ -13,6 +13,12 @@ pub struct Eof;
 #[error("Type is too long: {0} > {}", MAX_SIZE)]
 pub struct Overrun<const MAX_SIZE: usize>(pub usize);
 
+impl<const MAX_SIZE: usize> Overrun<MAX_SIZE> {
+    pub fn as_serde<E: serde::de::Error>(self) -> E {
+        E::invalid_length(self.0, &format!("a length less than {MAX_SIZE}").as_str())
+    }
+}
+
 /// An error related to a fieldless enum.
 #[derive(Debug, thiserror::Error, from_never::FromNever)]
 pub enum EnumError<D: crate::ProtocolType>

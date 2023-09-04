@@ -3,6 +3,7 @@
 use std::{fmt, str::FromStr};
 
 use bytes::{Buf, BufMut};
+use serde::de;
 
 use crate::{error, ProtocolType};
 
@@ -34,7 +35,7 @@ impl fmt::Display for Identifier {
 #[derive(Debug, thiserror::Error)]
 pub enum IdentifierError {
     #[error("Not enough colons")]
-    NotEnoughColons,
+    MissingColon,
     #[error("Too many colons")]
     TooManyColons,
     #[error(transparent)]
@@ -52,7 +53,7 @@ impl FromStr for Identifier {
         let mut split = s.split(":");
 
         let left = split.next().unwrap();
-        let right = split.next().ok_or(IdentifierError::NotEnoughColons)?;
+        let right = split.next().ok_or(IdentifierError::MissingColon)?;
 
         if split.next().is_some() {
             Err(IdentifierError::TooManyColons)?;
@@ -97,7 +98,18 @@ impl<'de> serde::Deserialize<'de> for Identifier {
     where
         D: serde::Deserializer<'de>,
     {
-        Ok(Self::from_str(<&str>::deserialize(deserializer)?).map_err(serde::de::Error::custom)?)
+        match Self::from_str(<&str>::deserialize(deserializer)?) {
+            Ok(x) => Ok(x),
+            Err(IdentifierError::MissingColon) => Err(de::Error::invalid_value(
+                de::Unexpected::Other("missing colon"),
+                &"exactly one colon",
+            )),
+            Err(IdentifierError::TooManyColons) => Err(de::Error::invalid_value(
+                de::Unexpected::Other("too many colons"),
+                &"exactly one colon",
+            )),
+            Err(IdentifierError::Overrun(e)) => Err(e.as_serde()),
+        }
     }
 }
 
