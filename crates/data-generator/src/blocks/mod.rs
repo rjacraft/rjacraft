@@ -22,13 +22,17 @@ pub(crate) fn gen_block_structs(
     use quote::ToTokens;
     use syn::parse2;
 
-    use self::output::BlockStruct;
+    use self::output::{BlockConvert, BlockStruct};
 
     for block in json::parse_block_registry(json_data)? {
         let mut stream = TokenStream::new();
 
         let block_struct: BlockStruct = BlockStruct::from(&block);
         block_struct.to_tokens(&mut stream);
+
+        let block_conv = BlockConvert::from(&block);
+        block_conv.from_u32().to_tokens(&mut stream);
+        block_conv.into_u32().to_tokens(&mut stream);
 
         let syn_tree = parse2(stream).expect("parse TokenStream into syn::File");
         let pretty_output = prettyplease::unparse(&syn_tree);
