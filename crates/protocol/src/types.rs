@@ -8,7 +8,7 @@ pub mod len_string;
 pub mod len_vec;
 pub mod primitive;
 pub mod remaining_bytes;
-pub mod status_object;
+pub mod server_status;
 pub mod uuid;
 pub mod varint;
 pub mod version;
@@ -22,7 +22,7 @@ pub use self::{
     len_vec::LenVec,
     primitive::Primitive,
     remaining_bytes::RemainingBytes,
-    status_object::StatusObject,
+    server_status::ServerStatus,
     varint::VarInt,
 };
 

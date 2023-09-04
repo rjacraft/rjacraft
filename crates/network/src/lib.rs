@@ -24,7 +24,7 @@ pub struct NetworkPlugin<Addr, SStatus> {
 impl<Addr, SStatus> Plugin for NetworkPlugin<Addr, SStatus>
 where
     Addr: net::ToSocketAddrs + Clone + Send + Sync + 'static,
-    SStatus: ReadOnlySystem<In = Entity, Out = rjacraft_protocol::types::StatusObject> + Clone,
+    SStatus: ReadOnlySystem<In = Entity, Out = rjacraft_protocol::types::ServerStatus> + Clone,
 {
     fn build(&self, app: &mut App) {
         let (new_peer_tx, new_peer_rx) = flume::unbounded();

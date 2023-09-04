@@ -29,7 +29,7 @@ pub struct Players {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename = "camelCase")]
-pub struct StatusObject {
+pub struct ServerStatus {
     pub version: Version,
     pub players: Players,
     pub description: Chat,

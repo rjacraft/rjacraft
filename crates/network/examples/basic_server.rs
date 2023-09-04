@@ -1,7 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use rjacraft_network::*;
-use rjacraft_protocol::types::{chat, status_object};
+use rjacraft_protocol::types::{chat, server_status};
 use tracing::*;
 
 fn main() {
@@ -23,13 +23,13 @@ fn main() {
         .run();
 }
 
-fn status_system(_peer: In<Entity>) -> status_object::StatusObject {
-    status_object::StatusObject {
-        version: status_object::Version {
+fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
+    server_status::ServerStatus {
+        version: server_status::Version {
             name: "Snapshot whatever".into(),
             protocol: rjacraft_protocol::SUPPORTED_PROTOCOL,
         },
-        players: status_object::Players {
+        players: server_status::Players {
             max: 100,
             online: 0,
             sample: vec![],
