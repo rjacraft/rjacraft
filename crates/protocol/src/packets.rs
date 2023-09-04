@@ -1,7 +1,7 @@
 //! Hand-written packet types
 
-pub mod cb;
-pub mod sb;
+pub mod c2s;
+pub mod s2c;
 
 mod macros;
 

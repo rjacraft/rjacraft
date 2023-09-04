@@ -20,17 +20,17 @@ pub struct DropPeer {
 #[derive(Debug, Event)]
 pub struct ConfigurationPacketOut {
     pub peer: Entity,
-    pub packet: cb::ConfigurationPacket,
+    pub packet: s2c::ConfigurationPacket,
 }
 
 #[derive(Debug, Event)]
 pub struct PlayPacketIn {
     pub peer: Entity,
-    pub packet: sb::PlayPacket,
+    pub packet: c2s::PlayPacket,
 }
 
 #[derive(Debug, Event)]
 pub struct PlayPacketOut {
     pub peer: Entity,
-    pub packet: cb::PlayPacket,
+    pub packet: s2c::PlayPacket,
 }

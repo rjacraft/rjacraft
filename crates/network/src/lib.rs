@@ -82,8 +82,8 @@ where
                             }
                             PeerMsgOut::NeedStatus => {
                                 peer.msg_in
-                                    .send(PeerMsgIn::StatusPacket(cb::StatusPacket::Response(
-                                        cb::status::Response {
+                                    .send(PeerMsgIn::StatusPacket(s2c::StatusPacket::Response(
+                                        s2c::status::Response {
                                             response: status.run_readonly(entity, world).into(),
                                         },
                                     )))

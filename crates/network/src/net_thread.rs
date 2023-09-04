@@ -7,10 +7,10 @@ use tracing::*;
 // Some of these are invalid at some states
 pub enum PeerMsgIn {
     Drop,
-    StatusPacket(cb::StatusPacket),
+    StatusPacket(s2c::StatusPacket),
     // LoginPacket(cb::LoginPacket),
-    ConfigurationPacket(cb::ConfigurationPacket),
-    PlayPacket(cb::PlayPacket),
+    ConfigurationPacket(s2c::ConfigurationPacket),
+    PlayPacket(s2c::PlayPacket),
 }
 
 pub enum PeerMsgOut {
@@ -38,11 +38,11 @@ enum PeerLoopError {
     #[error(transparent)]
     Writing(#[from] WritePacketError),
     #[error(transparent)]
-    DecodingHandshake(#[from] sb::HandshakePacketDecodeError),
+    DecodingHandshake(#[from] c2s::HandshakePacketDecodeError),
     #[error(transparent)]
-    DecodingStatus(#[from] sb::StatusPacketDecodeError),
+    DecodingStatus(#[from] c2s::StatusPacketDecodeError),
     #[error(transparent)]
-    EncodingStatus(#[from] cb::StatusPacketEncodeError),
+    EncodingStatus(#[from] s2c::StatusPacketEncodeError),
     #[error("Wrong protocol version: {0:?}")]
     WrongVersion(rjacraft_protocol::ProtocolVersion),
 }
@@ -89,11 +89,11 @@ async fn peer_loop(
             Ok(mut frame) = frames_rx.recv_async() => {
                 match state {
                     ConnectionState::Handshake => {
-                        let sb::HandshakePacket::Handshake(hs) = sb::HandshakePacket::decode(&mut frame)?;
+                        let c2s::HandshakePacket::Handshake(hs) = c2s::HandshakePacket::decode(&mut frame)?;
 
                         state = match hs.next_state {
-                            sb::NextState::Status => ConnectionState::Status,
-                            sb::NextState::Login => ConnectionState::Login(hs.protocol_version),
+                            c2s::NextState::Status => ConnectionState::Status,
+                            c2s::NextState::Login => ConnectionState::Login(hs.protocol_version),
                         };
 
                         debug!("handshake complete, {}", hs.protocol_version);
@@ -108,15 +108,15 @@ async fn peer_loop(
                             ;
                     }
                     ConnectionState::Status => {
-                        let packet = sb::StatusPacket::decode(&mut frame)?;
+                        let packet = c2s::StatusPacket::decode(&mut frame)?;
 
                         debug!("{packet:#?}");
 
                         match packet {
-                            sb::StatusPacket::Ping(ping) => {
+                            c2s::StatusPacket::Ping(ping) => {
                                 write_frame(
                                     &mut write,
-                                    &cb::StatusPacket::Pong(cb::status::Pong {
+                                    &s2c::StatusPacket::Pong(s2c::status::Pong {
                                         payload: ping.payload,
                                     }).encode_owned()?,
                                 )
@@ -124,7 +124,7 @@ async fn peer_loop(
 
                                 return Ok(());
                             }
-                            sb::StatusPacket::Request(_) => {
+                            c2s::StatusPacket::Request(_) => {
                                 let _ = msg_out.send(PeerMsgOut::NeedStatus);
                             }
                         }
