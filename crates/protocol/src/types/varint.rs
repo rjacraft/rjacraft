@@ -70,7 +70,7 @@ impl ProtocolType for VarInt {
         let merged = stage1 | (msbs & msbmask);
         let bytes = merged.to_le_bytes();
 
-        buffer.put(unsafe { bytes.get_unchecked(..bytes_needed as usize) });
+        buffer.put(&bytes[..bytes_needed as usize]);
 
         Ok(())
     }
@@ -122,9 +122,7 @@ impl ProtocolTypeRaw for VarInt {
         let merged = stage1 | (msbs & msbmask);
         let bytes = merged.to_le_bytes();
 
-        write
-            .write_all(unsafe { bytes.get_unchecked(..bytes_needed as usize) })
-            .await?;
+        write.write_all(&bytes[..bytes_needed as usize]).await?;
 
         Ok(Ok(()))
     }
