@@ -73,7 +73,7 @@ pub enum DecodeError {
     #[error(transparent)]
     String(#[from] super::len_string::DecodeError<MAX_SIZE>),
     #[error(transparent)]
-    Item(#[from] IdentifierError),
+    This(#[from] IdentifierError),
 }
 
 impl ProtocolType for Identifier {

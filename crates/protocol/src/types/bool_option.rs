@@ -11,14 +11,14 @@ pub struct BoolOption<T>(pub Option<T>);
 pub enum DecodeError<E: std::error::Error> {
     #[error("Failed to read BoolOption marker")]
     Marker(#[from] error::Eof),
-    #[error("Failed to read BoolOption item")]
-    Item(#[source] E),
+    #[error("Failed to read BoolOption element")]
+    Element(#[source] E),
 }
 
 #[derive(Debug, thiserror::Error, from_never::FromNever)]
 pub enum EncodeError<E: std::error::Error> {
-    #[error("Failed to write LengthVec item")]
-    Item(#[source] E),
+    #[error("Failed to write LengthVec element")]
+    Element(#[source] E),
 }
 
 impl<T: ProtocolType> ProtocolType for BoolOption<T> {
@@ -29,15 +29,15 @@ impl<T: ProtocolType> ProtocolType for BoolOption<T> {
         let super::Primitive(marker) = super::Primitive::<bool>::decode(buffer)?;
 
         Ok(Self(if marker {
-            Some(T::decode(buffer).map_err(|e| DecodeError::Item(e))?)
+            Some(T::decode(buffer).map_err(|e| DecodeError::Element(e))?)
         } else {
             None
         }))
     }
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
-        if let Some(item) = &self.0 {
-            item.encode(buffer).map_err(|e| EncodeError::Item(e))?;
+        if let Some(el) = &self.0 {
+            el.encode(buffer).map_err(|e| EncodeError::Element(e))?;
         }
 
         Ok(())
