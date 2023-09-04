@@ -38,6 +38,10 @@ pub enum IdentifierError {
     MissingColon,
     #[error("Too many colons")]
     TooManyColons,
+    #[error("Invalid character '{0}' in namespace")]
+    InvalidNamespace(char),
+    #[error("Invalid character '{0}' in location")]
+    InvalidLocation(char),
     #[error(transparent)]
     Overrun(#[from] error::Overrun<MAX_SIZE>),
 }
@@ -59,7 +63,17 @@ impl FromStr for Identifier {
             Err(IdentifierError::TooManyColons)?;
         }
 
-        // TODO alphanumeric
+        for char in left.chars() {
+            if !matches!(char, '0'..='9' | 'a'..='z' | '_' | '-') {
+                Err(IdentifierError::InvalidNamespace(char))?;
+            }
+        }
+
+        for char in right.chars() {
+            if !matches!(char, '0'..='9' | 'a'..='z' | '_' | '/' | '.' | '-') {
+                Err(IdentifierError::InvalidLocation(char))?;
+            }
+        }
 
         Ok(Identifier {
             namespace: left.into(),
@@ -108,6 +122,14 @@ impl<'de> serde::Deserialize<'de> for Identifier {
                 de::Unexpected::Other("too many colons"),
                 &"exactly one colon",
             )),
+            Err(IdentifierError::InvalidNamespace(x)) => Err(de::Error::invalid_value(
+                de::Unexpected::Char(x),
+                &"a namespace that's lowercase alphanumeric with underscores and dashes",
+            )),
+            Err(IdentifierError::InvalidLocation(x)) => Err(de::Error::invalid_value(
+                de::Unexpected::Char(x),
+                &"a location that's lowercase alphanumeric with underscores, slashes, dots and dashes",
+            )),
             Err(IdentifierError::Overrun(e)) => Err(e.as_serde()),
         }
     }
@@ -119,5 +141,27 @@ impl serde::Serialize for Identifier {
         S: serde::Serializer,
     {
         String::serialize(&self.to_string(), serializer)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parsing() {
+        Identifier::from_str("minecraft:stone").unwrap();
+        Identifier::from_str("stone").unwrap_err();
+        Identifier::from_str("").unwrap_err();
+        Identifier::from_str("minecraft:stone:special").unwrap_err();
+        Identifier::from_str("minecraft:русский_камень").unwrap_err();
+        Identifier::from_str("minecraft:stone2").unwrap();
+        Identifier::from_str("minecraft2:stone2").unwrap();
+        Identifier::from_str("minecraft:stone/special").unwrap();
+        Identifier::from_str("minecraft/special:stone/special").unwrap_err();
+        Identifier::from_str("minecraft:stone.com").unwrap();
+        Identifier::from_str("minecraft.net:stone.com").unwrap_err();
+        Identifier::from_str("minecraft:stone-special").unwrap();
+        Identifier::from_str("minecraft-2:stone-special").unwrap();
     }
 }
