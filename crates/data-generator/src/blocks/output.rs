@@ -1,6 +1,7 @@
 pub(crate) use block_convert::*;
 pub(crate) use block_default::*;
 pub(crate) use block_struct::*;
+pub(crate) use prop_convert::*;
 pub(crate) use prop_struct::*;
 
 mod block_struct {
@@ -380,6 +381,100 @@ mod prop_struct {
 
             // ","
             tokens.append(Punct::new(',', Spacing::Alone));
+        }
+    }
+}
+
+mod prop_convert {
+    use proc_macro2::{Delimiter, Group, Ident, Literal, Span, TokenStream};
+    use quote::{quote, ToTokens};
+
+    use crate::blocks::model::BlockProperty;
+
+    pub struct PropertyConvert {
+        pub block_name: String,         // PascalCase, dirty
+        pub prop_name: String,          // PascalCase, dirty
+        pub prop_variants: Vec<String>, // PascalCase, dirty
+    }
+
+    impl From<&BlockProperty> for PropertyConvert {
+        fn from(prop: &BlockProperty) -> Self {
+            use convert_case::{Case, Casing as _};
+            let prop_name_def = super::defuse_property_name(&prop.prop_name);
+
+            Self {
+                block_name: prop.block_name.clone(),
+                prop_name: prop_name_def.to_case(Case::Pascal),
+                prop_variants: prop.variants.clone(),
+            }
+        }
+    }
+
+    impl PropertyConvert {
+        pub fn from_u8<'a>(&'_ self) -> PropertyFromU8<'_> {
+            PropertyFromU8(self)
+        }
+    }
+
+    pub struct PropertyFromU8<'a>(&'a PropertyConvert);
+
+    impl<'a> ToTokens for PropertyFromU8<'a> {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            let all_nums = self
+                .0
+                .prop_variants
+                .iter()
+                .all(|prop_var| prop_var.chars().all(|c| c.is_numeric()));
+
+            if !all_nums {
+                return;
+            }
+
+            let prop_enum_name = format!("{}{}", &self.0.block_name, &self.0.prop_name);
+            let err_struct_name = Group::new(Delimiter::Parenthesis, TokenStream::new());
+            let err_inst = Group::new(Delimiter::Parenthesis, TokenStream::new());
+
+            let mut match_arms = TokenStream::new();
+            for prop_var in &self.0.prop_variants {
+                // "AzaleaLeavesDistance::IV"
+                let prop_var_path = PropertyVariantPath {
+                    prop_enum_name: prop_enum_name.clone(),
+                    var_name: super::defuse_variant_name(&prop_var),
+                };
+                let num = Literal::u32_unsuffixed(prop_var.parse().unwrap()); // verified previously
+
+                // "AzaleaLeavesDistance::IV => Ok(4),"
+                let match_arm = quote! { #num => Ok(#prop_var_path), };
+                match_arm.to_tokens(&mut match_arms);
+            }
+
+            let prop_enum_name = Ident::new(&prop_enum_name, Span::call_site());
+            tokens.extend(quote! {
+                impl TryFrom<u8> for #prop_enum_name {
+                    type Error = #err_struct_name;
+                    fn try_from(n: u8) -> Result<Self, Self::Error> {
+                        match n {
+                            #match_arms
+                            _ => Err(#err_inst),
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    pub struct PropertyVariantPath {
+        prop_enum_name: String, // PascalCase
+        var_name: String,       // PascalCase
+    }
+
+    impl ToTokens for PropertyVariantPath {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            let prop_enum_name = Ident::new(&self.prop_enum_name, Span::call_site());
+            let var_name = Ident::new(&self.var_name, Span::call_site());
+
+            // "MudBrickWall::East"
+            tokens.extend(quote!(#prop_enum_name::#var_name));
         }
     }
 }

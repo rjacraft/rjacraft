@@ -5,7 +5,7 @@ use quote::ToTokens;
 use syn::parse2;
 
 use self::model::{Block, BlockProperty};
-use self::output::{BlockConvert, BlockDefault, BlockStruct, PropertyStruct};
+use self::output::{BlockConvert, BlockDefault, BlockStruct, PropertyConvert, PropertyStruct};
 
 pub(crate) use json::ParseError as JsonParseError;
 
@@ -57,4 +57,7 @@ fn gen_block_code(block: &Block, stream: &mut TokenStream) {
 fn gen_prop_code(prop: &BlockProperty, stream: &mut TokenStream) {
     let prop_struct = PropertyStruct::from(prop);
     prop_struct.to_tokens(stream);
+
+    let prop_conv = PropertyConvert::from(prop);
+    prop_conv.from_u8().to_tokens(stream);
 }
