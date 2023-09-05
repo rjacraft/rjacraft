@@ -60,4 +60,5 @@ fn gen_prop_code(prop: &BlockProperty, stream: &mut TokenStream) {
 
     let prop_conv = PropertyConvert::from(prop);
     prop_conv.from_u8().to_tokens(stream);
+    prop_conv.from_bool().to_tokens(stream);
 }

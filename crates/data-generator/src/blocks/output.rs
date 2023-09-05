@@ -414,6 +414,10 @@ mod prop_convert {
         pub fn from_u8<'a>(&'_ self) -> PropertyFromU8<'_> {
             PropertyFromU8(self)
         }
+
+        pub fn from_bool<'a>(&'_ self) -> PropertyBool<'_> {
+            PropertyBool(self)
+        }
     }
 
     pub struct PropertyFromU8<'a>(&'a PropertyConvert);
@@ -457,6 +461,58 @@ mod prop_convert {
                             #match_arms
                             _ => Err(#err_inst),
                         }
+                    }
+                }
+            });
+        }
+    }
+
+    pub struct PropertyBool<'a>(&'a PropertyConvert);
+
+    impl<'a> ToTokens for PropertyBool<'a> {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            const TRUE_FALSE: [&str; 2] = ["True", "False"];
+
+            if self.0.prop_variants == TRUE_FALSE {
+                let prop_enum_name = Ident::new(
+                    &format!("{}{}", &self.0.block_name, &self.0.prop_name),
+                    Span::call_site(),
+                );
+
+                PropertyFromBool(&prop_enum_name).to_tokens(tokens);
+                PropertyIntoBool(&prop_enum_name).to_tokens(tokens);
+            }
+        }
+    }
+
+    pub struct PropertyFromBool<'a>(&'a Ident);
+
+    impl<'a> ToTokens for PropertyFromBool<'a> {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            let prop_enum_name = self.0;
+            tokens.extend(quote! {
+                impl From<bool> for #prop_enum_name {
+                    fn from(value: bool) -> Self {
+                        if value {
+                            Self::True
+                        } else {
+                            Self::False
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    pub struct PropertyIntoBool<'a>(&'a Ident);
+
+    impl<'a> ToTokens for PropertyIntoBool<'a> {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            let prop_enum_name = self.0;
+            tokens.extend(quote! {
+                impl From<#prop_enum_name> for bool {
+                    fn from(value: #prop_enum_name) -> Self {
+                        value == #prop_enum_name::True
                     }
                 }
             });
