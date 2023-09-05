@@ -5,7 +5,7 @@ pub(crate) use prop_struct::*;
 
 mod block_struct {
     use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream};
-    use quote::{quote, ToTokens, TokenStreamExt};
+    use quote::{quote, ToTokens, TokenStreamExt as _};
 
     use crate::blocks::model::Block;
 
@@ -114,7 +114,7 @@ mod block_default {
 
 mod block_convert {
     use proc_macro2::{Delimiter, Group, Ident, Literal, Span, TokenStream};
-    use quote::{quote, ToTokens, TokenStreamExt};
+    use quote::{quote, ToTokens, TokenStreamExt as _};
 
     use crate::blocks::model::{Block, BlockState, Id};
 
@@ -296,7 +296,7 @@ mod block_convert {
 
 mod prop_struct {
     use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream};
-    use quote::{quote, ToTokens, TokenStreamExt};
+    use quote::{quote, ToTokens, TokenStreamExt as _};
 
     use crate::blocks::model::BlockProperty;
 
