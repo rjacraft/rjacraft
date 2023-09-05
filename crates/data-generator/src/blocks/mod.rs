@@ -1,4 +1,4 @@
-use std::io::{Error as IoError, Write};
+use std::io::{Error as IoError, Write as IoWrite};
 
 pub use json::ParseError as JsonParseError;
 
@@ -16,7 +16,7 @@ pub enum GenerateError {
 
 pub(crate) fn gen_block_structs(
     json_data: String,
-    sink: &mut impl Write,
+    sink: &mut impl IoWrite,
 ) -> Result<(), GenerateError> {
     use proc_macro2::TokenStream;
     use quote::ToTokens;
