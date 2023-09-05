@@ -1,6 +1,13 @@
 use std::io::{Error as IoError, Write as IoWrite};
 
-pub use json::ParseError as JsonParseError;
+use proc_macro2::TokenStream;
+use quote::ToTokens;
+use syn::parse2;
+
+use self::model::{Block, BlockProperty};
+use self::output::{BlockConvert, BlockDefault, BlockStruct, PropertyStruct};
+
+pub(crate) use json::ParseError as JsonParseError;
 
 mod json;
 mod model;
@@ -18,29 +25,9 @@ pub(crate) fn gen_block_structs(
     json_data: String,
     sink: &mut impl IoWrite,
 ) -> Result<(), GenerateError> {
-    use proc_macro2::TokenStream;
-    use quote::ToTokens;
-    use syn::parse2;
-
-    use self::output::{BlockConvert, BlockDefault, BlockStruct, PropertyStruct};
-
     for block in json::parse_block_registry(json_data)? {
         let mut stream = TokenStream::new();
-
-        let block_struct: BlockStruct = BlockStruct::from(&block);
-        block_struct.to_tokens(&mut stream);
-
-        let block_default = BlockDefault::from(&block);
-        block_default.to_tokens(&mut stream);
-
-        let block_conv = BlockConvert::from(&block);
-        block_conv.from_u32().to_tokens(&mut stream);
-        block_conv.into_u32().to_tokens(&mut stream);
-
-        for prop in block.properties {
-            let prop_struct = PropertyStruct::from(&prop);
-            prop_struct.to_tokens(&mut stream);
-        }
+        gen_block_code(&block, &mut stream);
 
         let syn_tree = parse2(stream).expect("parse TokenStream into syn::File");
         let pretty_output = prettyplease::unparse(&syn_tree);
@@ -48,4 +35,26 @@ pub(crate) fn gen_block_structs(
     }
 
     Ok(())
+}
+
+fn gen_block_code(block: &Block, stream: &mut TokenStream) {
+    let block_struct: BlockStruct = BlockStruct::from(block);
+    block_struct.to_tokens(stream);
+
+    let block_default = BlockDefault::from(block);
+    block_default.to_tokens(stream);
+
+    let block_conv = BlockConvert::from(block);
+    block_conv.from_u32().to_tokens(stream);
+    block_conv.into_u32().to_tokens(stream);
+
+    block
+        .properties
+        .iter()
+        .for_each(|prop| gen_prop_code(prop, stream));
+}
+
+fn gen_prop_code(prop: &BlockProperty, stream: &mut TokenStream) {
+    let prop_struct = PropertyStruct::from(prop);
+    prop_struct.to_tokens(stream);
 }
