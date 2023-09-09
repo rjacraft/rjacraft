@@ -108,7 +108,6 @@ mod block_mod {
     fn gen_block_code(block: &Block) -> TokenStream {
         let mut tokens = TokenStream::new();
         super::block_struct::BlockStruct::from(block).to_tokens(&mut tokens);
-        super::block_default::BlockDefault::from(block).to_tokens(&mut tokens);
         super::block_convert::BlockConvert::from(block).to_tokens(&mut tokens);
         tokens
     }
@@ -161,7 +160,7 @@ mod block_struct {
     impl ToTokens for BlockStruct {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.extend(quote! {
-                #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
+                #[derive(Debug, Default, Eq, PartialEq, Copy, Clone, Hash)]
                 pub struct Block
             });
 
@@ -192,41 +191,6 @@ mod block_struct {
 
             // "pub open: Open,"
             tokens.extend(quote!(pub #prop_name: #prop_enum_name,))
-        }
-    }
-}
-
-mod block_default {
-    use proc_macro2::TokenStream;
-    use quote::{quote, ToTokens};
-
-    use super::block_convert::BlockStateInst;
-    use crate::blocks::model::Block;
-
-    #[derive(Debug)]
-    pub struct BlockDefault {
-        pub def_state: BlockStateInst,
-    }
-
-    impl From<&Block> for BlockDefault {
-        fn from(block: &Block) -> Self {
-            BlockDefault {
-                def_state: (&block.default_state).into(),
-            }
-        }
-    }
-
-    impl ToTokens for BlockDefault {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            let block_inst = &self.def_state;
-
-            tokens.extend(quote! {
-                impl Default for Block {
-                    fn default() -> Self {
-                        #block_inst
-                    }
-                }
-            });
         }
     }
 }
@@ -580,6 +544,7 @@ mod prop_convert {
             tokens.extend(quote! {
                 impl TryFrom<u8> for #prop_enum_name {
                     type Error = super::UnknownVar;
+
                     fn try_from(n: u8) -> Result<Self, Self::Error> {
                         Ok(match n {
                             #match_arms
