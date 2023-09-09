@@ -7,7 +7,7 @@ use crate::{error, ProtocolType, ProtocolTypeRaw};
 
 pub const MAX_SIZE: usize = 5;
 
-#[derive(Debug, thiserror::Error, from_never::FromNever)]
+#[derive(Debug, thiserror::Error, nevermore::FromNever)]
 pub enum DecodeError {
     #[error(transparent)]
     Eof(#[from] error::Eof),

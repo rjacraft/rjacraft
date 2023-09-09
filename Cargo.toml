@@ -37,14 +37,14 @@ document-features = "0.2"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 
-# Macro utils
+# Utilities
+nevermore = "0.1"
 paste = "1.0"
 
 # Own crates
 rjacraft_core = { path = "crates/core" }
 rjacraft_network = { path = "crates/network" }
 rjacraft_protocol = { path = "crates/protocol" }
-from_never = { path = "crates/from_never" }
 
 # Bevy-specific profile setup aimed at better performace while developing
 
