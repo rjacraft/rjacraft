@@ -536,6 +536,7 @@ mod prop_convert {
             let prop_enum_name = self.prop_name.to_ident();
             match self.prop_vars.iter().next() {
                 Some(BlockPropertyVariant::Bool(_, _)) => {
+                    PropertyNotBool(&prop_enum_name).to_tokens(tokens);
                     PropertyFromBool(&prop_enum_name).to_tokens(tokens);
                     PropertyIntoBool(&prop_enum_name).to_tokens(tokens);
                 }
@@ -618,6 +619,27 @@ mod prop_convert {
                 impl From<#prop_enum_name> for bool {
                     fn from(value: #prop_enum_name) -> Self {
                         value == #prop_enum_name::True
+                    }
+                }
+            });
+        }
+    }
+
+    pub struct PropertyNotBool<'a>(&'a Ident);
+
+    impl<'a> ToTokens for PropertyNotBool<'a> {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            let prop_enum_name = self.0;
+            tokens.extend(quote! {
+                impl std::ops::Not for #prop_enum_name {
+                    type Output = Self;
+
+                    fn not(self) -> Self::Output {
+                        if self == Self::False {
+                            Self::True
+                        } else {
+                            Self::False
+                        }
                     }
                 }
             });
