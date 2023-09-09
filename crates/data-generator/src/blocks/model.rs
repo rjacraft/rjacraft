@@ -47,7 +47,6 @@ impl BlockPropertyVariant {
 
 #[derive(Debug, Clone)]
 pub struct State {
-    pub block_name: String, // BubbleCoralFan
     pub properties: Vec<StateProperty>,
     pub default: bool,
 }

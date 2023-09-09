@@ -116,8 +116,16 @@ mod block_mod {
     fn gen_props_code(block: &Block) -> TokenStream {
         let mut tokens = TokenStream::new();
         for prop in block.properties.iter() {
+            let def_prop = block
+                .default_state
+                .properties
+                .iter()
+                .find(|def_prop| prop.name_sc == def_prop.field)
+                .unwrap();
             let prop = prop.clone();
+
             super::prop_enum::PropertyEnum::from(&prop).to_tokens(&mut tokens);
+            super::prop_default::PropertyDefault::from(def_prop).to_tokens(&mut tokens);
             super::prop_convert::PropertyConvert::from(prop).to_tokens(&mut tokens);
         }
         tokens
@@ -460,6 +468,44 @@ mod prop_enum {
 
             // ","
             tokens.append(Punct::new(',', Spacing::Alone));
+        }
+    }
+}
+
+mod prop_default {
+    use proc_macro2::{Ident, TokenStream};
+    use quote::{quote, ToTokens};
+
+    use super::StringExt as _;
+    use crate::blocks::model::StateProperty;
+
+    #[derive(Debug)]
+    pub struct PropertyDefault {
+        pub enum_name: Ident, // WeepingVines
+        pub def_var_name: Ident,
+    }
+
+    impl From<&StateProperty> for PropertyDefault {
+        fn from(def_prop: &StateProperty) -> Self {
+            PropertyDefault {
+                enum_name: def_prop.prop_enum.to_ident(),
+                def_var_name: def_prop.variant.to_ident(),
+            }
+        }
+    }
+
+    impl ToTokens for PropertyDefault {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            let enum_name = &self.enum_name;
+            let def_var_name = &self.def_var_name;
+
+            tokens.extend(quote! {
+                impl Default for #enum_name {
+                    fn default() -> Self {
+                        Self::#def_var_name
+                    }
+                }
+            });
         }
     }
 }

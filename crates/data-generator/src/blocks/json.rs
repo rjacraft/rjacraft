@@ -73,7 +73,6 @@ pub(super) fn parse_block_registry(json_data: String) -> Result<Vec<Block>, Pars
     }
 
     fn block_state(
-        block_name_pc: String,
         state_id: u32,
         state_props: BTreeMap<String, String>,
         state_def: bool,
@@ -84,7 +83,6 @@ pub(super) fn parse_block_registry(json_data: String) -> Result<Vec<Block>, Pars
             .collect();
 
         let block_state = State {
-            block_name: block_name_pc,
             properties: state_props,
             default: state_def,
         };
@@ -122,14 +120,7 @@ pub(super) fn parse_block_registry(json_data: String) -> Result<Vec<Block>, Pars
             let block_states: Vec<_> = serde_block
                 .states
                 .into_iter()
-                .map(|state| {
-                    block_state(
-                        block_name_pc.clone(),
-                        state.id.0,
-                        state.properties,
-                        state.default,
-                    )
-                })
+                .map(|state| block_state(state.id.0, state.properties, state.default))
                 .collect();
 
             let def_block_state = block_states
