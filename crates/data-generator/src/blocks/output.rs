@@ -5,9 +5,10 @@ pub(crate) use prop_convert::*;
 pub(crate) use prop_struct::*;
 
 mod block_struct {
-    use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream};
+    use proc_macro2::{Delimiter, Group, Punct, Spacing, TokenStream};
     use quote::{quote, ToTokens, TokenStreamExt as _};
 
+    use super::StringExt as _;
     use crate::blocks::model::Block;
 
     pub struct BlockStruct {
@@ -40,7 +41,7 @@ mod block_struct {
 
     impl ToTokens for BlockStruct {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let block_name = Ident::new(&self.name, Span::call_site());
+            let block_name = self.name.to_ident();
             // "pub struct RedTerracotta"
             tokens.extend(quote! { pub struct #block_name });
 
@@ -66,8 +67,8 @@ mod block_struct {
 
     impl ToTokens for BlockStructField {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let prop_name = Ident::new(&self.prop_name, Span::call_site());
-            let prop_enum_name = Ident::new(&self.prop_enum_name, Span::call_site());
+            let prop_name = self.prop_name.to_ident();
+            let prop_enum_name = self.prop_enum_name.to_ident();
 
             // "pub open: SpruceDoorOpen,"
             tokens.extend(quote!(pub #prop_name: #prop_enum_name,))
@@ -76,9 +77,10 @@ mod block_struct {
 }
 
 mod block_default {
-    use proc_macro2::{Ident, Span, TokenStream};
+    use proc_macro2::TokenStream;
     use quote::{quote, ToTokens};
 
+    use super::StringExt as _;
     use crate::blocks::model::Block;
 
     use super::block_convert::BlockStateInst;
@@ -99,7 +101,7 @@ mod block_default {
 
     impl ToTokens for BlockDefault {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let block_name = Ident::new(&self.block_name, Span::call_site());
+            let block_name = self.block_name.to_ident();
             let block_inst = self.block_state_default.to_token_stream();
 
             tokens.extend(quote! {
@@ -114,9 +116,10 @@ mod block_default {
 }
 
 mod block_convert {
-    use proc_macro2::{Delimiter, Group, Ident, Literal, Span, TokenStream};
+    use proc_macro2::{Delimiter, Group, Literal, TokenStream};
     use quote::{quote, ToTokens, TokenStreamExt as _};
 
+    use super::StringExt as _;
     use crate::blocks::model::{Block, BlockState, Id};
 
     #[derive(Debug)]
@@ -155,7 +158,7 @@ mod block_convert {
 
     impl ToTokens for BlockIntoU32<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let block_name = Ident::new(&self.0.block_name, Span::call_site());
+            let block_name = self.0.block_name.to_ident();
 
             let mut match_arms = TokenStream::new();
             for (id, state) in &self.0.id_states {
@@ -187,7 +190,7 @@ mod block_convert {
 
     impl ToTokens for BlockFromU32<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let block_name = Ident::new(&self.0.block_name, Span::call_site());
+            let block_name = self.0.block_name.to_ident();
 
             let mut match_arms = TokenStream::new();
             for (id, state) in &self.0.id_states {
@@ -255,7 +258,7 @@ mod block_convert {
     impl ToTokens for BlockStateInst {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             // "Ladder"
-            tokens.append(Ident::new(&self.block_name, Span::call_site()));
+            tokens.append(self.block_name.to_ident());
 
             if !self.properties.is_empty() {
                 let mut props = TokenStream::new();
@@ -279,9 +282,9 @@ mod block_convert {
 
     impl ToTokens for BlockStateProperty {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let prop_name = Ident::new(&self.prop_name, Span::call_site());
-            let prop_enum_name = Ident::new(&self.prop_enum_name, Span::call_site());
-            let variant_name = Ident::new(&self.variant_name, Span::call_site());
+            let prop_name = self.prop_name.to_ident();
+            let prop_enum_name = self.prop_enum_name.to_ident();
+            let variant_name = self.variant_name.to_ident();
 
             // "instrument: NoteBlock::IronXylophone,"
             tokens.extend(quote!(#prop_name: #prop_enum_name::#variant_name,))
@@ -296,9 +299,10 @@ mod block_convert {
 }
 
 mod prop_struct {
-    use proc_macro2::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream};
+    use proc_macro2::{Delimiter, Group, Literal, Punct, Spacing, TokenStream};
     use quote::{quote, ToTokens, TokenStreamExt as _};
 
+    use super::StringExt as _;
     use crate::blocks::model::BlockProperty;
 
     pub struct PropertyStruct {
@@ -344,10 +348,7 @@ mod prop_struct {
 
     impl ToTokens for PropertyStruct {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let prop_name = Ident::new(
-                &format!("{}{}", &self.block_name, &self.prop_name),
-                Span::call_site(),
-            );
+            let prop_name = format!("{}{}", &self.block_name, &self.prop_name).to_ident();
             // "pub enum BubbleCoralFan"
             tokens.extend(quote! { pub enum #prop_name });
 
@@ -369,7 +370,7 @@ mod prop_struct {
 
     impl ToTokens for PropertyStructField {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let struct_name = Ident::new(&self.var_name, Span::call_site());
+            let struct_name = self.var_name.to_ident();
             // "CampfireLit"
             tokens.append(struct_name);
 
@@ -386,9 +387,10 @@ mod prop_struct {
 }
 
 mod prop_convert {
-    use proc_macro2::{Delimiter, Group, Ident, Literal, Span, TokenStream};
+    use proc_macro2::{Delimiter, Group, Ident, Literal, TokenStream};
     use quote::{quote, ToTokens};
 
+    use super::StringExt as _;
     use crate::blocks::model::BlockProperty;
 
     pub struct PropertyConvert {
@@ -452,7 +454,7 @@ mod prop_convert {
                 match_arm.to_tokens(&mut match_arms);
             }
 
-            let prop_enum_name = Ident::new(&prop_enum_name, Span::call_site());
+            let prop_enum_name = prop_enum_name.to_ident();
             tokens.extend(quote! {
                 impl TryFrom<u8> for #prop_enum_name {
                     type Error = #err_struct_name;
@@ -474,10 +476,8 @@ mod prop_convert {
             const TRUE_FALSE: [&str; 2] = ["True", "False"];
 
             if self.0.prop_variants == TRUE_FALSE {
-                let prop_enum_name = Ident::new(
-                    &format!("{}{}", &self.0.block_name, &self.0.prop_name),
-                    Span::call_site(),
-                );
+                let prop_enum_name =
+                    format!("{}{}", &self.0.block_name, &self.0.prop_name).to_ident();
 
                 PropertyFromBool(&prop_enum_name).to_tokens(tokens);
                 PropertyIntoBool(&prop_enum_name).to_tokens(tokens);
@@ -526,8 +526,8 @@ mod prop_convert {
 
     impl ToTokens for PropertyVariantPath {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let prop_enum_name = Ident::new(&self.prop_enum_name, Span::call_site());
-            let var_name = Ident::new(&self.var_name, Span::call_site());
+            let prop_enum_name = self.prop_enum_name.to_ident();
+            let var_name = self.var_name.to_ident();
 
             // "MudBrickWall::East"
             tokens.extend(quote!(#prop_enum_name::#var_name));
@@ -562,5 +562,15 @@ fn convert_into_roman(n: u32) -> String {
     match n {
         0 => "O".to_string(),
         _ => format!("{:X}", Roman::from(n as i16)),
+    }
+}
+
+trait StringExt {
+    fn to_ident(&self) -> proc_macro2::Ident;
+}
+
+impl<T: AsRef<str>> StringExt for T {
+    fn to_ident(&self) -> proc_macro2::Ident {
+        proc_macro2::Ident::new(self.as_ref(), proc_macro2::Span::call_site())
     }
 }
