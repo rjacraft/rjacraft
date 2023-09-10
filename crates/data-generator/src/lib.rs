@@ -11,5 +11,5 @@ pub enum GenerateError {
 }
 
 pub fn gen_structs(json_data: String, sink: &mut impl Write) -> Result<(), GenerateError> {
-    Ok(blocks::gen_block_structs(json_data, sink)?)
+    Ok(blocks::gen_blocks_module(json_data, sink)?)
 }
