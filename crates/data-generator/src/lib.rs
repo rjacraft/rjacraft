@@ -1,6 +1,7 @@
 use std::io::Write;
 
 mod blocks;
+mod name;
 
 #[derive(Debug, thiserror::Error)]
 pub enum GenerateError {

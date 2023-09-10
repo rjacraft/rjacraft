@@ -36,6 +36,9 @@ prettyplease = "0.2.12"
 # Documentation
 document-features = "0.2.7"
 
+# Utilities
+indexmap = "2.0"
+
 # Own crates
 rjacraft_core = { path = "crates/core", version = "0.0.1" }
 rjacraft_types = { path = "crates/types", version = "0.0.1" }

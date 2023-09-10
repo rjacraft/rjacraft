@@ -20,3 +20,4 @@ syn = { workspace = true, features = ["parsing"] }
 proc-macro2.workspace = true
 quote.workspace = true
 prettyplease.workspace = true
+indexmap.workspace = true

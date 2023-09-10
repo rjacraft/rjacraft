@@ -1,22 +1,27 @@
+use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 
-pub(super) fn gen_blocks_mod(blocks: Vec<super::model::Block>) -> TokenStream {
-    blocks_mod::BlocksMod::from(blocks).to_token_stream()
+use super::model::Block;
+use crate::name::Name;
+
+pub(super) fn gen_blocks_mod(blocks: IndexMap<Name, Block>) -> TokenStream {
+    blocks_mod::BlocksMod::new(blocks).to_token_stream()
 }
 
 mod blocks_mod {
+    use indexmap::IndexMap;
     use proc_macro2::TokenStream;
     use quote::{quote, ToTokens};
 
-    use crate::blocks::model::Block;
+    use crate::{blocks::model::Block, name::Name};
 
     pub struct BlocksMod {
-        pub blocks: Vec<Block>,
+        pub blocks: IndexMap<Name, Block>,
     }
 
-    impl From<Vec<Block>> for BlocksMod {
-        fn from(blocks: Vec<Block>) -> Self {
+    impl BlocksMod {
+        pub fn new(blocks: IndexMap<Name, Block>) -> Self {
             Self { blocks }
         }
     }
@@ -25,8 +30,13 @@ mod blocks_mod {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             use super::{block_exports::BlockExports, block_mod::BlockMod};
 
-            let block_mods = self.blocks.iter().map(BlockMod);
-            let exports = BlockExports::from(&self.blocks);
+            let mut block_mods = TokenStream::new();
+            self.blocks
+                .iter()
+                .map(|(n, b)| BlockMod(n, b))
+                .for_each(|block| block.to_tokens(&mut block_mods));
+
+            let exports = BlockExports::new(self.blocks.iter().map(|(n, _)| n));
 
             tokens.extend(quote! {
                 pub mod blocks {
@@ -36,7 +46,7 @@ mod blocks_mod {
                     pub struct UnknownVar(u8);
 
                     #exports
-                    #(#block_mods)*
+                    #block_mods
                 }
             });
         }
@@ -47,31 +57,26 @@ mod block_exports {
     use proc_macro2::TokenStream;
     use quote::{quote, ToTokens};
 
-    use super::StringExt as _;
-    use crate::blocks::model::Block;
+    use crate::name::Name;
 
-    pub struct BlockExports {
-        // (block module name, block struct name)
-        mod_block_names: Vec<(String, String)>,
+    pub struct BlockExports<'a> {
+        mod_block_names: Vec<&'a Name>,
     }
 
-    impl From<&Vec<Block>> for BlockExports {
-        fn from(blocks: &Vec<Block>) -> Self {
+    impl<'a> BlockExports<'a> {
+        pub fn new(blocks: impl IntoIterator<Item = &'a Name>) -> Self {
             Self {
-                mod_block_names: blocks
-                    .into_iter()
-                    .map(|block| (block.name_sc.clone(), block.name_pc.clone()))
-                    .collect(),
+                mod_block_names: blocks.into_iter().collect(),
             }
         }
     }
 
-    impl ToTokens for BlockExports {
+    impl ToTokens for BlockExports<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let mut exports = TokenStream::new();
-            for (block_mod_name, block_struct_name) in self.mod_block_names.iter() {
-                let block_mod_name = block_mod_name.to_ident();
-                let block_struct_name = block_struct_name.to_ident();
+            for name in self.mod_block_names.iter() {
+                let block_mod_name = name.snake_case();
+                let block_struct_name = name.pascal_case();
                 exports.extend(quote!(#block_mod_name::Block as #block_struct_name,))
             }
 
@@ -85,16 +90,15 @@ mod block_mod {
     use proc_macro2::TokenStream;
     use quote::{quote, ToTokens};
 
-    use super::StringExt as _;
-    use crate::blocks::model::Block;
+    use crate::{blocks::model::Block, name::Name};
 
-    pub struct BlockMod<'a>(pub &'a Block);
+    pub struct BlockMod<'a>(pub &'a Name, pub &'a Block);
 
     impl ToTokens for BlockMod<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let block_mod_name = self.0.name_sc.to_ident();
-            let block_code = gen_block_code(self.0);
-            let props_code = gen_props_code(self.0);
+            let block_mod_name = self.0.snake_case();
+            let block_code = gen_block_code(self.1);
+            let props_code = gen_props_code(self.1);
 
             tokens.extend(quote! {
                 pub mod #block_mod_name {
@@ -107,25 +111,23 @@ mod block_mod {
 
     fn gen_block_code(block: &Block) -> TokenStream {
         let mut tokens = TokenStream::new();
-        super::block_struct::BlockStruct::from(block).to_tokens(&mut tokens);
+        super::block_struct::BlockStruct::new(block).to_tokens(&mut tokens);
         super::block_convert::BlockConvert::from(block).to_tokens(&mut tokens);
         tokens
     }
 
     fn gen_props_code(block: &Block) -> TokenStream {
         let mut tokens = TokenStream::new();
-        for prop in block.properties.iter() {
-            let def_prop = block
-                .default_state
+        for (prop_name, variants) in block.properties.iter() {
+            let (_, def_state) = block.states.default();
+            let def_value = def_state
                 .properties
-                .iter()
-                .find(|def_prop| prop.name_sc == def_prop.field)
-                .unwrap();
-            let prop = prop.clone();
+                .get(prop_name)
+                .expect("property is present");
 
-            super::prop_enum::PropertyEnum::from(&prop).to_tokens(&mut tokens);
-            super::prop_default::PropertyDefault::from(def_prop).to_tokens(&mut tokens);
-            super::prop_convert::PropertyConvert::from(prop).to_tokens(&mut tokens);
+            super::prop_enum::PropertyEnum::new(prop_name, variants).to_tokens(&mut tokens);
+            super::prop_default::PropertyDefault::new(prop_name, def_value).to_tokens(&mut tokens);
+            super::prop_convert::PropertyConvert::new(prop_name, variants).to_tokens(&mut tokens);
         }
         tokens
     }
@@ -135,21 +137,20 @@ mod block_struct {
     use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, TokenStream};
     use quote::{quote, ToTokens, TokenStreamExt as _};
 
-    use super::StringExt as _;
     use crate::blocks::model::Block;
 
     pub struct BlockStruct {
         pub properties: Vec<BlockStructField>,
     }
 
-    impl From<&Block> for BlockStruct {
-        fn from(block: &Block) -> Self {
+    impl BlockStruct {
+        pub fn new(block: &Block) -> Self {
             let properties = block
                 .properties
                 .iter()
-                .map(|block_prop| BlockStructField {
-                    prop_name: block_prop.name_sc.to_ident(),
-                    prop_enum_name: block_prop.name_pc.to_ident(),
+                .map(|(name, _)| BlockStructField {
+                    prop_name: name.snake_case(),
+                    prop_enum_name: name.pascal_case(),
                 })
                 .collect();
 
@@ -199,7 +200,6 @@ mod block_convert {
     use proc_macro2::{Delimiter, Group, Ident, Literal, TokenStream};
     use quote::{quote, ToTokens, TokenStreamExt as _};
 
-    use super::StringExt as _;
     use crate::blocks::model::{Block, Id, State};
 
     #[derive(Debug)]
@@ -210,6 +210,7 @@ mod block_convert {
     impl From<&Block> for BlockConvert {
         fn from(block: &Block) -> Self {
             let id_states = block
+                .states
                 .states
                 .iter()
                 .map(|(block_id, block_state)| (block_id.clone(), block_state.into()))
@@ -295,10 +296,20 @@ mod block_convert {
             let properties = block_state
                 .properties
                 .iter()
-                .map(|block_prop| BlockStateProperty {
-                    field_name: block_prop.field.to_ident(),
-                    enum_name: block_prop.prop_enum.to_ident(),
-                    var_name: block_prop.variant.to_ident(),
+                .map(|block_prop| {
+                    let ident = block_prop.0.snake_case();
+                    let ident1 = block_prop.0.pascal_case();
+                    let ident2 = block_prop.1.variant().pascal_case();
+
+                    // println!("cargo:warning=1. {}", ident);
+                    // println!("cargo:warning=2. {}", ident1);
+                    // println!("cargo:warning=3. {}", ident2);
+
+                    BlockStateProperty {
+                        field_name: ident,
+                        enum_name: ident1,
+                        var_name: ident2,
+                    }
                 })
                 .collect();
 
@@ -309,7 +320,7 @@ mod block_convert {
     impl ToTokens for BlockStateInst {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             // "Ladder"
-            tokens.append("Block".to_ident());
+            tokens.extend(quote!(Block));
 
             if !self.properties.is_empty() {
                 let mut props = TokenStream::new();
@@ -350,53 +361,43 @@ mod block_convert {
 }
 
 mod prop_enum {
-    use proc_macro2::{Delimiter, Group, Literal, Punct, Spacing, TokenStream};
+    use proc_macro2::{Delimiter, Group, Ident, Literal, TokenStream};
     use quote::{quote, ToTokens, TokenStreamExt as _};
 
-    use super::StringExt as _;
-    use crate::blocks::model::BlockProperty;
+    use crate::{blocks::model::PropertyVariants, name::Name};
 
     pub struct PropertyEnum {
-        pub prop_name: String, // Powered
-        pub prop_vars: Vec<PropertyEnumVariant>,
-        pub ordered: bool,
+        pub prop_name: Ident, // Powered
+        pub prop_vars: Vec<(Ident, Option<Literal>)>,
     }
 
-    impl From<&BlockProperty> for PropertyEnum {
-        fn from(block_prop: &BlockProperty) -> Self {
-            let prop_name_pc = block_prop.name_pc.clone();
-            let ordered = block_prop.is_num();
-
-            let prop_variants: Vec<PropertyEnumVariant> = block_prop
-                .variants
-                .iter()
-                .enumerate()
-                .map(|(var_ord, var_name)| PropertyEnumVariant {
-                    var_name: var_name.defused_name().to_string(),
-                    var_ordinal: Some(block_prop)
-                        .filter(|&prop| prop.is_num())
-                        .map(|_| var_ord),
-                })
-                .collect();
-
+    impl PropertyEnum {
+        pub fn new(name: &Name, variants: &PropertyVariants) -> Self {
             Self {
-                prop_name: prop_name_pc,
-                prop_vars: prop_variants,
-                ordered,
+                prop_name: name.pascal_case(),
+                prop_vars: variants
+                    .as_enum()
+                    .into_iter()
+                    .map(|(name, ord)| (name.pascal_case(), ord.map(|x| Literal::u8_unsuffixed(x))))
+                    .collect(),
             }
         }
     }
 
     impl ToTokens for PropertyEnum {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let derive = if self.ordered {
+            let derive = if self
+                .prop_vars
+                .first()
+                .map(|(_, ord)| ord.is_some())
+                .unwrap_or(false)
+            {
                 quote!(Ord, PartialOrd,)
             } else {
                 TokenStream::new()
             };
 
-            let prop_name = self.prop_name.to_ident();
-
+            let prop_name = &self.prop_name;
             // "pub enum BubbleCoralFan"
             tokens.extend(quote! {
                 #[derive(Debug, #derive Eq, PartialEq, Copy, Clone, Hash)]
@@ -404,34 +405,16 @@ mod prop_enum {
             });
 
             let mut stream = TokenStream::new();
-            self.prop_vars
-                .iter()
-                .for_each(|var| var.to_tokens(&mut stream));
+            self.prop_vars.iter().for_each(|(ident, ord)| {
+                match ord {
+                    Some(ord) => quote!(#ident = #ord,),
+                    None => quote!(#ident,),
+                }
+                .to_tokens(&mut stream)
+            });
 
             // "{ North, East, South, West, }"
             tokens.append(Group::new(Delimiter::Brace, stream));
-        }
-    }
-
-    pub struct PropertyEnumVariant {
-        pub var_name: String,           // XIV
-        pub var_ordinal: Option<usize>, // Some(14)
-    }
-
-    impl ToTokens for PropertyEnumVariant {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            let struct_name = self.var_name.to_ident();
-            // "CampfireLit"
-            tokens.append(struct_name);
-
-            // "Moisture = 5"
-            self.var_ordinal.into_iter().for_each(|ord| {
-                tokens.append(Punct::new('=', Spacing::Alone));
-                tokens.append(Literal::usize_unsuffixed(ord));
-            });
-
-            // ","
-            tokens.append(Punct::new(',', Spacing::Alone));
         }
     }
 }
@@ -440,8 +423,7 @@ mod prop_default {
     use proc_macro2::{Ident, TokenStream};
     use quote::{quote, ToTokens};
 
-    use super::StringExt as _;
-    use crate::blocks::model::StateProperty;
+    use crate::{blocks::model::PropertyVariant, name::Name};
 
     #[derive(Debug)]
     pub struct PropertyDefault {
@@ -449,11 +431,11 @@ mod prop_default {
         pub def_var_name: Ident,
     }
 
-    impl From<&StateProperty> for PropertyDefault {
-        fn from(def_prop: &StateProperty) -> Self {
+    impl PropertyDefault {
+        pub fn new(name: &Name, value: &PropertyVariant) -> Self {
             PropertyDefault {
-                enum_name: def_prop.prop_enum.to_ident(),
-                def_var_name: def_prop.variant.to_ident(),
+                enum_name: name.pascal_case(),
+                def_var_name: value.variant().pascal_case(),
             }
         }
     }
@@ -478,36 +460,37 @@ mod prop_convert {
     use proc_macro2::{Ident, Literal, TokenStream};
     use quote::{quote, ToTokens};
 
-    use super::StringExt as _;
-    use crate::blocks::model::{BlockProperty, BlockPropertyVariant};
+    use crate::{
+        blocks::model::{PropertyVariant, PropertyVariants},
+        name::Name,
+    };
 
-    pub struct PropertyConvert {
-        pub prop_name: String, // HoneyLevel
-        pub prop_vars: Vec<BlockPropertyVariant>,
+    pub struct PropertyConvert<'a> {
+        pub prop_name: Ident, // HoneyLevel
+        pub prop_vars: &'a PropertyVariants,
     }
 
-    impl From<BlockProperty> for PropertyConvert {
-        fn from(prop: BlockProperty) -> Self {
+    impl<'a> PropertyConvert<'a> {
+        pub fn new(name: &Name, variants: &'a PropertyVariants) -> Self {
             Self {
-                prop_name: prop.name_pc,
-                prop_vars: prop.variants,
+                prop_name: name.pascal_case(),
+                prop_vars: variants,
             }
         }
     }
 
-    impl ToTokens for PropertyConvert {
+    impl ToTokens for PropertyConvert<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let prop_enum_name = self.prop_name.to_ident();
-            match self.prop_vars.iter().next() {
-                Some(BlockPropertyVariant::Bool(_, _)) => {
-                    PropertyNotBool(&prop_enum_name).to_tokens(tokens);
-                    PropertyFromBool(&prop_enum_name).to_tokens(tokens);
-                    PropertyIntoBool(&prop_enum_name).to_tokens(tokens);
+            match &self.prop_vars {
+                PropertyVariants::Bool => {
+                    PropertyNotBool(&self.prop_name).to_tokens(tokens);
+                    PropertyFromBool(&self.prop_name).to_tokens(tokens);
+                    PropertyIntoBool(&self.prop_name).to_tokens(tokens);
                 }
-                Some(BlockPropertyVariant::Numeric(_, _)) => {
+                PropertyVariants::Numeric(numbers) => {
                     let impl_from_u8 = PropertyFromU8 {
-                        enum_name: &prop_enum_name,
-                        vars: &self.prop_vars,
+                        enum_name: &self.prop_name,
+                        numbers: &numbers,
                     };
                     impl_from_u8.to_tokens(tokens);
                 }
@@ -518,24 +501,18 @@ mod prop_convert {
 
     pub struct PropertyFromU8<'a> {
         pub enum_name: &'a Ident,
-        pub vars: &'a Vec<BlockPropertyVariant>,
+        pub numbers: &'a Vec<u8>,
     }
 
-    impl<'a> ToTokens for PropertyFromU8<'a> {
+    impl ToTokens for PropertyFromU8<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let mut match_arms = TokenStream::new();
-            for prop_var in self.vars.iter() {
-                // "4"
-                let prop_ord = Literal::u8_unsuffixed(match prop_var {
-                    BlockPropertyVariant::Numeric(n, _) => *n,
-                    _ => unreachable!(),
-                });
+            for &num in self.numbers.iter() {
+                let u8_num = Literal::u8_unsuffixed(num); // "4"
+                let roman_num = PropertyVariant::Numeric(num).variant().pascal_case(); // "IV"
 
-                // "AzaleaLeavesDistance::IV"
-                let prop_var_name = prop_var.defused_name().to_ident();
-
-                // "4 => AzaleaLeavesDistance::IV,"
-                let match_arm = quote! { #prop_ord => Self::#prop_var_name, };
+                // "4 => Self::IV,"
+                let match_arm = quote! { #u8_num => Self::#roman_num, };
                 match_arm.to_tokens(&mut match_arms);
             }
 
@@ -558,7 +535,7 @@ mod prop_convert {
 
     pub struct PropertyFromBool<'a>(&'a Ident);
 
-    impl<'a> ToTokens for PropertyFromBool<'a> {
+    impl ToTokens for PropertyFromBool<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let prop_enum_name = self.0;
             tokens.extend(quote! {
@@ -577,7 +554,7 @@ mod prop_convert {
 
     pub struct PropertyIntoBool<'a>(&'a Ident);
 
-    impl<'a> ToTokens for PropertyIntoBool<'a> {
+    impl ToTokens for PropertyIntoBool<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let prop_enum_name = self.0;
             tokens.extend(quote! {
@@ -592,7 +569,7 @@ mod prop_convert {
 
     pub struct PropertyNotBool<'a>(&'a Ident);
 
-    impl<'a> ToTokens for PropertyNotBool<'a> {
+    impl ToTokens for PropertyNotBool<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let prop_enum_name = self.0;
             tokens.extend(quote! {
@@ -609,15 +586,5 @@ mod prop_convert {
                 }
             });
         }
-    }
-}
-
-trait StringExt {
-    fn to_ident(&self) -> proc_macro2::Ident;
-}
-
-impl<T: AsRef<str>> StringExt for T {
-    fn to_ident(&self) -> proc_macro2::Ident {
-        proc_macro2::Ident::new(self.as_ref(), proc_macro2::Span::call_site())
     }
 }

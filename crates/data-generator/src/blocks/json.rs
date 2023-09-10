@@ -1,9 +1,11 @@
 use std::collections::BTreeMap;
 
+use indexmap::IndexMap;
 use serde::Deserialize;
 use thiserror::Error;
 
-use super::model::{Block, BlockProperty, BlockPropertyVariant, Id, State, StateProperty};
+use super::model::{Block, Id, PropertyVariant, PropertyVariants, State, States};
+use crate::name::Name;
 
 #[derive(Debug, Deserialize)]
 struct SerdeId(u32);
@@ -30,112 +32,96 @@ pub enum ParseError {
     Json(#[from] serde_json::Error),
 }
 
-pub(super) fn parse_block_registry(json_data: String) -> Result<Vec<Block>, ParseError> {
+pub(super) fn parse_block_registry(json_data: String) -> Result<IndexMap<Name, Block>, ParseError> {
     let registry: BTreeMap<String, SerdeBlock> = serde_json::from_str(&json_data)?;
 
-    fn block_property(
-        block_name_pc: String,
-        prop_name_sc: String,
-        prop_variants: Vec<String>,
-    ) -> BlockProperty {
-        let prop_name_sc = defuse_property_name(&prop_name_sc);
-        let prop_name_pc = transform_to_pascal_case(&prop_name_sc);
+    fn property_variants(prop_vars: Vec<String>) -> PropertyVariants {
+        enum Kind {
+            Bool,
+            Numeric,
+            Enum,
+        }
 
-        let all_bools = all_bools(&prop_variants);
-        let all_nums = !all_bools && all_nums(&prop_variants);
+        let vars = prop_vars.iter().map(String::as_str);
+        let option = None
+            .or_else(|| prop_vars.is_empty().then_some(Kind::Enum))
+            .or_else(|| all_bools(vars.clone()).then_some(Kind::Bool))
+            .or_else(|| all_nums(vars).then_some(Kind::Numeric))
+            .unwrap_or(Kind::Enum);
 
-        let prop_variants = prop_variants
-            .iter()
-            .map(|prop_variant| {
-                let var_name = transform_to_pascal_case(&prop_variant);
-                let var_name = defuse_variant_name(var_name);
+        match option {
+            Kind::Bool => PropertyVariants::Bool,
+            Kind::Numeric => {
+                let vars = prop_vars.into_iter().map(|s| s.parse().unwrap()).collect();
+                PropertyVariants::Numeric(vars)
+            }
+            Kind::Enum => {
+                let vars = prop_vars.into_iter().map(Name::from_snake_case).collect();
+                PropertyVariants::Enum(vars)
+            }
+        }
+    }
 
-                match (all_bools, all_nums) {
-                    (true, false) => {
-                        let value = prop_variant.parse().expect(&prop_variant);
-                        BlockPropertyVariant::Bool(value, var_name)
-                    }
-                    (false, true) => {
-                        let ord = prop_variant.parse().unwrap();
-                        BlockPropertyVariant::Numeric(ord, var_name)
-                    }
-                    (_, _) => BlockPropertyVariant::Regular(var_name),
-                }
+    fn state(
+        all_properties: &IndexMap<Name, PropertyVariants>,
+        state_id: u32,
+        state_props: BTreeMap<String, String>,
+    ) -> (Id, State) {
+        let properties = state_props
+            .into_iter()
+            .map(|(name_raw, variant_raw)| {
+                let prop_name = Name::from_snake_case(name_raw);
+
+                let variants = all_properties
+                    .iter()
+                    .find_map(|(name, vars)| (name == &prop_name).then_some(vars))
+                    .unwrap();
+
+                let prop_var = PropertyVariant::from(variant_raw, variants);
+                (prop_name, prop_var)
             })
             .collect();
 
-        BlockProperty {
-            block_name: block_name_pc, // PascalCase
-            name_pc: prop_name_pc,     // PascalCase
-            name_sc: prop_name_sc,     // snake_case
-            variants: prop_variants,   // snake_case
-        }
-    }
-
-    fn block_state(
-        state_id: u32,
-        state_props: BTreeMap<String, String>,
-        state_def: bool,
-    ) -> (Id, State) {
-        let state_props = state_props
-            .into_iter()
-            .map(|(prop_name_sc, prop_variant)| block_state_property(prop_name_sc, prop_variant))
-            .collect();
-
-        let block_state = State {
-            properties: state_props,
-            default: state_def,
-        };
-
-        (Id(state_id), block_state)
-    }
-
-    fn block_state_property(prop_name_sc: String, prop_variant_sc: String) -> StateProperty {
-        let prop_name_sc = defuse_property_name(&prop_name_sc);
-        let prop_name_pc = transform_to_pascal_case(&prop_name_sc);
-        let prop_variant_pc = transform_to_pascal_case(&prop_variant_sc);
-        let prop_variant_pc = defuse_variant_name(&prop_variant_pc);
-
-        StateProperty {
-            field: prop_name_sc,
-            prop_enum: prop_name_pc,
-            variant: prop_variant_pc,
-        }
+        let id = Id(state_id);
+        let block_state = State { properties };
+        (id, block_state)
     }
 
     let result = registry
         .into_iter()
-        .map(|(block_name, serde_block)| {
-            let block_name_sc = consume_until_colon(&block_name).to_string();
-            let block_name_pc = transform_to_pascal_case(&block_name_sc);
+        .map(|(block_name_raw, serde_block)| {
+            let block_name = consume_until_colon(&block_name_raw);
+            let block_name = Name::from_snake_case(block_name);
 
             let block_props = serde_block
                 .properties
                 .into_iter()
-                .map(|(prop_name, prop_variants)| {
-                    block_property(block_name_pc.clone(), prop_name, prop_variants)
+                .map(|(prop_raw, vars_raw)| {
+                    let name = Name::from_snake_case(prop_raw);
+                    let vars = property_variants(vars_raw);
+                    (name, vars)
                 })
                 .collect();
 
-            let block_states: Vec<_> = serde_block
-                .states
-                .into_iter()
-                .map(|state| block_state(state.id.0, state.properties, state.default))
-                .collect();
-
-            let def_block_state = block_states
-                .iter()
-                .find(|(_, v)| v.default)
-                .map(|(_, v)| v.clone())
-                .expect("default state exists");
-
-            Block {
-                name_sc: block_name_sc,
-                name_pc: block_name_pc,
-                properties: block_props,
-                states: block_states,
-                default_state: def_block_state,
+            let mut block_states = IndexMap::with_capacity(serde_block.states.len());
+            let mut def_state_id = Id(0);
+            for s in serde_block.states.into_iter() {
+                if s.default {
+                    def_state_id = Id(s.id.0);
+                }
+                let (k, v) = state(&block_props, s.id.0, s.properties);
+                block_states.insert(k, v);
             }
+
+            let block = Block {
+                properties: block_props,
+                states: States {
+                    states: block_states,
+                    default: def_state_id,
+                },
+            };
+
+            (block_name, block)
         })
         .collect();
 
@@ -146,49 +132,23 @@ fn consume_until_colon(input: &'_ str) -> &'_ str {
     &input[input.find(':').map_or(0, |pos| pos + 1)..]
 }
 
-fn transform_to_pascal_case(input: impl AsRef<str>) -> String {
-    use convert_case::{Case, Casing as _};
-    input.as_ref().to_case(Case::Pascal)
-}
-
-fn defuse_property_name(property_name: impl AsRef<str>) -> String {
-    match property_name.as_ref() {
-        "type" => "kind".to_string(),
-        _ => property_name.as_ref().to_string(),
-    }
-}
-
-fn defuse_variant_name(variant_name: impl AsRef<str>) -> String {
-    let variant_name = variant_name.as_ref();
-    let first_char = variant_name.chars().next().expect("variant name not empty");
-
-    if !first_char.is_numeric() {
-        variant_name.into()
-    } else {
-        if variant_name.chars().all(|c| c.is_numeric()) {
-            convert_into_roman(variant_name.parse().unwrap())
-        } else {
-            format!("_{}", variant_name)
-        }
-    }
-}
-
-fn convert_into_roman(n: u32) -> String {
-    use numerals::roman::Roman;
-    match n {
-        0 => "O".to_string(),
-        _ => format!("{:X}", Roman::from(n as i16)),
-    }
-}
-
 fn all_nums(variants: impl IntoIterator<Item = impl AsRef<str>>) -> bool {
     variants
         .into_iter()
         .all(|s| s.as_ref().chars().all(|c| c.is_numeric()))
 }
 
-fn all_bools(variants: impl AsRef<[String]>) -> bool {
-    const TF: [&str; 2] = ["true", "false"];
-    const FT: [&str; 2] = ["false", "true"];
-    variants.as_ref() == TF || variants.as_ref() == FT
+fn all_bools<'a, I, II>(variants: II) -> bool
+where
+    I: AsRef<str> + ?Sized + 'a,
+    II: IntoIterator<Item = &'a I>,
+{
+    let mut variants = variants.into_iter();
+    let mut next = || variants.next().map(|x| x.as_ref());
+
+    match (next(), next(), next()) {
+        (Some("true"), Some("false"), None) => true,
+        (Some("false"), Some("true"), None) => true,
+        _ => false,
+    }
 }
