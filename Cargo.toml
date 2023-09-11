@@ -41,6 +41,7 @@ indexmap = "2.0"
 
 # Own crates
 rjacraft_core = { path = "crates/core", version = "0.0.1" }
+rjacraft_data_generator = { path = "crates/data-generator", version = "0.0.1" }
 rjacraft_types = { path = "crates/types", version = "0.0.1" }
 
 # Bevy-specific profile setup aimed at better performace while developing
@@ -76,7 +77,7 @@ document-features.workspace = true
 #! ## Basic features
 
 ## Enables the default features
-default = ["core"]
+default = ["core", "types"]
 
 ## Enables `core` features
 core = ["dep:rjacraft_core"]

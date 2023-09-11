@@ -1,7 +1,3 @@
-extern crate rjacraft_data_generator;
-
-use rjacraft_data_generator::*;
-
 fn main() {
     use std::{fs::OpenOptions, path::Path};
 
@@ -16,8 +12,8 @@ fn main() {
         .open(Path::new(&out_dir).join("blocks.rs"))
         .expect("create destination file");
 
-    let src_path = Path::new("../../mc-data/blocks.json");
+    let src_path = Path::new("../../contrib/blocks.json");
     let json_data = std::fs::read_to_string(&src_path).expect("read input JSON");
 
-    gen_structs(json_data, &mut dest_file).expect("generate code");
+    rjacraft_data_generator::gen_structs(json_data, &mut dest_file).expect("generate code");
 }

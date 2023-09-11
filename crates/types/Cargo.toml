@@ -11,4 +11,4 @@ homepage.workspace = true
 repository.workspace = true
 
 [build-dependencies]
-rjacraft_data_generator = { path = "../data-generator" }
+rjacraft_data_generator.workspace = true

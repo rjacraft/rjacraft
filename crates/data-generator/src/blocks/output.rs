@@ -5,7 +5,7 @@ use quote::ToTokens;
 use super::model::Block;
 use crate::name::Name;
 
-pub(super) fn gen_blocks_mod(blocks: IndexMap<Name, Block>) -> TokenStream {
+pub fn gen_blocks_mod(blocks: IndexMap<Name, Block>) -> TokenStream {
     blocks_mod::BlocksMod::new(blocks).to_token_stream()
 }
 
@@ -30,13 +30,11 @@ mod blocks_mod {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             use super::{block_exports::BlockExports, block_mod::BlockMod};
 
-            let mut block_mods = TokenStream::new();
-            self.blocks
+            let block_mods = self
+                .blocks
                 .iter()
-                .map(|(n, b)| BlockMod(n, b))
-                .for_each(|block| block.to_tokens(&mut block_mods));
-
-            let exports = BlockExports::new(self.blocks.iter().map(|(n, _)| n));
+                .map(|(name, block)| BlockMod { name, block });
+            let exports = BlockExports::new(self.blocks.keys());
 
             tokens.extend(quote! {
                 pub mod blocks {
@@ -46,7 +44,7 @@ mod blocks_mod {
                     pub struct UnknownVar(u8);
 
                     #exports
-                    #block_mods
+                    #(#block_mods)*
                 }
             });
         }
@@ -92,13 +90,16 @@ mod block_mod {
 
     use crate::{blocks::model::Block, name::Name};
 
-    pub struct BlockMod<'a>(pub &'a Name, pub &'a Block);
+    pub struct BlockMod<'a> {
+        pub name: &'a Name,
+        pub block: &'a Block,
+    }
 
     impl ToTokens for BlockMod<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let block_mod_name = self.0.snake_case();
-            let block_code = gen_block_code(self.1);
-            let props_code = gen_props_code(self.1);
+            let block_mod_name = self.name.snake_case();
+            let block_code = self.gen_block_code();
+            let props_code = self.gen_props_code();
 
             tokens.extend(quote! {
                 pub mod #block_mod_name {
@@ -109,27 +110,31 @@ mod block_mod {
         }
     }
 
-    fn gen_block_code(block: &Block) -> TokenStream {
-        let mut tokens = TokenStream::new();
-        super::block_struct::BlockStruct::new(block).to_tokens(&mut tokens);
-        super::block_convert::BlockConvert::from(block).to_tokens(&mut tokens);
-        tokens
-    }
-
-    fn gen_props_code(block: &Block) -> TokenStream {
-        let mut tokens = TokenStream::new();
-        for (prop_name, variants) in block.properties.iter() {
-            let (_, def_state) = block.states.default();
-            let def_value = def_state
-                .properties
-                .get(prop_name)
-                .expect("property is present");
-
-            super::prop_enum::PropertyEnum::new(prop_name, variants).to_tokens(&mut tokens);
-            super::prop_default::PropertyDefault::new(prop_name, def_value).to_tokens(&mut tokens);
-            super::prop_convert::PropertyConvert::new(prop_name, variants).to_tokens(&mut tokens);
+    impl BlockMod<'_> {
+        fn gen_block_code(&self) -> TokenStream {
+            let mut tokens = TokenStream::new();
+            super::block_struct::BlockStruct::new(self.block).to_tokens(&mut tokens);
+            super::block_convert::BlockConvert::from(self.block).to_tokens(&mut tokens);
+            tokens
         }
-        tokens
+
+        fn gen_props_code(&self) -> TokenStream {
+            use super::{prop_convert::*, prop_default::*, prop_enum::*};
+
+            let mut tokens = TokenStream::new();
+            for (prop_name, variants) in self.block.properties.iter() {
+                let (_, def_state) = self.block.states.default();
+                let def_value = def_state
+                    .properties
+                    .get(prop_name)
+                    .expect("property is present");
+
+                PropertyEnum::new(prop_name, variants).to_tokens(&mut tokens);
+                PropertyDefault::new(prop_name, def_value).to_tokens(&mut tokens);
+                PropertyConvert::new(prop_name, variants).to_tokens(&mut tokens);
+            }
+            tokens
+        }
     }
 }
 
@@ -233,13 +238,10 @@ mod block_convert {
     impl ToTokens for BlockIntoU32<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let mut match_arms = TokenStream::new();
-            for (id, state) in &self.0.id_states {
-                // "LargeAmethystBud { Facing: North, Waterlogged: True, }"
-                let state_inst = state.to_token_stream();
-
-                // "LavaCauldron => 7402,"
-                let stream = quote! { #state_inst => #id, };
-                stream.to_tokens(&mut match_arms);
+            for (id, state_inst) in &self.0.id_states {
+                // "RedstoneLamp { Lit: Lit::True, } => 7417,"
+                let match_arm = quote! { #state_inst => #id, };
+                match_arm.to_tokens(&mut match_arms);
             }
 
             // It is assumed that the states property covers all possible
@@ -264,11 +266,9 @@ mod block_convert {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let mut match_arms = TokenStream::new();
             for (id, state_inst) in &self.0.id_states {
-                let state_inst = state_inst;
-
                 // "4287 => Farmland,"
-                let stream = quote! { #id => #state_inst, };
-                stream.to_tokens(&mut match_arms);
+                let match_arm = quote! { #id => #state_inst, };
+                match_arm.to_tokens(&mut match_arms);
             }
 
             tokens.extend(quote! {

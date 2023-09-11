@@ -1,7 +1,7 @@
 [package]
 name = "rjacraft_data_generator"
 description = "Data generator for Rjacraft."
-categories = ["codegen"]
+categories = ["development-tools::build-utils", "encoding"]
 keywords = ["rjacraft", "codegen", "minecraft"]
 version.workspace = true
 edition.workspace = true

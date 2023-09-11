@@ -5,9 +5,9 @@ mod name;
 
 #[derive(Debug, thiserror::Error)]
 pub enum GenerateError {
-    #[error("I/O error: {0}")]
+    #[error("I/O operation failed")]
     Io(#[from] std::io::Error),
-    #[error("error generating blocks: {0}")]
+    #[error("generating blocks failed")]
     Blocks(#[from] blocks::GenerateError),
 }
 

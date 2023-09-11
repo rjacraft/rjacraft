@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use indexmap::IndexMap;
 use serde::Deserialize;
-use thiserror::Error;
 
 use super::model::{Block, Id, PropertyVariant, PropertyVariants, State, States};
 use crate::name::Name;
@@ -26,13 +25,13 @@ struct SerdeState {
     properties: BTreeMap<String, String>,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum ParseError {
-    #[error("malformed JSON data: {0}")]
+    #[error("malformed JSON data")]
     Json(#[from] serde_json::Error),
 }
 
-pub(super) fn parse_block_registry(json_data: String) -> Result<IndexMap<Name, Block>, ParseError> {
+pub fn parse_block_registry(json_data: String) -> Result<IndexMap<Name, Block>, ParseError> {
     let registry: BTreeMap<String, SerdeBlock> = serde_json::from_str(&json_data)?;
 
     fn property_variants(prop_vars: Vec<String>) -> PropertyVariants {
