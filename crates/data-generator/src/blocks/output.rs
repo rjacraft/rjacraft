@@ -139,12 +139,12 @@ mod block_struct {
 
     use crate::blocks::model::Block;
 
-    pub struct BlockStruct {
-        pub properties: Vec<BlockStructField>,
+    pub struct BlockStruct<'a> {
+        pub properties: Vec<BlockStructField<'a>>,
     }
 
-    impl BlockStruct {
-        pub fn new(block: &Block) -> Self {
+    impl<'a> BlockStruct<'a> {
+        pub fn new(block: &'a Block) -> Self {
             let properties = block
                 .properties
                 .iter()
@@ -158,7 +158,7 @@ mod block_struct {
         }
     }
 
-    impl ToTokens for BlockStruct {
+    impl ToTokens for BlockStruct<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             tokens.extend(quote! {
                 #[derive(Debug, Default, Eq, PartialEq, Copy, Clone, Hash)]
@@ -180,15 +180,15 @@ mod block_struct {
         }
     }
 
-    pub struct BlockStructField {
-        pub prop_name: Ident,      // honey_level
-        pub prop_enum_name: Ident, // HoneyLevel
+    pub struct BlockStructField<'a> {
+        pub prop_name: &'a Ident,      // honey_level
+        pub prop_enum_name: &'a Ident, // HoneyLevel
     }
 
-    impl ToTokens for BlockStructField {
+    impl ToTokens for BlockStructField<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let prop_name = &self.prop_name;
-            let prop_enum_name = &self.prop_enum_name;
+            let prop_name = self.prop_name;
+            let prop_enum_name = self.prop_enum_name;
 
             // "pub open: Open,"
             tokens.extend(quote!(pub #prop_name: #prop_enum_name,))
@@ -203,12 +203,12 @@ mod block_convert {
     use crate::blocks::model::{Block, Id, State};
 
     #[derive(Debug)]
-    pub struct BlockConvert {
-        pub id_states: Vec<(Id, BlockStateInst)>,
+    pub struct BlockConvert<'a> {
+        pub id_states: Vec<(Id, BlockStateInst<'a>)>,
     }
 
-    impl From<&Block> for BlockConvert {
-        fn from(block: &Block) -> Self {
+    impl<'a> From<&'a Block> for BlockConvert<'a> {
+        fn from(block: &'a Block) -> Self {
             let id_states = block
                 .states
                 .states
@@ -220,7 +220,7 @@ mod block_convert {
         }
     }
 
-    impl ToTokens for BlockConvert {
+    impl ToTokens for BlockConvert<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             BlockIntoU32(self).to_tokens(tokens);
             BlockFromU32(self).to_tokens(tokens);
@@ -228,7 +228,7 @@ mod block_convert {
     }
 
     #[derive(Debug)]
-    pub struct BlockIntoU32<'a>(&'a BlockConvert);
+    pub struct BlockIntoU32<'a>(&'a BlockConvert<'a>);
 
     impl ToTokens for BlockIntoU32<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -258,7 +258,7 @@ mod block_convert {
     }
 
     #[derive(Debug)]
-    pub struct BlockFromU32<'a>(&'a BlockConvert);
+    pub struct BlockFromU32<'a>(&'a BlockConvert<'a>);
 
     impl ToTokens for BlockFromU32<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -287,29 +287,19 @@ mod block_convert {
     }
 
     #[derive(Debug)]
-    pub struct BlockStateInst {
-        pub properties: Vec<BlockStateProperty>,
+    pub struct BlockStateInst<'a> {
+        pub properties: Vec<BlockStateProperty<'a>>,
     }
 
-    impl From<&State> for BlockStateInst {
-        fn from(block_state: &State) -> Self {
+    impl<'a> From<&'a State> for BlockStateInst<'a> {
+        fn from(block_state: &'a State) -> Self {
             let properties = block_state
                 .properties
                 .iter()
-                .map(|block_prop| {
-                    let ident = block_prop.0.snake_case();
-                    let ident1 = block_prop.0.pascal_case();
-                    let ident2 = block_prop.1.variant().pascal_case();
-
-                    // println!("cargo:warning=1. {}", ident);
-                    // println!("cargo:warning=2. {}", ident1);
-                    // println!("cargo:warning=3. {}", ident2);
-
-                    BlockStateProperty {
-                        field_name: ident,
-                        enum_name: ident1,
-                        var_name: ident2,
-                    }
+                .map(|block_prop| BlockStateProperty {
+                    field_name: block_prop.0.snake_case(),
+                    enum_name: block_prop.0.pascal_case(),
+                    var_name: block_prop.1.variant().into_pascal_case(),
                 })
                 .collect();
 
@@ -317,7 +307,7 @@ mod block_convert {
         }
     }
 
-    impl ToTokens for BlockStateInst {
+    impl ToTokens for BlockStateInst<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             // "Ladder"
             tokens.extend(quote!(Block));
@@ -336,13 +326,13 @@ mod block_convert {
     }
 
     #[derive(Debug)]
-    pub struct BlockStateProperty {
-        pub field_name: Ident, // instrument
-        pub enum_name: Ident,  // NoteBlock
-        pub var_name: Ident,   // IronXylophone
+    pub struct BlockStateProperty<'a> {
+        pub field_name: &'a Ident, // instrument
+        pub enum_name: &'a Ident,  // NoteBlock
+        pub var_name: Ident,       // IronXylophone
     }
 
-    impl ToTokens for BlockStateProperty {
+    impl ToTokens for BlockStateProperty<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let field_name = &self.field_name;
             let enum_name = &self.enum_name;
@@ -366,25 +356,30 @@ mod prop_enum {
 
     use crate::{blocks::model::PropertyVariants, name::Name};
 
-    pub struct PropertyEnum {
-        pub prop_name: Ident, // Powered
+    pub struct PropertyEnum<'a> {
+        pub prop_name: &'a Ident, // Powered
         pub prop_vars: Vec<(Ident, Option<Literal>)>,
     }
 
-    impl PropertyEnum {
-        pub fn new(name: &Name, variants: &PropertyVariants) -> Self {
+    impl<'a> PropertyEnum<'a> {
+        pub fn new(name: &'a Name, variants: &PropertyVariants) -> Self {
             Self {
                 prop_name: name.pascal_case(),
                 prop_vars: variants
                     .as_enum()
                     .into_iter()
-                    .map(|(name, ord)| (name.pascal_case(), ord.map(|x| Literal::u8_unsuffixed(x))))
+                    .map(|(name, ord)| {
+                        (
+                            name.into_pascal_case(),
+                            ord.map(|x| Literal::u8_unsuffixed(x)),
+                        )
+                    })
                     .collect(),
             }
         }
     }
 
-    impl ToTokens for PropertyEnum {
+    impl ToTokens for PropertyEnum<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let derive = if self
                 .prop_vars
@@ -426,21 +421,21 @@ mod prop_default {
     use crate::{blocks::model::PropertyVariant, name::Name};
 
     #[derive(Debug)]
-    pub struct PropertyDefault {
-        pub enum_name: Ident, // WeepingVines
+    pub struct PropertyDefault<'a> {
+        pub enum_name: &'a Ident, // WeepingVines
         pub def_var_name: Ident,
     }
 
-    impl PropertyDefault {
-        pub fn new(name: &Name, value: &PropertyVariant) -> Self {
+    impl<'a> PropertyDefault<'a> {
+        pub fn new(name: &'a Name, value: &PropertyVariant) -> Self {
             PropertyDefault {
                 enum_name: name.pascal_case(),
-                def_var_name: value.variant().pascal_case(),
+                def_var_name: value.variant().into_pascal_case(),
             }
         }
     }
 
-    impl ToTokens for PropertyDefault {
+    impl ToTokens for PropertyDefault<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let enum_name = &self.enum_name;
             let def_var_name = &self.def_var_name;
@@ -466,12 +461,12 @@ mod prop_convert {
     };
 
     pub struct PropertyConvert<'a> {
-        pub prop_name: Ident, // HoneyLevel
+        pub prop_name: &'a Ident, // HoneyLevel
         pub prop_vars: &'a PropertyVariants,
     }
 
     impl<'a> PropertyConvert<'a> {
-        pub fn new(name: &Name, variants: &'a PropertyVariants) -> Self {
+        pub fn new(name: &'a Name, variants: &'a PropertyVariants) -> Self {
             Self {
                 prop_name: name.pascal_case(),
                 prop_vars: variants,
@@ -509,7 +504,8 @@ mod prop_convert {
             let mut match_arms = TokenStream::new();
             for &num in self.numbers.iter() {
                 let u8_num = Literal::u8_unsuffixed(num); // "4"
-                let roman_num = PropertyVariant::Numeric(num).variant().pascal_case(); // "IV"
+                let roman_num = PropertyVariant::Numeric(num).variant();
+                let roman_num = roman_num.into_pascal_case(); // "IV"
 
                 // "4 => Self::IV,"
                 let match_arm = quote! { #u8_num => Self::#roman_num, };

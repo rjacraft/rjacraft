@@ -26,12 +26,16 @@ impl Name {
         }
     }
 
-    pub fn snake_case(&self) -> Ident {
-        self.snake_case.clone()
+    pub fn snake_case(&self) -> &Ident {
+        &self.snake_case
     }
 
-    pub fn pascal_case(&self) -> Ident {
-        self.pascal_case.clone()
+    pub fn pascal_case(&self) -> &Ident {
+        &self.pascal_case
+    }
+
+    pub fn into_pascal_case(self) -> Ident {
+        self.pascal_case
     }
 
     fn try_parse_ident(src: impl AsRef<str>) -> Ident {
