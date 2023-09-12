@@ -351,8 +351,8 @@ mod block_convert {
 }
 
 mod prop_enum {
-    use proc_macro2::{Delimiter, Group, Ident, Literal, TokenStream};
-    use quote::{quote, ToTokens, TokenStreamExt as _};
+    use proc_macro2::{Ident, Literal, TokenStream};
+    use quote::{quote, ToTokens};
 
     use crate::{blocks::model::PropertyVariants, name::Name};
 
@@ -381,35 +381,28 @@ mod prop_enum {
 
     impl ToTokens for PropertyEnum<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let derive = if self
+            // "Distance"
+            let prop_name = self.prop_name;
+
+            // "Ord, PartialOrd,"
+            let derive = self
                 .prop_vars
                 .first()
-                .map(|(_, ord)| ord.is_some())
-                .unwrap_or(false)
-            {
-                quote!(Ord, PartialOrd,)
-            } else {
-                TokenStream::new()
-            };
+                .filter(|(_, ord)| ord.is_some())
+                .map(|_| quote!(Ord, PartialOrd,));
 
-            let prop_name = &self.prop_name;
-            // "pub enum BubbleCoralFan"
+            // "I = 1, II = 2, III = 3,"
+            let vars = self.prop_vars.iter().map(|(ident, ord)| {
+                let ord = ord.as_ref().map(|x| quote!(= #x));
+                quote!(#ident #ord,)
+            });
+
             tokens.extend(quote! {
                 #[derive(Debug, #derive Eq, PartialEq, Copy, Clone, Hash)]
-                pub enum #prop_name
-            });
-
-            let mut stream = TokenStream::new();
-            self.prop_vars.iter().for_each(|(ident, ord)| {
-                match ord {
-                    Some(ord) => quote!(#ident = #ord,),
-                    None => quote!(#ident,),
+                pub enum #prop_name {
+                    #( #vars )*
                 }
-                .to_tokens(&mut stream)
             });
-
-            // "{ North, East, South, West, }"
-            tokens.append(Group::new(Delimiter::Brace, stream));
         }
     }
 }
