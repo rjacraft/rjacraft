@@ -1,6 +1,6 @@
 [package]
 name = "rjacraft_data_generator"
-description = "Data generator for Rjacraft."
+description = "A tool for translating Minecraft data reports into Rust constructs"
 categories = ["development-tools::build-utils", "encoding"]
 keywords = ["rjacraft", "codegen", "minecraft"]
 version.workspace = true

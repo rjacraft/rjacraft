@@ -1,6 +1,6 @@
 [package]
 name = "rjacraft_types"
-description = "Types for rjacraft"
+description = "Rjacraft's collection of Minecraft protocol constructs"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
