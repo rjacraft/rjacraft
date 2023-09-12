@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, io::Read};
 
 use indexmap::IndexMap;
 use serde::Deserialize;
@@ -31,8 +31,8 @@ pub enum ParseError {
     Json(#[from] serde_json::Error),
 }
 
-pub fn parse_block_registry(json_data: String) -> Result<IndexMap<Name, Block>, ParseError> {
-    let registry: BTreeMap<String, SerdeBlock> = serde_json::from_str(&json_data)?;
+pub fn parse_block_registry(source: &mut impl Read) -> Result<IndexMap<Name, Block>, ParseError> {
+    let registry: BTreeMap<String, SerdeBlock> = serde_json::from_reader(source)?;
 
     fn property_variants(prop_vars: Vec<String>) -> PropertyVariants {
         enum Kind {

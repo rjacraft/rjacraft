@@ -1,5 +1,5 @@
 fn main() {
-    use std::{fs::OpenOptions, path::Path};
+    use std::{fs::File, fs::OpenOptions, path::Path};
 
     // Only re-run if the Minecraft JSON data files were modified.
     //println!("cargo:rerun-if-changed=../../mc-data/blocks.json");
@@ -13,7 +13,6 @@ fn main() {
         .expect("create destination file");
 
     let src_path = Path::new("../../contrib/blocks.json");
-    let json_data = std::fs::read_to_string(&src_path).expect("read input JSON");
-
-    rjacraft_data_generator::gen_structs(json_data, &mut dest_file).expect("generate code");
+    let mut json_data = File::open(src_path).expect("read input JSON");
+    rjacraft_data_generator::gen_structs(&mut json_data, &mut dest_file).expect("generate code");
 }

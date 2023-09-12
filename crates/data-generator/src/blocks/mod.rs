@@ -1,4 +1,4 @@
-use std::io::{Error as IoError, Write as IoWrite};
+use std::io::{Error as IoError, Read, Write};
 
 pub use json::ParseError as JsonParseError;
 
@@ -14,8 +14,11 @@ pub enum GenerateError {
     Parse(#[from] JsonParseError),
 }
 
-pub fn gen_blocks_module(json_data: String, sink: &mut impl IoWrite) -> Result<(), GenerateError> {
-    let blocks = json::parse_block_registry(json_data)?;
+pub fn gen_blocks_module(
+    source: &mut impl Read,
+    sink: &mut impl Write,
+) -> Result<(), GenerateError> {
+    let blocks = json::parse_block_registry(source)?;
     let stream = output::gen_blocks_mod(blocks);
 
     let syn_tree = syn::parse2(stream).expect("parse TokenStream into syn::File");

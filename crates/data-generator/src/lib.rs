@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Read, Write};
 
 mod blocks;
 mod name;
@@ -11,6 +11,6 @@ pub enum GenerateError {
     Blocks(#[from] blocks::GenerateError),
 }
 
-pub fn gen_structs(json_data: String, sink: &mut impl Write) -> Result<(), GenerateError> {
-    Ok(blocks::gen_blocks_module(json_data, sink)?)
+pub fn gen_structs(source: &mut impl Read, sink: &mut impl Write) -> Result<(), GenerateError> {
+    Ok(blocks::gen_blocks_module(source, sink)?)
 }
