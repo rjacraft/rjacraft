@@ -70,12 +70,7 @@ pub fn parse_block_registry(source: &mut impl Read) -> Result<IndexMap<Name, Blo
             .into_iter()
             .map(|(name_raw, variant_raw)| {
                 let prop_name = Name::from_snake_case(name_raw);
-
-                let variants = all_properties
-                    .iter()
-                    .find_map(|(name, vars)| (name == &prop_name).then_some(vars))
-                    .unwrap();
-
+                let variants = all_properties.get(&prop_name).unwrap();
                 let prop_var = PropertyVariant::from(variant_raw, variants);
                 (prop_name, prop_var)
             })
@@ -102,15 +97,17 @@ pub fn parse_block_registry(source: &mut impl Read) -> Result<IndexMap<Name, Blo
                 })
                 .collect();
 
-            let mut block_states = IndexMap::with_capacity(serde_block.states.len());
-            let mut def_state_id = Id(0);
-            for s in serde_block.states.into_iter() {
-                if s.default {
-                    def_state_id = Id(s.id.0);
-                }
-                let (k, v) = state(&block_props, s.id.0, s.properties);
-                block_states.insert(k, v);
-            }
+            let def_state_id = serde_block
+                .states
+                .iter()
+                .find_map(|x| x.default.then(|| Id(x.id.0)))
+                .expect("default state exists");
+
+            let block_states = serde_block
+                .states
+                .into_iter()
+                .map(|s| state(&block_props, s.id.0, s.properties))
+                .collect();
 
             let block = Block {
                 properties: block_props,

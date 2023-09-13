@@ -2,8 +2,7 @@ use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 
-use super::model::Block;
-use crate::name::Name;
+use crate::{blocks::model::Block, name::Name};
 
 pub fn gen_blocks_mod(blocks: IndexMap<Name, Block>) -> TokenStream {
     blocks_mod::BlocksMod::new(blocks).to_token_stream()
@@ -391,16 +390,16 @@ mod prop_enum {
                 .filter(|(_, ord)| ord.is_some())
                 .map(|_| quote!(Ord, PartialOrd,));
 
-            // "I = 1, II = 2, III = 3,"
+            // ["I = 1", "II = 2", "III = 3"]
             let vars = self.prop_vars.iter().map(|(ident, ord)| {
                 let ord = ord.as_ref().map(|x| quote!(= #x));
-                quote!(#ident #ord,)
+                quote!(#ident #ord)
             });
 
             tokens.extend(quote! {
                 #[derive(Debug, #derive Eq, PartialEq, Copy, Clone, Hash)]
                 pub enum #prop_name {
-                    #( #vars )*
+                    #( #vars, )*
                 }
             });
         }
@@ -416,27 +415,27 @@ mod prop_default {
     #[derive(Debug)]
     pub struct PropertyDefault<'a> {
         pub enum_name: &'a Ident, // WeepingVines
-        pub def_var_name: Ident,
+        pub def_variant: Ident,
     }
 
     impl<'a> PropertyDefault<'a> {
         pub fn new(name: &'a Name, value: &PropertyVariant) -> Self {
             PropertyDefault {
                 enum_name: name.pascal_case(),
-                def_var_name: value.variant().into_pascal_case(),
+                def_variant: value.variant().into_pascal_case(),
             }
         }
     }
 
     impl ToTokens for PropertyDefault<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let enum_name = &self.enum_name;
-            let def_var_name = &self.def_var_name;
+            let enum_name = self.enum_name;
+            let def_variant = &self.def_variant;
 
             tokens.extend(quote! {
                 impl Default for #enum_name {
                     fn default() -> Self {
-                        Self::#def_var_name
+                        Self::#def_variant
                     }
                 }
             });
@@ -471,13 +470,13 @@ mod prop_convert {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             match &self.prop_vars {
                 PropertyVariants::Bool => {
-                    PropertyNotBool(&self.prop_name).to_tokens(tokens);
-                    PropertyFromBool(&self.prop_name).to_tokens(tokens);
-                    PropertyIntoBool(&self.prop_name).to_tokens(tokens);
+                    PropertyNotBool(self.prop_name).to_tokens(tokens);
+                    PropertyFromBool(self.prop_name).to_tokens(tokens);
+                    PropertyIntoBool(self.prop_name).to_tokens(tokens);
                 }
                 PropertyVariants::Numeric(numbers) => {
                     let impl_from_u8 = PropertyFromU8 {
-                        enum_name: &self.prop_name,
+                        enum_name: self.prop_name,
                         numbers: &numbers,
                     };
                     impl_from_u8.to_tokens(tokens);
@@ -529,15 +528,11 @@ mod prop_convert {
 
     impl ToTokens for PropertyFromBool<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let prop_enum_name = self.0;
+            let enum_name = self.0;
             tokens.extend(quote! {
-                impl From<bool> for #prop_enum_name {
+                impl From<bool> for #enum_name {
                     fn from(value: bool) -> Self {
-                        if value {
-                            Self::True
-                        } else {
-                            Self::False
-                        }
+                        if value { Self::True } else { Self::False }
                     }
                 }
             });
@@ -548,11 +543,11 @@ mod prop_convert {
 
     impl ToTokens for PropertyIntoBool<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let prop_enum_name = self.0;
+            let enum_name = self.0;
             tokens.extend(quote! {
-                impl From<#prop_enum_name> for bool {
-                    fn from(value: #prop_enum_name) -> Self {
-                        value == #prop_enum_name::True
+                impl From<#enum_name> for bool {
+                    fn from(value: #enum_name) -> Self {
+                        value == #enum_name::True
                     }
                 }
             });
@@ -563,9 +558,9 @@ mod prop_convert {
 
     impl ToTokens for PropertyNotBool<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let prop_enum_name = self.0;
+            let enum_name = self.0;
             tokens.extend(quote! {
-                impl std::ops::Not for #prop_enum_name {
+                impl std::ops::Not for #enum_name {
                     type Output = Self;
 
                     fn not(self) -> Self::Output {
