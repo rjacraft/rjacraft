@@ -489,31 +489,34 @@ mod prop_convert {
 
     pub struct PropertyFromU8<'a> {
         pub enum_name: &'a Ident,
-        pub numbers: &'a Vec<u8>,
+        pub numbers: &'a [u8],
     }
 
     impl ToTokens for PropertyFromU8<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            let mut match_arms = TokenStream::new();
-            for &num in self.numbers.iter() {
-                let u8_num = Literal::u8_unsuffixed(num); // "4"
-                let roman_num = PropertyVariant::Numeric(num).variant();
-                let roman_num = roman_num.into_pascal_case(); // "IV"
+            // "Distance"
+            let enum_name = self.enum_name;
 
-                // "4 => Self::IV,"
-                let match_arm = quote! { #u8_num => Self::#roman_num, };
-                match_arm.to_tokens(&mut match_arms);
-            }
-
-            let prop_enum_name = self.enum_name;
+            // ["1 => Self::I", "2 => Self::II", "3 => Self::III"]
+            let match_arms: Vec<_> = self
+                .numbers
+                .iter()
+                .copied()
+                .map(|num| {
+                    let u8_num = Literal::u8_unsuffixed(num); // "4"
+                    let roman_num = PropertyVariant::Numeric(num).variant();
+                    let roman_num = roman_num.into_pascal_case(); // "IV"
+                    quote! { #u8_num => Self::#roman_num }
+                })
+                .collect();
 
             tokens.extend(quote! {
-                impl TryFrom<u8> for #prop_enum_name {
+                impl TryFrom<u8> for #enum_name {
                     type Error = super::UnknownVar;
 
                     fn try_from(n: u8) -> Result<Self, Self::Error> {
                         Ok(match n {
-                            #match_arms
+                            #( #match_arms, )*
                             _ => Err(super::UnknownVar(n))?,
                         })
                     }
