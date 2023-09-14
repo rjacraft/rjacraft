@@ -201,7 +201,7 @@ mod block_struct {
 }
 
 mod block_convert {
-    use proc_macro2::{Delimiter, Group, Ident, Literal, TokenStream};
+    use proc_macro2::{Literal, TokenStream};
     use quote::{quote, ToTokens, TokenStreamExt as _};
 
     use crate::blocks::model::{Block, Id, State};
@@ -287,58 +287,34 @@ mod block_convert {
 
     #[derive(Debug)]
     pub struct BlockStateInst<'a> {
-        pub properties: Vec<BlockStateProperty<'a>>,
+        pub block_state: &'a State,
     }
 
     impl<'a> From<&'a State> for BlockStateInst<'a> {
         fn from(block_state: &'a State) -> Self {
-            let properties = block_state
-                .properties
-                .iter()
-                .map(|block_prop| BlockStateProperty {
-                    field_name: block_prop.0.snake_case(),
-                    enum_name: block_prop.0.pascal_case(),
-                    var_name: block_prop.1.variant().into_pascal_case(),
-                })
-                .collect();
-
-            BlockStateInst { properties }
+            BlockStateInst { block_state }
         }
     }
 
     impl ToTokens for BlockStateInst<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            // "Ladder"
-            tokens.extend(quote!(Block));
+            let properties = &self.block_state.properties;
 
-            if !self.properties.is_empty() {
-                let mut props = TokenStream::new();
-                // "facing: Facing::North, waterlogged: Waterlogged::True,"
-                self.properties
-                    .iter()
-                    .for_each(|prop| prop.to_tokens(&mut props));
+            // "{ instrument: Instrument::IronXylophone, note: Note::XX }"
+            let fields = (!properties.is_empty()).then(|| {
+                let properties = properties.iter().map(|(prop_name, prop_var)| {
+                    let field_name = prop_name.snake_case();
+                    let enum_name = prop_name.pascal_case();
+                    let var_name = prop_var.variant().into_pascal_case();
 
-                // "LargeAmethystBud { facing: Facing::North, waterlogged: Waterlogged::True, }"
-                tokens.append(Group::new(Delimiter::Brace, props))
-            }
-        }
-    }
+                    // "instrument: Instrument::IronXylophone"
+                    quote!(#field_name: #enum_name::#var_name)
+                });
+                quote!({ #( #properties, )* })
+            });
 
-    #[derive(Debug)]
-    pub struct BlockStateProperty<'a> {
-        pub field_name: &'a Ident, // instrument
-        pub enum_name: &'a Ident,  // NoteBlock
-        pub var_name: Ident,       // IronXylophone
-    }
-
-    impl ToTokens for BlockStateProperty<'_> {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            let field_name = &self.field_name;
-            let enum_name = &self.enum_name;
-            let var_name = &self.var_name;
-
-            // "instrument: NoteBlock::IronXylophone,"
-            tokens.extend(quote!(#field_name: #enum_name::#var_name,))
+            // "NoteBlock { instrument: Instrument::IronXylophone, note: Note::XX }"
+            tokens.extend(quote!(Block #fields));
         }
     }
 
