@@ -138,8 +138,8 @@ mod block_mod {
 }
 
 mod block_struct {
-    use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, TokenStream};
-    use quote::{quote, ToTokens, TokenStreamExt as _};
+    use proc_macro2::{Ident, TokenStream};
+    use quote::{quote, ToTokens};
 
     use crate::blocks::model::Block;
 
@@ -154,7 +154,7 @@ mod block_struct {
                 .iter()
                 .map(|(name, _)| BlockStructField {
                     prop_name: name.snake_case(),
-                    prop_enum_name: name.pascal_case(),
+                    enum_name: name.pascal_case(),
                 })
                 .collect();
 
@@ -164,38 +164,33 @@ mod block_struct {
 
     impl ToTokens for BlockStruct<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            let body = if self.properties.is_empty() {
+                quote!(;)
+            } else {
+                // ["pub facing: Facing", "pub has_book: HasBook"]
+                let properties = &self.properties;
+                quote!({ #( #properties, )* })
+            };
+
             tokens.extend(quote! {
                 #[derive(Debug, Default, Eq, PartialEq, Copy, Clone, Hash)]
-                pub struct Block
+                pub struct Block #body
             });
-
-            if self.properties.is_empty() {
-                // "pub struct LavaCauldron;"
-                tokens.append(Punct::new(';', Spacing::Alone));
-            } else {
-                let mut stream = TokenStream::new();
-                self.properties
-                    .iter()
-                    .for_each(|prop| prop.to_tokens(&mut stream));
-
-                // "pub struct Lectern { pub has_book: HasBook, }"
-                tokens.append(Group::new(Delimiter::Brace, stream));
-            }
         }
     }
 
     pub struct BlockStructField<'a> {
-        pub prop_name: &'a Ident,      // honey_level
-        pub prop_enum_name: &'a Ident, // HoneyLevel
+        pub prop_name: &'a Ident, // honey_level
+        pub enum_name: &'a Ident, // HoneyLevel
     }
 
     impl ToTokens for BlockStructField<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             let prop_name = self.prop_name;
-            let prop_enum_name = self.prop_enum_name;
+            let prop_enum_name = self.enum_name;
 
-            // "pub open: Open,"
-            tokens.extend(quote!(pub #prop_name: #prop_enum_name,))
+            // "pub open: Open"
+            tokens.extend(quote!(pub #prop_name: #prop_enum_name))
         }
     }
 }
