@@ -7,11 +7,11 @@ use serde::de;
 
 use crate::{error, ProtocolType};
 
-const MAX_SIZE: usize = 1 << 15;
-const DEFAULT_NS: &str = "minecraft";
+pub const MAX_SIZE: usize = 1 << 15;
+pub const DEFAULT_NS: &str = "minecraft";
 
 /// The way to construct this is by calling [`FromStr`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Identifier {
     namespace: String,
     location: String,
@@ -23,11 +23,28 @@ impl Identifier {
     }
 
     pub fn location(&self) -> &str {
-        &self.namespace
+        &self.location
+    }
+
+    pub fn parts(&self) -> (&str, &str) {
+        (&self.namespace, &self.location)
+    }
+
+    pub unsafe fn from_parts_unchecked(namespace: String, location: String) -> Self {
+        Identifier {
+            namespace,
+            location,
+        }
     }
 }
 
 impl fmt::Display for Identifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.namespace, self.location)
+    }
+}
+
+impl fmt::Debug for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.namespace, self.location)
     }

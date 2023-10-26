@@ -6,6 +6,7 @@ macro_rules! packets_struct {
         $(
             $ident:ident {
                 $(
+                    $(#[$attr:meta])*
                     $field:ident: $type:ty;
                 )*
             }
@@ -35,6 +36,7 @@ macro_rules! packets_struct {
             #[derive(Debug, Clone)]
             pub struct $ident {
                 $(
+                    $(#[$attr])*
                     pub $field: $type,
                 )*
             }
@@ -80,7 +82,10 @@ macro_rules! packet_sumtype {
     {
         $(
             $ident:ident {
-                $($opcode:literal = $variant:ident,)*
+                $(
+                    $(#[$attr:meta])*
+                    $opcode:literal = $variant:ident,
+                )*
             }
         )*
     } => {
@@ -112,6 +117,7 @@ macro_rules! packet_sumtype {
             #[derive(Debug, Clone)]
             pub enum $ident {
                 $(
+                    $(#[$attr])*
                     $variant($variant),
                 )*
             }

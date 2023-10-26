@@ -64,6 +64,18 @@ impl<const MAX_SIZE: usize> TryFrom<String> for LenString<MAX_SIZE> {
     }
 }
 
+impl<const MAX_SIZE: usize> TryFrom<&str> for LenString<MAX_SIZE> {
+    type Error = error::Overrun<MAX_SIZE>;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if value.len() > MAX_SIZE {
+            Err(error::Overrun(value.len()))
+        } else {
+            Ok(LenString(value.into()))
+        }
+    }
+}
+
 impl<const MAX_SIZE: usize> From<LenString<MAX_SIZE>> for String {
     fn from(value: LenString<MAX_SIZE>) -> Self {
         value.0

@@ -663,6 +663,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8afb450f006bf6385ca15ef45d71d2288452bc3683ce2e2cacc0d18e4be60b58"
 
 [[package]]
+name = "pretty-hex"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6fa0831dd7cc608c38a5e323422a0077678fa5744aa2be4ad91c4ece8eec8d5"
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -704,6 +710,16 @@ name = "rjacraft_core"
 version = "0.0.1"
 
 [[package]]
+name = "rjacraft_macro"
+version = "0.0.1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rjacraft_protocol",
+ "syn",
+]
+
+[[package]]
 name = "rjacraft_network"
 version = "0.0.1"
 dependencies = [
@@ -712,6 +728,7 @@ dependencies = [
  "bytes",
  "flume",
  "from_never",
+ "rjacraft_macro",
  "rjacraft_protocol",
  "serde_json",
  "thiserror",
@@ -729,10 +746,12 @@ dependencies = [
  "bytes",
  "from_never",
  "paste",
+ "pretty-hex",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
+ "tracing",
  "uuid",
 ]
 

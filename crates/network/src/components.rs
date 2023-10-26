@@ -2,13 +2,13 @@ use std::net::SocketAddr;
 
 use bevy_ecs::prelude::*;
 
-use crate::net_thread::{PeerMsgIn, PeerMsgOut};
+use crate::network::*;
 
 #[derive(Component)]
 pub struct Peer {
     pub addr: SocketAddr,
-    pub(crate) msg_in: flume::Sender<PeerMsgIn>,
-    pub(crate) msg_out: flume::Receiver<PeerMsgOut>,
+    pub(crate) b2n: flume::Sender<B2nEvent>,
+    pub(crate) n2b: flume::Receiver<N2bEvent>,
 }
 
 #[derive(Component)]

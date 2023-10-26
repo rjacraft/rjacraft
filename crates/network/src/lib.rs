@@ -1,30 +1,47 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use rjacraft_protocol::packets::*;
+use rjacraft_protocol::{
+    packets::*,
+    types::{self, Chat},
+};
 use tokio::net;
 use tracing::*;
 
-use self::net_thread::{PeerMsgIn, PeerMsgOut};
+use self::network::*;
 
 mod components;
 mod events;
-mod net_thread;
+mod network;
+mod systems;
 
-pub use self::{components::*, events::*};
+pub use self::{components::*, events::*, systems::n2b_system};
 
 #[derive(Resource)]
 pub struct Runtime(pub tokio::runtime::Runtime);
 
-pub struct NetworkPlugin<Addr, SStatus> {
-    pub addr: Addr,
-    pub status: SStatus,
-    // TODO an auth system
+pub struct UserSystems<Status, Auth, Brand> {
+    pub status: Status,
+    pub authenticate: Auth,
+    pub brand: Brand,
 }
 
-impl<Addr, SStatus> Plugin for NetworkPlugin<Addr, SStatus>
+pub enum AuthOutcome {
+    Success(String, uuid::Uuid, Vec<s2c::login::LoginSuccessProperty>),
+    Fail(Chat),
+}
+
+pub type BrandString = types::LenString<128>;
+
+pub struct NetworkPlugin<A, S> {
+    pub addr: A,
+    pub n2b_system: S,
+}
+
+impl<A, S> Plugin for NetworkPlugin<A, S>
 where
-    Addr: net::ToSocketAddrs + Clone + Send + Sync + 'static,
-    SStatus: ReadOnlySystem<In = Entity, Out = rjacraft_protocol::types::ServerStatus> + Clone,
+    Self: Send + Sync + 'static,
+    A: net::ToSocketAddrs + Clone + Send + Sync,
+    S: System<In = (), Out = ()> + Clone,
 {
     fn build(&self, app: &mut App) {
         let (new_peer_tx, new_peer_rx) = flume::unbounded();
@@ -35,110 +52,34 @@ where
             let new_peer_tx = new_peer_tx.clone();
 
             rt.0.spawn(async move {
-                if let Err(e) = net_thread::network_loop(addr.clone(), new_peer_tx.clone()).await {
+                if let Err(e) = network_loop(addr.clone(), new_peer_tx.clone()).await {
                     error!("network thread crashed: {e}");
                 }
             });
         };
 
-        let new_peer_system = move |mut commands: Commands| {
-            for (addr, msg_in, msg_out) in new_peer_rx.try_iter() {
-                debug!("adding new peer entity");
-                commands.add(move |world: &mut World| {
-                    let entity = world
-                        .spawn(Peer {
-                            addr,
-                            msg_in,
-                            msg_out,
-                        })
-                        .id();
-                    world.send_event(PeerConnected { peer: entity });
-                });
-            }
-        };
-
-        let mut status = self.status.clone();
-        status.initialize(&mut app.world);
-
-        let event_tx_system =
-            move |mut commands: Commands, world: &World, peers: Query<(Entity, &Peer)>| {
-                for (entity, peer) in peers.iter() {
-                    for msg in peer.msg_out.try_iter() {
-                        match msg {
-                            PeerMsgOut::Disconnected => commands.add(move |world: &mut World| {
-                                // gets deleted later on
-                                world.send_event(PeerDisconnected { peer: entity });
-                            }),
-                            PeerMsgOut::HandshakeComplete(
-                                protocol_version,
-                                server_address,
-                                server_port,
-                            ) => {
-                                commands.spawn(Handshaken {
-                                    protocol_version,
-                                    server_address,
-                                    server_port,
-                                });
-                            }
-                            PeerMsgOut::NeedStatus => {
-                                peer.msg_in
-                                    .send(PeerMsgIn::StatusPacket(s2c::StatusPacket::Response(
-                                        s2c::status::Response {
-                                            response: status.run_readonly(entity, world).into(),
-                                        },
-                                    )))
-                                    .unwrap();
-                            }
-                        }
-                    }
-                }
-            };
-
         app.add_event::<PeerConnected>()
             .add_event::<PeerDisconnected>()
             .add_event::<DropPeer>()
             .add_event::<ConfigurationPacketOut>()
-            // .add_event::<PlayPacketIn>()
+            .add_event::<PlayPacketIn>()
             .add_event::<PlayPacketOut>()
+            .add_event::<ClientBrand>()
             .add_systems(PostStartup, net_thread_system)
-            .add_systems(PreUpdate, new_peer_system)
-            .add_systems(Update, (event_tx_system, drop_system, event_rx_sysetm))
-            .add_systems(PostUpdate, delete_disconnects_system);
-    }
-}
-
-fn event_rx_sysetm(
-    mut conf: EventReader<ConfigurationPacketOut>,
-    mut play: EventReader<PlayPacketOut>,
-    world: &World,
-) {
-    for event in conf.into_iter() {
-        let peer = world.get::<Peer>(event.peer).unwrap();
-        peer.msg_in
-            .send(net_thread::PeerMsgIn::ConfigurationPacket(
-                event.packet.clone(),
-            ))
-            .unwrap();
-    }
-
-    for event in play.into_iter() {
-        let peer = world.get::<Peer>(event.peer).unwrap();
-        peer.msg_in
-            .send(net_thread::PeerMsgIn::PlayPacket(event.packet.clone()))
-            .unwrap();
-    }
-}
-
-fn delete_disconnects_system(mut events: EventReader<PeerDisconnected>, mut commands: Commands) {
-    for event in events.into_iter() {
-        debug!("despawning the peer entity");
-        commands.entity(event.peer).despawn();
-    }
-}
-
-fn drop_system(mut events: EventReader<DropPeer>, world: &World) {
-    for event in events.into_iter() {
-        let peer = world.get::<Peer>(event.peer).unwrap();
-        peer.msg_in.send(net_thread::PeerMsgIn::Drop).unwrap();
+            .add_systems(
+                PreUpdate,
+                (
+                    systems::new_peer_system(new_peer_rx),
+                    self.n2b_system.clone(),
+                )
+                    .chain(),
+            )
+            .add_systems(
+                PostUpdate,
+                (
+                    systems::b2n_event_system,
+                    systems::delete_disconnects_system,
+                ),
+            );
     }
 }

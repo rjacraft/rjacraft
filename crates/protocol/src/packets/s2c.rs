@@ -37,6 +37,7 @@ macros::packet_sumtype! {
     }
 
     PlayPacket {
+        0x25 = KeepAlive,
         0x2A = JoinGame,
     }
 }

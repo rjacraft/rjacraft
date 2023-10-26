@@ -14,6 +14,8 @@ packets_struct! {
     LoginSuccess {
         uuid: ::uuid::Uuid;
         username: LenString<16>;
+        /// See [Mojang's API](https://wiki.vg/Mojang_API#UUID_to_Profile_and_Skin.2FCape) for the
+        /// meaning of these
         properties: LenVec<LoginSuccessProperty>;
     }
 

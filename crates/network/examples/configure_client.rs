@@ -21,20 +21,20 @@ fn main() {
                 n2b_system: IntoSystem::into_system(n2b_system(UserSystems {
                     status: status_system,
                     authenticate: auth_system,
-                    brand: brand_system,
+                    brand: server_brand_system,
                 })),
             },
             bevy_app::ScheduleRunnerPlugin {
                 run_mode: bevy_app::RunMode::Loop { wait: None },
             },
         ))
-        .add_systems(Update, handle_disconnect)
+        .add_systems(Update, brand_system)
         .run();
 }
 
-fn status_system(In(entity): In<Entity>, world: &World) -> server_status::ServerStatus {
-    let peer: &Peer = world.get(entity).unwrap();
+// todo: the registries and stuff ofc. no need to do anything else really
 
+fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
     server_status::ServerStatus {
         version: server_status::Version {
             name: "Snapshot whatever".into(),
@@ -45,26 +45,23 @@ fn status_system(In(entity): In<Entity>, world: &World) -> server_status::Server
             online: 0,
             sample: vec![],
         },
-        description: chat!(
-            ("Example: " (b "basic server"))
-            ("\nYour IP: " (b,c["#22ff22"] "{}", peer.addr.ip()))
-        ),
+        description: chat!("Example: " (b "configure client")),
         favicon: None,
         enforces_secure_chat: false,
         previews_chat: false,
     }
 }
 
-fn auth_system(In(_): In<(Entity, String, uuid::Uuid)>) -> AuthOutcome {
-    AuthOutcome::Fail(chat!("Logging in is not supported"))
+fn auth_system(In((_, username_in, uuid_in)): In<(Entity, String, uuid::Uuid)>) -> AuthOutcome {
+    AuthOutcome::Success(username_in, uuid_in, vec![])
 }
 
-fn brand_system(_peer: In<Entity>) -> Option<BrandString> {
-    None
+fn server_brand_system(_peer: In<Entity>) -> Option<BrandString> {
+    Some("rjacraft-derivative".try_into().unwrap())
 }
 
-fn handle_disconnect(mut events: EventReader<PeerDisconnected>) {
-    for event in events.iter() {
-        info!("disconnect: {:?}", event);
+fn brand_system(mut events_in: EventReader<ClientBrand>) {
+    for e in events_in.into_iter() {
+        info!("client brand: {}", e.brand);
     }
 }

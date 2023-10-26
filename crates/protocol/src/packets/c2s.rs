@@ -34,5 +34,7 @@ packet_sumtype! {
         0x04 = ResourcePack,
     }
 
-    PlayPacket {}
+    PlayPacket {
+        0x14 = KeepAlive,
+    }
 }

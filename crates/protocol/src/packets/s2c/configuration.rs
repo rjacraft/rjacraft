@@ -2,7 +2,7 @@ use crate::packets::prelude::*;
 
 packets_struct! {
     PluginMessage {
-        channel: LenString<{ 1 << 20 }>;
+        channel: Identifier;
         data: RemainingBytes<{ 1 << 20 }>;
     }
 
@@ -35,7 +35,17 @@ packets_struct! {
         flags: LenVec<Identifier>;
     }
 
+    Tag {
+        name: Identifier;
+        entries: LenVec<VarInt>;
+    }
+
+    TagType {
+        name: Identifier;
+        tags: LenVec<Tag>;
+    }
+
     UpdateTags {
-        todo: RemainingBytes<{ 1 << 20 }>; // TODO
+        tag_types: LenVec<TagType>;
     }
 }

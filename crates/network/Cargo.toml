@@ -19,6 +19,7 @@ tokio = { workspace = true, features = [
     "macros",
 ] }
 rjacraft_protocol.workspace = true
+rjacraft_macro.workspace = true
 bevy_ecs.workspace = true
 bevy_app.workspace = true
 bytes.workspace = true
@@ -30,5 +31,4 @@ serde_json.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
-serde_json.workspace = true
 tracing-subscriber.workspace = true

@@ -1,5 +1,7 @@
 //! A length-prefixed array (prefixed by a [`super::VarInt`])
 
+use core::num;
+
 use bytes::{Buf, BufMut};
 
 use crate::{error, ProtocolType};
@@ -23,6 +25,8 @@ pub enum DecodeError<E: std::error::Error> {
 
 #[derive(Debug, thiserror::Error, from_never::FromNever)]
 pub enum EncodeError<E: std::error::Error> {
+    #[error("Too many elements")]
+    TooLong(#[from] num::TryFromIntError),
     #[error("Failed to write LengthVec element")]
     Element(#[source] E),
 }
@@ -45,6 +49,8 @@ impl<T: ProtocolType> ProtocolType for LenVec<T> {
     }
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
+        super::VarInt(self.0.len().try_into()?).encode(buffer)?;
+
         for el in &self.0 {
             el.encode(buffer).map_err(|e| EncodeError::Element(e))?;
         }

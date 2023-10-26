@@ -26,13 +26,14 @@ pub struct Attrs {
     pub insertion: Option<String>,
 }
 
+/// We recommend using [`rjacraft_macro::chat!`] to construct these.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Chat {
     pub text: String,
     #[serde(flatten)]
     pub attrs: Attrs,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub extra: Vec<Box<Chat>>,
+    pub extra: Vec<Chat>,
 }
 
 pub type JsonChat = super::JsonString<{ 1 << 18 }, Chat>;

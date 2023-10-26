@@ -2,9 +2,20 @@
 
 use core::num;
 
+use pretty_hex::*;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
+use tracing::*;
 
 use crate::*;
+
+const HEX_CONFIG: HexConfig = HexConfig {
+    title: true,
+    ascii: true,
+    width: 16,
+    group: 0,
+    chunk: 4,
+    max_bytes: usize::MAX,
+};
 
 // TODO compress & encrypt
 
@@ -26,6 +37,8 @@ pub async fn read_frame(
 
     source.read_exact(&mut buffer).await?;
 
+    debug!("READ {:?}", buffer.hex_conf(HEX_CONFIG));
+
     Ok(buffer.into())
 }
 
@@ -42,6 +55,8 @@ pub async fn write_frame(
     dest: &mut (impl io::AsyncWrite + Unpin + Send),
     buffer: &[u8],
 ) -> Result<(), WritePacketError> {
+    debug!("WRITE {:?}", buffer.hex_conf(HEX_CONFIG));
+
     let length: i32 = buffer
         .len()
         .try_into()

@@ -34,3 +34,9 @@ pub struct PlayPacketOut {
     pub peer: Entity,
     pub packet: s2c::PlayPacket,
 }
+
+#[derive(Debug, Event)]
+pub struct ClientBrand {
+    pub peer: Entity,
+    pub brand: String,
+}
