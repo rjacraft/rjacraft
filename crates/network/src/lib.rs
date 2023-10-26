@@ -26,7 +26,7 @@ pub struct UserSystems<Status, Auth, Brand> {
 }
 
 pub enum AuthOutcome {
-    Success(String, uuid::Uuid, Vec<s2c::login::LoginSuccessProperty>),
+    Success(String, uuid::Uuid, Vec<s2c::ProfileProperty>),
     Fail(Chat),
 }
 

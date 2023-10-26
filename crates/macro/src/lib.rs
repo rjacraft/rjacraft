@@ -1,42 +1,27 @@
-use quote::{quote, quote_spanned, ToTokens};
-use rjacraft_protocol::types::Identifier;
+use proc_macro::TokenStream;
 use syn::parse_macro_input;
 
 mod chat;
+mod id;
+mod protocol_type;
 
 /// Construct recursive [chat components][chat] with a compact syntax.
 ///
 /// [chat]: rjacraft_protocol::types::chat
 #[proc_macro]
-pub fn chat(tokens_in: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let top_node: chat::ChatNode = parse_macro_input!(tokens_in);
-
-    top_node.into_token_stream().into()
+pub fn chat(input: TokenStream) -> TokenStream {
+    chat::handle(parse_macro_input!(input)).into()
 }
 
 /// Construct [identifiers][id] with a compile-time guarantee about their validity.
 ///
 /// [id]: rjacraft_protocol::types::identifier
 #[proc_macro]
-pub fn id(tokens_in: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let literal: syn::LitStr = parse_macro_input!(tokens_in);
+pub fn id(input: TokenStream) -> TokenStream {
+    id::handle(parse_macro_input!(input)).into()
+}
 
-    match literal.value().parse::<Identifier>() {
-        Ok(parsed) => {
-            let (ns, loc) = parsed.parts();
-
-            quote! { unsafe {
-                ::rjacraft_protocol::types::identifier::Identifier::from_parts_unchecked(
-                    #ns.to_string(),
-                    #loc.to_string(),
-                )
-            } }
-            .into()
-        }
-        Err(e) => {
-            let message = e.to_string();
-
-            quote_spanned!(literal.span() => compile_error!(#message)).into()
-        }
-    }
+#[proc_macro_derive(ProtocolType, attributes(variant))]
+pub fn protocol_type(item: TokenStream) -> TokenStream {
+    protocol_type::handle(parse_macro_input!(item)).into()
 }

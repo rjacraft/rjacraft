@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use rjacraft_protocol::{frame::*, packets::*, ProtocolVersion};
+use rjacraft_protocol::{frame::*, packets::*, types::*, ProtocolVersion};
 use tokio::{io, net};
 use tracing::*;
 
@@ -17,9 +17,9 @@ pub type NewPeer = (
 #[derive(Debug)]
 pub enum B2nEvent {
     Drop,
-    Status(s2c::status::Response),
-    AuthSuccess(s2c::login::LoginSuccess),
-    AuthFail(s2c::login::DisconnectLogin),
+    Status(ServerStatus),
+    LoginSucceeded,
+    LoginPacket(s2c::LoginPacket),
     ConfigurationPacket(s2c::ConfigurationPacket),
     PlayPacket(s2c::PlayPacket),
 }
@@ -29,7 +29,7 @@ pub enum N2bEvent {
     Disconnected,
     HandshakeComplete(ProtocolVersion, String, u16),
     NeedStatus,
-    Authenticate(String, uuid::Uuid),
+    Authenticate(String, ::uuid::Uuid),
     NeedConfiguration,
     Brand(String),
     // ConfigurationRpResponse(i32),

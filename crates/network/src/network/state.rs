@@ -62,28 +62,22 @@ impl ConnectionState {
     ) -> Result<Action, Error> {
         match command {
             B2nEvent::Drop => Ok(Action::DropConnection),
-            B2nEvent::Status(packet) => {
-                write_frame(write, &s2c::StatusPacket::Response(packet).encode_owned()?).await?;
+            B2nEvent::Status(status) => {
+                write_frame(
+                    write,
+                    &s2c::StatusPacket::Response(status.into()).encode_owned()?,
+                )
+                .await?;
 
                 Ok(Action::Continue)
             }
-            B2nEvent::AuthSuccess(packet) => {
-                write_frame(
-                    write,
-                    &s2c::LoginPacket::LoginSuccess(packet).encode_owned()?,
-                )
-                .await?;
-
+            B2nEvent::LoginSucceeded => {
                 Ok(Action::NewState(ConnectionState::Login { completed: true }))
             }
-            B2nEvent::AuthFail(packet) => {
-                write_frame(
-                    write,
-                    &s2c::LoginPacket::DisconnectLogin(packet).encode_owned()?,
-                )
-                .await?;
+            B2nEvent::LoginPacket(packet) => {
+                write_frame(write, &packet.encode_owned()?).await?;
 
-                Ok(Action::DropConnection)
+                Ok(Action::Continue)
             }
             B2nEvent::ConfigurationPacket(packet) => {
                 write_frame(write, &packet.encode_owned()?).await?;
@@ -107,41 +101,46 @@ impl ConnectionState {
     ) -> Result<Action, Error> {
         match self {
             ConnectionState::Handshake => {
-                let c2s::HandshakePacket::Handshake(hs) = c2s::HandshakePacket::decode(frame)?;
+                let c2s::HandshakePacket::Handshake {
+                    protocol_version,
+                    server_address,
+                    server_port,
+                    next_state,
+                } = c2s::HandshakePacket::decode(frame)?;
 
-                debug!("handshake complete, {}", hs.protocol_version);
+                debug!("handshake complete, {}", protocol_version);
 
                 let _ = n2b.send(N2bEvent::HandshakeComplete(
-                    hs.protocol_version,
-                    hs.server_address.into(),
-                    hs.server_port.into(),
+                    protocol_version,
+                    server_address.into(),
+                    server_port.into(),
                 ));
 
-                match hs.next_state {
+                match next_state {
                     c2s::NextState::Status => {
                         // yeah ok whatever
                         Ok(Action::NewState(ConnectionState::Status))
                     }
                     c2s::NextState::Login => {
-                        if hs.protocol_version == rjacraft_protocol::SUPPORTED_PROTOCOL {
+                        if protocol_version == rjacraft_protocol::SUPPORTED_PROTOCOL {
                             Ok(Action::NewState(ConnectionState::Login {
                                 completed: false,
                             }))
                         } else {
                             write_frame(
                                 write,
-                                &s2c::LoginPacket::DisconnectLogin(s2c::login::DisconnectLogin {
+                                &s2c::LoginPacket::Disconnect {
                                     reason: JsonString(chat::Chat {
                                         text: "Incompatible game version".into(),
                                         attrs: Default::default(),
                                         extra: vec![],
                                     }),
-                                })
+                                }
                                 .encode_owned()?,
                             )
                             .await?;
 
-                            Err(Error::WrongVersion(hs.protocol_version))
+                            Err(Error::WrongVersion(protocol_version))
                         }
                     }
                 }
@@ -150,19 +149,13 @@ impl ConnectionState {
                 let packet = c2s::StatusPacket::decode(frame)?;
 
                 match packet {
-                    c2s::StatusPacket::Ping(ping) => {
-                        write_frame(
-                            write,
-                            &s2c::StatusPacket::Pong(s2c::status::Pong {
-                                payload: ping.payload,
-                            })
-                            .encode_owned()?,
-                        )
-                        .await?;
+                    c2s::StatusPacket::Ping { payload } => {
+                        write_frame(write, &s2c::StatusPacket::Pong { payload }.encode_owned()?)
+                            .await?;
 
                         Ok(Action::DropConnection)
                     }
-                    c2s::StatusPacket::Request(_) => {
+                    c2s::StatusPacket::Request => {
                         let _ = n2b.send(N2bEvent::NeedStatus);
 
                         Ok(Action::Continue)
@@ -175,17 +168,14 @@ impl ConnectionState {
                 debug!("{packet:?}");
 
                 match packet {
-                    c2s::LoginPacket::LoginStart(login_start) => {
-                        let _ = n2b.send(N2bEvent::Authenticate(
-                            login_start.username.into(),
-                            login_start.uuid,
-                        ));
+                    c2s::LoginPacket::LoginStart { username, uuid } => {
+                        let _ = n2b.send(N2bEvent::Authenticate(username.into(), uuid));
 
                         Ok(Action::Continue)
                     }
-                    c2s::LoginPacket::EncryptionResponse(_) => todo!(),
-                    c2s::LoginPacket::LoginPluginResponse(_) => todo!(),
-                    c2s::LoginPacket::LoginAck(_) => {
+                    c2s::LoginPacket::EncryptionResponse { .. } => todo!(),
+                    c2s::LoginPacket::LoginPluginResponse { .. } => todo!(),
+                    c2s::LoginPacket::SuccessAck => {
                         if completed {
                             let _ = n2b.send(N2bEvent::NeedConfiguration);
 
@@ -202,10 +192,10 @@ impl ConnectionState {
                 debug!("{packet:?}");
 
                 match packet {
-                    c2s::ConfigurationPacket::PluginMessageConfiguration(x) => {
-                        let mut data: bytes::Bytes = x.data.into();
+                    c2s::ConfigurationPacket::PluginMessage { channel, data } => {
+                        let mut data: bytes::Bytes = data.into();
 
-                        if let ("minecraft", "brand") = x.channel.parts() {
+                        if let ("minecraft", "brand") = channel.parts() {
                             let brand = types::LenString::<128>::decode(&mut data)
                                 .map_err(Error::DecodingBrand)?;
 
@@ -214,16 +204,16 @@ impl ConnectionState {
 
                         Ok(Action::Continue)
                     }
-                    c2s::ConfigurationPacket::FinishConfiguration(_) => {
+                    c2s::ConfigurationPacket::FinishConfiguration => {
                         Ok(Action::NewState(ConnectionState::Play))
                     }
-                    c2s::ConfigurationPacket::KeepAlive(x) => {
-                        let _ = to_ka.send(x.id.into());
+                    c2s::ConfigurationPacket::KeepAlive { id } => {
+                        let _ = to_ka.send(id.into());
 
                         Ok(Action::Continue)
                     }
-                    c2s::ConfigurationPacket::Pong(_) => todo!(),
-                    c2s::ConfigurationPacket::ResourcePack(_) => todo!(),
+                    c2s::ConfigurationPacket::Pong { .. } => todo!(),
+                    c2s::ConfigurationPacket::ResourcePack { .. } => todo!(),
                 }
             }
             ConnectionState::Play => {
@@ -232,8 +222,8 @@ impl ConnectionState {
                 debug!("{packet:?}");
 
                 match packet {
-                    c2s::PlayPacket::KeepAlive(x) => {
-                        let _ = to_ka.send(x.id.into());
+                    c2s::PlayPacket::KeepAlive { id } => {
+                        let _ = to_ka.send(id.into());
 
                         Ok(Action::Continue)
                     }
@@ -251,10 +241,7 @@ impl ConnectionState {
             (keepalive::Message::Packet(id), ConnectionState::Configuration) => {
                 write_frame(
                     write,
-                    &s2c::ConfigurationPacket::KeepAlive(s2c::configuration::KeepAlive {
-                        id: id.into(),
-                    })
-                    .encode_owned()?,
+                    &s2c::ConfigurationPacket::KeepAlive { id: id.into() }.encode_owned()?,
                 )
                 .await?;
                 Ok(Action::Continue)
@@ -262,8 +249,7 @@ impl ConnectionState {
             (keepalive::Message::Packet(id), ConnectionState::Play) => {
                 write_frame(
                     write,
-                    &s2c::PlayPacket::KeepAlive(s2c::configuration::KeepAlive { id: id.into() })
-                        .encode_owned()?,
+                    &s2c::PlayPacket::KeepAlive { id: id.into() }.encode_owned()?,
                 )
                 .await?;
                 Ok(Action::Continue)

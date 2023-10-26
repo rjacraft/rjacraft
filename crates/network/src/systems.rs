@@ -55,84 +55,84 @@ where
                         });
                     }
                     N2bEvent::NeedStatus => {
-                        let _ = peer.b2n.send(B2nEvent::Status(s2c::status::Response {
-                            response: systems.status.run(entity, pset.p0()).into(),
-                        }));
+                        let _ = peer
+                            .b2n
+                            .send(B2nEvent::Status(systems.status.run(entity, pset.p0())));
                     }
                     N2bEvent::Authenticate(username_in, uuid_in) => {
                         let outcome = systems
                             .authenticate
                             .run((entity, username_in, uuid_in), pset.p1());
 
-                        let event = match outcome {
+                        match outcome {
                             crate::AuthOutcome::Success(username_out, uuid_out, props_out) => {
-                                B2nEvent::AuthSuccess(s2c::login::LoginSuccess {
-                                    username: username_out
-                                        .try_into()
-                                        .expect("authenticated username is too long"),
-                                    uuid: uuid_out,
-                                    properties: props_out.into(),
-                                })
+                                let _ = peer.b2n.send(B2nEvent::LoginSucceeded);
+                                let _ = peer.b2n.send(B2nEvent::LoginPacket(
+                                    s2c::LoginPacket::Success {
+                                        username: username_out
+                                            .try_into()
+                                            .expect("authenticated username is too long"),
+                                        uuid: uuid_out,
+                                        properties: props_out.into(),
+                                    },
+                                ));
                             }
                             crate::AuthOutcome::Fail(reason) => {
-                                B2nEvent::AuthFail(s2c::login::DisconnectLogin {
-                                    reason: reason.into(),
-                                })
+                                let _ = peer.b2n.send(B2nEvent::LoginPacket(
+                                    s2c::LoginPacket::Disconnect {
+                                        reason: reason.into(),
+                                    },
+                                ));
+                                let _ = peer.b2n.send(B2nEvent::Drop);
                             }
                         };
-
-                        let _ = peer.b2n.send(event);
                     }
                     N2bEvent::NeedConfiguration => {
                         let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
-                            s2c::ConfigurationPacket::UpdateTags(s2c::configuration::UpdateTags {
-                                tag_types: vec![
-                                    s2c::configuration::TagType {
+                            s2c::ConfigurationPacket::UpdateTags(
+                                vec![
+                                    s2c::TagType {
                                         name: id!("block"),
                                         tags: vec![].into(),
                                     },
-                                    s2c::configuration::TagType {
+                                    s2c::TagType {
                                         name: id!("entity_type"),
                                         tags: vec![].into(),
                                     },
-                                    s2c::configuration::TagType {
+                                    s2c::TagType {
                                         name: id!("fluid"),
                                         tags: vec![].into(),
                                     },
-                                    s2c::configuration::TagType {
+                                    s2c::TagType {
                                         name: id!("game_event"),
                                         tags: vec![].into(),
                                     },
-                                    s2c::configuration::TagType {
+                                    s2c::TagType {
                                         name: id!("item"),
                                         tags: vec![].into(),
                                     },
                                 ]
                                 .into(),
-                            }),
+                            ),
                         ));
 
                         if let Some(brand_string) = systems.brand.run(entity, pset.p2()) {
                             let _ = peer
                                 .b2n
                                 .send(B2nEvent::ConfigurationPacket(
-                                    s2c::ConfigurationPacket::PluginMessage(
-                                        s2c::configuration::PluginMessage {
-                                            channel: id!("brand"),
-                                            data: crate::BrandString::encode_owned(&brand_string)
-                                                .unwrap()
-                                                .try_into()
-                                                .unwrap(),
-                                        },
-                                    ),
+                                    s2c::ConfigurationPacket::PluginMessage {
+                                        channel: id!("brand"),
+                                        data: crate::BrandString::encode_owned(&brand_string)
+                                            .unwrap()
+                                            .try_into()
+                                            .unwrap(),
+                                    },
                                 ))
                                 .unwrap();
                         }
                         // todo registries
                         let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
-                            s2c::ConfigurationPacket::FinishConfiguration(
-                                s2c::configuration::FinishConfiguration {},
-                            ),
+                            s2c::ConfigurationPacket::FinishConfiguration,
                         ));
                     }
                     N2bEvent::Brand(brand) => {

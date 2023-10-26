@@ -11,6 +11,7 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
+rjacraft_macro.workspace = true
 tokio = { workspace = true, features = ["io-util"] }
 thiserror.workspace = true
 bytes.workspace = true

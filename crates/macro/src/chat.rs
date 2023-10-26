@@ -1,5 +1,5 @@
-use proc_macro2::Literal;
-use quote::{quote, ToTokens, TokenStreamExt};
+use proc_macro2::*;
+use quote::*;
 use syn::{parse::*, punctuated::*, token::*, *};
 
 enum Flag {
@@ -157,4 +157,8 @@ impl ToTokens for ChatNode {
             }
         });
     }
+}
+
+pub fn handle(top_node: ChatNode) -> TokenStream {
+    top_node.into_token_stream()
 }

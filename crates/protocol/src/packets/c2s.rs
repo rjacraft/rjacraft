@@ -1,40 +1,92 @@
 //! Server-bound packets
 
-pub use self::{configuration::*, handshake::*, login::*, play::*, status::*};
-use crate::packets::prelude::*;
+use rjacraft_macro::ProtocolType;
 
-mod configuration;
-mod handshake;
-mod login;
-mod play;
-mod status;
+use crate::{types::*, ProtocolType};
 
-packet_sumtype! {
-    HandshakePacket {
-        0x00 = Handshake,
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ProtocolType)]
+#[variant(VarInt)]
+pub enum NextState {
+    #[variant(1)]
+    Status,
 
-    StatusPacket {
-        0x00 = Request,
-        0x01 = Ping,
-    }
+    #[variant(2)]
+    Login,
+}
 
-    LoginPacket {
-        0x00 = LoginStart,
-        0x01 = EncryptionResponse,
-        0x02 = LoginPluginResponse,
-        0x03 = LoginAck,
-    }
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(VarInt)]
+pub enum HandshakePacket {
+    #[variant(0x00)]
+    Handshake {
+        protocol_version: crate::ProtocolVersion,
+        server_address: LenString<255>,
+        server_port: Primitive<u16>,
+        next_state: NextState,
+    },
+}
 
-    ConfigurationPacket {
-        0x00 = PluginMessageConfiguration,
-        0x01 = FinishConfiguration,
-        0x02 = KeepAlive,
-        0x03 = Pong,
-        0x04 = ResourcePack,
-    }
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(VarInt)]
+pub enum StatusPacket {
+    #[variant(0x00)]
+    Request,
 
-    PlayPacket {
-        0x14 = KeepAlive,
-    }
+    #[variant(0x01)]
+    Ping { payload: Primitive<i64> },
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(VarInt)]
+pub enum LoginPacket {
+    #[variant(0x00)]
+    LoginStart {
+        username: LenString<16>,
+        uuid: ::uuid::Uuid,
+    },
+
+    #[variant(0x01)]
+    EncryptionResponse {
+        shared_secret: LenVec<u8>,
+        verify_token: LenVec<u8>,
+    },
+
+    #[variant(0x02)]
+    LoginPluginResponse {
+        message_id: VarInt,
+        successful: Primitive<bool>,
+        data: RemainingBytes<{ 1 << 20 }>,
+    },
+
+    #[variant(0x03)]
+    SuccessAck,
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(VarInt)]
+pub enum ConfigurationPacket {
+    #[variant(0x00)]
+    PluginMessage {
+        channel: Identifier,
+        data: RemainingBytes<{ 1 << 20 }>,
+    },
+
+    #[variant(0x01)]
+    FinishConfiguration,
+
+    #[variant(0x02)]
+    KeepAlive { id: Primitive<i64> },
+
+    #[variant(0x03)]
+    Pong { payload: Primitive<i64> },
+
+    #[variant(0x04)]
+    ResourcePack { result: VarInt },
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(VarInt)]
+pub enum PlayPacket {
+    #[variant(0x14)]
+    KeepAlive { id: Primitive<i64> },
 }

@@ -40,6 +40,7 @@ pretty-hex = "0.3"
 
 # Macro utils
 paste = "1.0"
+convert_case = "0.6"
 proc-macro2 = "1.0"
 syn = "2.0"
 quote = "1.0"
