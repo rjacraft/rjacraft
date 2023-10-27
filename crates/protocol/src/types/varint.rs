@@ -85,7 +85,7 @@ impl ProtocolTypeRaw for VarInt {
         let mut byte = [0];
 
         for i in 0..MAX_SIZE {
-            if read.read_exact(&mut byte).await? == 0 {
+            if read.read(&mut byte).await? == 0 {
                 return Ok(Err(Self::DecodeError::Eof(error::Eof)));
             }
 
