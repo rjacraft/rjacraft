@@ -286,6 +286,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e2c3daef883ecc1b5d58c15adae93470a91d425f3532ba1695849656af3fc1"
 
 [[package]]
+name = "byteorder"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
+
+[[package]]
 name = "bytes"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -299,6 +305,12 @@ checksum = "f1174fb0b6ec23863f8b971027804a42614e347eafb0a95bf0b12cdae21fc4d0"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "cesu8"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d43a04d8753f35258c91f8ec639f792891f748a1edbd759cf1dcea3382ad83c"
 
 [[package]]
 name = "cfg-if"
@@ -481,6 +493,7 @@ checksum = "d5477fe2230a79769d8dc68e0eabf5437907c0457a5614a9e8dddb67f65eb65d"
 dependencies = [
  "equivalent",
  "hashbrown",
+ "serde",
 ]
 
 [[package]]
@@ -709,14 +722,9 @@ name = "rjacraft"
 version = "0.0.1"
 dependencies = [
  "document-features",
- "rjacraft_core",
  "rjacraft_network",
  "rjacraft_protocol",
 ]
-
-[[package]]
-name = "rjacraft_core"
-version = "0.0.1"
 
 [[package]]
 name = "rjacraft_macro"
@@ -745,6 +753,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "valence_nbt",
 ]
 
 [[package]]
@@ -763,6 +772,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "valence_nbt",
 ]
 
 [[package]]
@@ -1027,6 +1037,19 @@ checksum = "79daa5ed5740825c40b389c5e50312b9c86df53fccd33f281df655642b43869d"
 dependencies = [
  "getrandom",
  "serde",
+]
+
+[[package]]
+name = "valence_nbt"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3cddc3222ed5ead4fa446881b3deeeee0dba60b0088b2bf12fedbac7eda2312"
+dependencies = [
+ "byteorder",
+ "cesu8",
+ "indexmap",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]

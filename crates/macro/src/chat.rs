@@ -4,7 +4,7 @@ use syn::{parse::*, punctuated::*, token::*, *};
 
 enum Flag {
     Bold,
-    Color(Bracket, Lit),
+    Color(Bracket, Expr),
 }
 
 impl Parse for Flag {
@@ -98,7 +98,7 @@ impl ToTokens for Text {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         match self {
             Text::None => tokens.append_all(quote!(::std::string::String::new())),
-            Text::Raw(x) => tokens.append_all(quote!(#x.to_string())),
+            Text::Raw(x) => tokens.append_all(quote!(format!(#x))),
             Text::Format(format, _, args) => tokens.append_all(quote!(format!(#format, #args))),
         };
     }

@@ -1,37 +1,33 @@
 use rjacraft_protocol::{
-    frame::*,
     packets::{c2s, s2c},
     types::{self, *},
     ProtocolType,
 };
-use tokio::io;
 use tracing::*;
 
 use super::*;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error(transparent)]
-    Writing(#[from] WritePacketError),
-    #[error(transparent)]
+    #[error("Failed to read packet")]
     DecodingHandshake(#[from] c2s::HandshakePacketDecodeError),
-    #[error(transparent)]
+    #[error("Failed to read packet")]
     DecodingStatus(#[from] c2s::StatusPacketDecodeError),
-    #[error(transparent)]
+    #[error("Failed to read packet")]
     EncodingStatus(#[from] s2c::StatusPacketEncodeError),
-    #[error(transparent)]
+    #[error("Failed to read packet")]
     DecodingLogin(#[from] c2s::LoginPacketDecodeError),
-    #[error(transparent)]
+    #[error("Failed to read packet")]
     EncodingLogin(#[from] s2c::LoginPacketEncodeError),
-    #[error(transparent)]
+    #[error("Failed to read packet")]
     DecodingConfiguration(#[from] c2s::ConfigurationPacketDecodeError),
     #[error("Failed to decode brand")]
     DecodingBrand(#[source] types::len_string::DecodeError<128>),
-    #[error(transparent)]
+    #[error("Failed to read packet")]
     EncodingConfiguration(#[from] s2c::ConfigurationPacketEncodeError),
-    #[error(transparent)]
+    #[error("Failed to read packet")]
     DecodingPlay(#[from] c2s::PlayPacketDecodeError),
-    #[error(transparent)]
+    #[error("Failed to read packet")]
     EncodingPlay(#[from] s2c::PlayPacketEncodeError),
     #[error("Wrong protocol version: {0:?}")]
     WrongVersion(rjacraft_protocol::ProtocolVersion),
@@ -57,17 +53,13 @@ enum ConnectionState {
 impl ConnectionState {
     async fn on_b2n(
         self,
-        write: &mut (impl io::AsyncWrite + Unpin + Send),
+        s2c: &flume::Sender<bytes::Bytes>,
         command: B2nEvent,
     ) -> Result<Action, Error> {
         match command {
             B2nEvent::Drop => Ok(Action::DropConnection),
             B2nEvent::Status(status) => {
-                write_frame(
-                    write,
-                    &s2c::StatusPacket::Response(status.into()).encode_owned()?,
-                )
-                .await?;
+                let _ = s2c.send(s2c::StatusPacket::Response(status.into()).encode_owned()?);
 
                 Ok(Action::Continue)
             }
@@ -75,17 +67,12 @@ impl ConnectionState {
                 Ok(Action::NewState(ConnectionState::Login { completed: true }))
             }
             B2nEvent::LoginPacket(packet) => {
-                write_frame(write, &packet.encode_owned()?).await?;
+                let _ = s2c.send(packet.encode_owned()?);
 
                 Ok(Action::Continue)
             }
             B2nEvent::ConfigurationPacket(packet) => {
-                write_frame(write, &packet.encode_owned()?).await?;
-
-                Ok(Action::Continue)
-            }
-            B2nEvent::PlayPacket(packet) => {
-                write_frame(write, &packet.encode_owned()?).await?;
+                let _ = s2c.send(packet.encode_owned()?);
 
                 Ok(Action::Continue)
             }
@@ -95,7 +82,7 @@ impl ConnectionState {
     async fn on_frame(
         self,
         frame: &mut bytes::Bytes,
-        write: &mut (impl io::AsyncWrite + Unpin + Send),
+        s2c: &flume::Sender<bytes::Bytes>,
         n2b: &flume::Sender<N2bEvent>,
         to_ka: &flume::Sender<i64>,
     ) -> Result<Action, Error> {
@@ -127,9 +114,8 @@ impl ConnectionState {
                                 completed: false,
                             }))
                         } else {
-                            write_frame(
-                                write,
-                                &s2c::LoginPacket::Disconnect {
+                            let _ = s2c.send(
+                                s2c::LoginPacket::Disconnect {
                                     reason: JsonString(chat::Chat {
                                         text: "Incompatible game version".into(),
                                         attrs: Default::default(),
@@ -137,8 +123,7 @@ impl ConnectionState {
                                     }),
                                 }
                                 .encode_owned()?,
-                            )
-                            .await?;
+                            );
 
                             Err(Error::WrongVersion(protocol_version))
                         }
@@ -150,8 +135,7 @@ impl ConnectionState {
 
                 match packet {
                     c2s::StatusPacket::Ping { payload } => {
-                        write_frame(write, &s2c::StatusPacket::Pong { payload }.encode_owned()?)
-                            .await?;
+                        let _ = s2c.send(s2c::StatusPacket::Pong { payload }.encode_owned()?);
 
                         Ok(Action::DropConnection)
                     }
@@ -205,6 +189,8 @@ impl ConnectionState {
                         Ok(Action::Continue)
                     }
                     c2s::ConfigurationPacket::FinishConfiguration => {
+                        let _ = n2b.send(N2bEvent::ConfigurationFinished(s2c.clone()));
+
                         Ok(Action::NewState(ConnectionState::Play))
                     }
                     c2s::ConfigurationPacket::KeepAlive { id } => {
@@ -222,11 +208,46 @@ impl ConnectionState {
                 debug!("{packet:?}");
 
                 match packet {
+                    c2s::PlayPacket::ConfirmTeleport { .. } => Ok(Action::Continue),
+                    c2s::PlayPacket::ChatCommand { command, .. } => Ok(Action::Continue),
+                    c2s::PlayPacket::ChatMessage { message, .. } => {
+                        let _ = n2b.send(N2bEvent::Chat(message.into()));
+
+                        Ok(Action::Continue)
+                    }
                     c2s::PlayPacket::KeepAlive { id } => {
                         let _ = to_ka.send(id.into());
 
                         Ok(Action::Continue)
                     }
+                    c2s::PlayPacket::ClientCommand(_) => Ok(Action::Continue),
+                    c2s::PlayPacket::ClientInfo { .. } => Ok(Action::Continue),
+                    c2s::PlayPacket::Position { x, y, z, on_ground } => Ok(Action::Continue),
+                    c2s::PlayPacket::PositionRotation {
+                        x,
+                        y,
+                        z,
+                        yaw,
+                        pitch,
+                        on_ground,
+                    } => Ok(Action::Continue),
+                    c2s::PlayPacket::Rotation {
+                        yaw,
+                        pitch,
+                        on_ground,
+                    } => Ok(Action::Continue),
+                    c2s::PlayPacket::OnGround(on_ground) => Ok(Action::Continue),
+                    c2s::PlayPacket::PlayerCommand { action, .. } => Ok(Action::Continue),
+                    c2s::PlayPacket::PlayerAction {
+                        action,
+                        position,
+                        face,
+                        ..
+                    } => Ok(Action::Continue),
+                    c2s::PlayPacket::PlayerInput { .. } => Ok(Action::Continue),
+                    c2s::PlayPacket::AdvancementCommand(_) => Ok(Action::Continue),
+                    c2s::PlayPacket::SwitchSlots(slot) => Ok(Action::Continue),
+                    c2s::PlayPacket::SwingArm(hand) => Ok(Action::Continue),
                 }
             }
         }
@@ -234,24 +255,19 @@ impl ConnectionState {
 
     async fn on_keepalive(
         self,
-        write: &mut (impl io::AsyncWrite + Unpin + Send),
+        s2c: &flume::Sender<bytes::Bytes>,
         command: keepalive::Message,
     ) -> Result<Action, Error> {
         match (command, self) {
             (keepalive::Message::Packet(id), ConnectionState::Configuration) => {
-                write_frame(
-                    write,
-                    &s2c::ConfigurationPacket::KeepAlive { id: id.into() }.encode_owned()?,
-                )
-                .await?;
+                let _ =
+                    s2c.send(s2c::ConfigurationPacket::KeepAlive { id: id.into() }.encode_owned()?);
+
                 Ok(Action::Continue)
             }
             (keepalive::Message::Packet(id), ConnectionState::Play) => {
-                write_frame(
-                    write,
-                    &s2c::PlayPacket::KeepAlive { id: id.into() }.encode_owned()?,
-                )
-                .await?;
+                let _ = s2c.send(s2c::PlayPacket::KeepAlive { id: id.into() }.encode_owned()?);
+
                 Ok(Action::Continue)
             }
             (keepalive::Message::Mismatch, _) => Ok(Action::DropConnection),
@@ -266,23 +282,23 @@ pub async fn state_machine_loop(
     b2n: flume::Receiver<B2nEvent>,
     to_ka: flume::Sender<i64>,
     from_ka: flume::Receiver<keepalive::Message>,
-    mut write: impl io::AsyncWrite + Unpin + Send,
-    frames: flume::Receiver<bytes::Bytes>,
+    s2c: flume::Sender<bytes::Bytes>,
+    c2s: flume::Receiver<bytes::Bytes>,
 ) -> Result<(), Error> {
     let mut state = ConnectionState::Handshake;
 
     loop {
         tokio::select! {
             Ok(command) = b2n.recv_async() => {
-                match state.on_b2n(&mut write, command).await? {
+                match state.on_b2n(&s2c, command).await? {
                     Action::DropConnection => return Ok(()),
                     Action::NewState(x) => state = x,
                     Action::Continue => {}
                 }
             },
-            Ok(mut frame) = frames.recv_async() => {
+            Ok(mut frame) = c2s.recv_async() => {
                 match state
-                    .on_frame(&mut frame, &mut write, &n2b, &to_ka)
+                    .on_frame(&mut frame, &s2c, &n2b, &to_ka)
                     .instrument(info_span!("conn_state", ?state))
                     .await?
                 {
@@ -292,7 +308,7 @@ pub async fn state_machine_loop(
                 }
             }
             Ok(command) = from_ka.recv_async() => {
-                match state.on_keepalive(&mut write, command).await? {
+                match state.on_keepalive(&s2c, command).await? {
                     Action::DropConnection => return Ok(()),
                     Action::NewState(x) => state = x,
                     Action::Continue => {}

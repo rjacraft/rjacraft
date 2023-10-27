@@ -4,6 +4,7 @@ use bytes::{Buf, BufMut};
 
 use crate::{error, ProtocolType};
 
+/// This always reads a constant amount of bytes from the buffer.
 #[derive(Debug, Clone)]
 pub struct Primitive<T>(pub T);
 

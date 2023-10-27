@@ -1,6 +1,6 @@
 use bevy_ecs::{event, prelude::*, system};
 use rjacraft_macro::*;
-use rjacraft_protocol::{packets::*, ProtocolType};
+use rjacraft_protocol::{packets::*, types, ProtocolType};
 use tracing::*;
 
 use crate::{components::*, events::*, network::*};
@@ -9,10 +9,7 @@ pub fn new_peer_system(new_peer_rx: flume::Receiver<NewPeer>) -> impl FnMut(Comm
     move |mut commands: Commands| {
         for (addr, b2n, n2b) in new_peer_rx.try_iter() {
             debug!("adding new peer entity");
-            commands.add(move |world: &mut World| {
-                let entity = world.spawn(Peer { addr, n2b, b2n }).id();
-                world.send_event(PeerConnected { peer: entity });
-            });
+            commands.spawn(Peer { addr, n2b, b2n });
         }
     }
 }
@@ -28,6 +25,7 @@ impl<E: event::Event> system::Command for SendEvent<E> {
 pub fn n2b_system<SStatus, MStatus, SAuth, MAuth, SBrand, MBrand>(
     mut systems: crate::UserSystems<SStatus, SAuth, SBrand>,
 ) -> impl FnMut(
+    &World,
     Commands,
     Query<(Entity, &Peer)>,
     ParamSet<(SStatus::Param, SAuth::Param, SBrand::Param)>,
@@ -39,7 +37,7 @@ where
         + Clone,
     SBrand: SystemParamFunction<MBrand, In = Entity, Out = Option<crate::BrandString>> + Clone,
 {
-    move |mut commands, query, mut pset| {
+    move |world, mut commands, query, mut pset| {
         for (entity, peer) in query.iter() {
             for msg in peer.n2b.try_iter() {
                 match msg {
@@ -89,30 +87,14 @@ where
                     }
                     N2bEvent::NeedConfiguration => {
                         let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
+                            s2c::ConfigurationPacket::RegistryData(types::Nbt(
+                                world.resource::<crate::Registries>().0.clone(),
+                            )),
+                        ));
+
+                        let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
                             s2c::ConfigurationPacket::UpdateTags(
-                                vec![
-                                    s2c::TagType {
-                                        name: id!("block"),
-                                        tags: vec![].into(),
-                                    },
-                                    s2c::TagType {
-                                        name: id!("entity_type"),
-                                        tags: vec![].into(),
-                                    },
-                                    s2c::TagType {
-                                        name: id!("fluid"),
-                                        tags: vec![].into(),
-                                    },
-                                    s2c::TagType {
-                                        name: id!("game_event"),
-                                        tags: vec![].into(),
-                                    },
-                                    s2c::TagType {
-                                        name: id!("item"),
-                                        tags: vec![].into(),
-                                    },
-                                ]
-                                .into(),
+                                world.resource::<crate::Tags>().0.clone().into(),
                             ),
                         ));
 
@@ -130,48 +112,31 @@ where
                                 ))
                                 .unwrap();
                         }
-                        // todo registries
+
                         let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
                             s2c::ConfigurationPacket::FinishConfiguration,
                         ));
                     }
+                    N2bEvent::ConfigurationFinished(play_tx) => {
+                        commands.entity(entity).insert(Play {
+                            tx: play_tx.clone(),
+                        });
+                    }
                     N2bEvent::Brand(brand) => {
                         commands.add(SendEvent(ClientBrand {
-                            peer: entity,
+                            from: entity,
                             brand,
                         }));
                     }
-                    N2bEvent::PlayPacket(_packet) => {}
+                    N2bEvent::Chat(content) => {
+                        commands.add(SendEvent(ChatMessageSent {
+                            from: entity,
+                            content,
+                        }));
+                    }
                 }
             }
         }
-    }
-}
-
-pub fn b2n_event_system(
-    mut conf: EventReader<ConfigurationPacketOut>,
-    mut play: EventReader<PlayPacketOut>,
-    mut drop: EventReader<DropPeer>,
-    world: &World,
-) {
-    for event in conf.into_iter() {
-        let peer: &Peer = world.get(event.peer).unwrap();
-
-        let _ = peer
-            .b2n
-            .send(B2nEvent::ConfigurationPacket(event.packet.clone()));
-    }
-
-    for event in play.into_iter() {
-        let peer: &Peer = world.get(event.peer).unwrap();
-
-        let _ = peer.b2n.send(B2nEvent::PlayPacket(event.packet.clone()));
-    }
-
-    for event in drop.into_iter() {
-        let peer: &Peer = world.get(event.peer).unwrap();
-
-        let _ = peer.b2n.send(B2nEvent::Drop);
     }
 }
 

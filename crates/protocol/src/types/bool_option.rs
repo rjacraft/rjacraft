@@ -17,6 +17,8 @@ pub enum DecodeError<E: std::error::Error> {
 
 #[derive(Debug, thiserror::Error, from_never::FromNever)]
 pub enum EncodeError<E: std::error::Error> {
+    #[error("Failed to write BoolOption marker")]
+    Marker(#[from] error::Eof),
     #[error("Failed to write LengthVec element")]
     Element(#[source] E),
 }
@@ -37,7 +39,10 @@ impl<T: ProtocolType> ProtocolType for BoolOption<T> {
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
         if let Some(el) = &self.0 {
+            super::Primitive(true).encode(buffer)?;
             el.encode(buffer).map_err(|e| EncodeError::Element(e))?;
+        } else {
+            super::Primitive(false).encode(buffer)?;
         }
 
         Ok(())

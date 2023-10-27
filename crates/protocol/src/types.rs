@@ -6,9 +6,12 @@ pub mod identifier;
 pub mod json_string;
 pub mod len_string;
 pub mod len_vec;
+pub mod nbt;
+pub mod position;
 pub mod primitive;
 pub mod remaining_bytes;
 pub mod server_status;
+pub mod slice;
 pub mod uuid;
 pub mod varint;
 pub mod version;
@@ -20,6 +23,8 @@ pub use self::{
     json_string::JsonString,
     len_string::LenString,
     len_vec::LenVec,
+    nbt::Nbt,
+    position::Position,
     primitive::Primitive,
     remaining_bytes::RemainingBytes,
     server_status::ServerStatus,

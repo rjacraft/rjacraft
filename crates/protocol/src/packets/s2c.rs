@@ -1,6 +1,7 @@
 //! Client-bound packets
 
 use rjacraft_macro::ProtocolType;
+use serde::{Deserialize, Serialize};
 
 use crate::{types::*, ProtocolType};
 
@@ -54,6 +55,36 @@ pub enum LoginPacket {
     },
 }
 
+pub mod registry {
+    use super::*;
+
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct Element<T> {
+        pub element: T,
+        pub id: i32,
+        pub name: Identifier,
+    }
+
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct Registry<T> {
+        pub r#type: Identifier,
+        pub value: Vec<Element<T>>,
+    }
+}
+
+/// In theory, there could be more registries than this, but we don't care at all.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RegistryData {
+    #[serde(rename = "minecraft:chat_type")]
+    pub chat_type: registry::Registry<valence_nbt::Compound>,
+    #[serde(rename = "minecraft:damage_type")]
+    pub damage_type: registry::Registry<valence_nbt::Compound>,
+    #[serde(rename = "minecraft:dimension_type")]
+    pub dimension_type: registry::Registry<valence_nbt::Compound>,
+    #[serde(rename = "minecraft:worldgen/biome")]
+    pub biome: registry::Registry<valence_nbt::Compound>,
+}
+
 #[derive(Debug, Clone, ProtocolType)]
 pub struct Tag {
     pub name: Identifier,
@@ -88,9 +119,7 @@ pub enum ConfigurationPacket {
     Ping { payload: Primitive<i64> },
 
     #[variant(0x05)]
-    RegistryData {
-        todo: RemainingBytes<{ 1 << 20 }>, // TODO
-    },
+    RegistryData(Nbt<RegistryData>),
 
     #[variant(0x06)]
     ResourcePack {
@@ -108,9 +137,37 @@ pub enum ConfigurationPacket {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-pub struct JoinGameDeathInfo {
+pub struct WorldPos {
     pub dimension_name: Identifier,
-    pub position: Primitive<u64>,
+    pub position: Position,
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(Primitive::<u8>)] // fixme
+pub enum GameMode {
+    #[variant(0)]
+    Survival,
+    #[variant(1)]
+    Creative,
+    #[variant(2)]
+    Adventure,
+    #[variant(3)]
+    Spectator,
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(Primitive::<i8>)]
+pub enum PreviousGameMode {
+    #[variant(-1)]
+    None,
+    #[variant(0)]
+    Survival,
+    #[variant(1)]
+    Creative,
+    #[variant(2)]
+    Adventure,
+    #[variant(3)]
+    Spectator,
 }
 
 #[derive(Debug, Clone, ProtocolType)]
@@ -120,8 +177,8 @@ pub enum PlayPacket {
     KeepAlive { id: Primitive<i64> },
 
     #[variant(0x2A)]
-    JoinGame {
-        entity_id: Primitive<i32>,
+    Login {
+        entity_id: Primitive<u32>,
         is_hardcore: Primitive<bool>,
         dimensions: LenVec<Identifier>,
         max_players: VarInt,
@@ -132,11 +189,34 @@ pub enum PlayPacket {
         dimension_type: Identifier,
         dimension_name: Identifier,
         hashed_seed: Primitive<i64>,
-        gamemde: Primitive<u8>,
-        previous_gamemode: Primitive<i8>,
+        gamemode: GameMode,
+        previous_gamemode: PreviousGameMode,
         is_debug: Primitive<bool>,
         is_flat: Primitive<bool>,
-        death_info: BoolOption<JoinGameDeathInfo>,
+        died: BoolOption<WorldPos>,
         portal_cooldown: VarInt,
+    },
+
+    #[variant(0x3F)]
+    Teleport {
+        x: Primitive<f64>,
+        y: Primitive<f64>,
+        z: Primitive<f64>,
+        yaw: Primitive<f32>,
+        pitch: Primitive<f32>,
+        flags: Primitive<u8>,
+        id: VarInt,
+    },
+
+    #[variant(0x53)]
+    SetRespawn {
+        position: Position,
+        pitch: Primitive<f32>,
+    },
+
+    #[variant(0x68)]
+    SystemChatMessage {
+        content: JsonChat,
+        overlay: Primitive<bool>,
     },
 }

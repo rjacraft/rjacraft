@@ -13,11 +13,19 @@ mod components;
 mod events;
 mod network;
 mod systems;
+mod traced_error;
+
+pub mod prebuilt_registries;
 
 pub use self::{components::*, events::*, systems::n2b_system};
 
 #[derive(Resource)]
 pub struct Runtime(pub tokio::runtime::Runtime);
+
+#[derive(Resource)]
+pub struct Registries(pub s2c::RegistryData);
+#[derive(Resource)]
+pub struct Tags(pub Vec<s2c::TagType>);
 
 pub struct UserSystems<Status, Auth, Brand> {
     pub status: Status,
@@ -53,18 +61,14 @@ where
 
             rt.0.spawn(async move {
                 if let Err(e) = network_loop(addr.clone(), new_peer_tx.clone()).await {
-                    error!("network thread crashed: {e}");
+                    error!("Network thread crashed:\n{}", traced_error::TracedError(e));
                 }
             });
         };
 
-        app.add_event::<PeerConnected>()
-            .add_event::<PeerDisconnected>()
-            .add_event::<DropPeer>()
-            .add_event::<ConfigurationPacketOut>()
-            .add_event::<PlayPacketIn>()
-            .add_event::<PlayPacketOut>()
+        app.add_event::<PeerDisconnected>()
             .add_event::<ClientBrand>()
+            .add_event::<ChatMessageSent>()
             .add_systems(PostStartup, net_thread_system)
             .add_systems(
                 PreUpdate,
@@ -74,12 +78,6 @@ where
                 )
                     .chain(),
             )
-            .add_systems(
-                PostUpdate,
-                (
-                    systems::b2n_event_system,
-                    systems::delete_disconnects_system,
-                ),
-            );
+            .add_systems(PostUpdate, systems::delete_disconnects_system);
     }
 }

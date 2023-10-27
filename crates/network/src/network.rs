@@ -4,6 +4,8 @@ use rjacraft_protocol::{frame::*, packets::*, types::*, ProtocolVersion};
 use tokio::{io, net};
 use tracing::*;
 
+use super::traced_error;
+
 mod frames;
 mod keepalive;
 mod state;
@@ -21,7 +23,6 @@ pub enum B2nEvent {
     LoginSucceeded,
     LoginPacket(s2c::LoginPacket),
     ConfigurationPacket(s2c::ConfigurationPacket),
-    PlayPacket(s2c::PlayPacket),
 }
 
 #[derive(Debug)]
@@ -31,15 +32,18 @@ pub enum N2bEvent {
     NeedStatus,
     Authenticate(String, ::uuid::Uuid),
     NeedConfiguration,
+    ConfigurationFinished(flume::Sender<bytes::Bytes>),
     Brand(String),
     // ConfigurationRpResponse(i32),
-    PlayPacket(c2s::PlayPacket),
+    Chat(String),
 }
 
 #[derive(Debug, thiserror::Error)]
 enum PeerLoopError {
     #[error(transparent)]
-    Reading(#[from] ReadPacketError),
+    Reading(#[from] ReadFrameError),
+    #[error(transparent)]
+    Writing(#[from] WriteFrameError),
     #[error(transparent)]
     StateMachine(#[from] state::Error),
 }
@@ -50,14 +54,16 @@ async fn peer_loop(
     b2n: flume::Receiver<B2nEvent>,
 ) -> Result<(), PeerLoopError> {
     let (read, write) = stream.into_split();
-    let (frames_tx, frames_rx) = flume::unbounded();
+    let (c2s_tx, c2s_rx) = flume::unbounded();
+    let (s2c_tx, s2c_rx) = flume::unbounded();
     let (to_ka_tx, to_ka_rx) = flume::unbounded();
     let (from_ka_tx, from_ka_rx) = flume::unbounded();
 
-    let mut read_task = tokio::spawn(frames::frame_read_loop(read, frames_tx).in_current_span());
+    tokio::spawn(frames::frame_write_loop(write, s2c_rx).in_current_span());
+
+    let mut read_task = tokio::spawn(frames::frame_read_loop(read, c2s_tx).in_current_span());
     let mut state_task = tokio::spawn(
-        state::state_machine_loop(n2b, b2n, to_ka_tx, from_ka_rx, write, frames_rx)
-            .in_current_span(),
+        state::state_machine_loop(n2b, b2n, to_ka_tx, from_ka_rx, s2c_tx, c2s_rx).in_current_span(),
     );
     let mut ka_task =
         tokio::spawn(keepalive::keepalive_loop(from_ka_tx, to_ka_rx).in_current_span());
@@ -82,6 +88,8 @@ async fn peer_loop(
     state_task.abort();
     ka_task.abort();
 
+    // the write task will wait until all the frames are finished
+
     result
 }
 
@@ -91,7 +99,7 @@ pub async fn network_loop(
 ) -> io::Result<()> {
     let listener = net::TcpListener::bind(addr).await?;
 
-    info!("listening at {}", listener.local_addr()?);
+    info!("Listening at {}", listener.local_addr()?);
 
     loop {
         let (stream_in, addr_in) = listener.accept().await?;
@@ -102,12 +110,12 @@ pub async fn network_loop(
 
         tokio::spawn(
             async move {
-                info!("got a peer");
+                info!("Got a peer");
 
                 if let Err(e) = peer_loop(stream_in, n2b_tx.clone(), b2n_rx).await {
-                    info!("peer loop failed: {e}");
+                    info!("Peer loop failed:\n{}", traced_error::TracedError(e));
                 } else {
-                    info!("peer loop ended");
+                    info!("Peer loop ended");
                 }
 
                 let _ = n2b_tx.send(N2bEvent::Disconnected);

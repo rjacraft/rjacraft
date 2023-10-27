@@ -29,6 +29,7 @@ serde_json = "1.0"
 bytes = "1.4"
 thiserror = "1.0"
 uuid = { version = "1.4", features = ["serde"] }
+valence_nbt = { version = "0.8", features = ["binary", "snbt", "serde"] }
 
 # Documentation
 document-features = "0.2"
@@ -46,7 +47,6 @@ syn = "2.0"
 quote = "1.0"
 
 # Own crates
-rjacraft_core = { path = "crates/core" }
 rjacraft_macro = { path = "crates/macro" }
 rjacraft_network = { path = "crates/network" }
 rjacraft_protocol = { path = "crates/protocol" }
@@ -74,7 +74,6 @@ repository.workspace = true
 
 [dependencies]
 # Rjacraft components
-rjacraft_core = { workspace = true, optional = true }
 rjacraft_network = { workspace = true, optional = true }
 rjacraft_protocol = { workspace = true, optional = true }
 
@@ -82,10 +81,6 @@ rjacraft_protocol = { workspace = true, optional = true }
 document-features.workspace = true
 
 [features]
-default = ["core"]
-
-## Core functionality
-core = ["dep:rjacraft_core"]
 ## Networking systems and events
 network = ["dep:rjacraft_network"]
 ## The Minecraft protocol
