@@ -1,5 +1,7 @@
 //! The crucial parts of Minecraft's protocol.
 
+use std::future::Future;
+
 use tokio::io;
 
 /// A packet or any part of a packet.
@@ -19,13 +21,14 @@ pub trait ProtocolType: Sized {
 
 /// Currently used by the networking code to read packet length prefixes.
 pub trait ProtocolTypeRaw: ProtocolType {
-    async fn decode_raw(
+    fn decode_raw(
         read: &mut (impl io::AsyncRead + Unpin + Send),
-    ) -> io::Result<Result<Self, Self::DecodeError>>;
-    async fn encode_raw(
+    ) -> impl Future<Output = io::Result<Result<Self, Self::DecodeError>>> + Send;
+
+    fn encode_raw(
         &self,
         write: &mut (impl io::AsyncWrite + Unpin + Send),
-    ) -> io::Result<Result<(), Self::EncodeError>>;
+    ) -> impl Future<Output = io::Result<Result<(), Self::EncodeError>>> + Send;
 }
 
 pub mod error;
