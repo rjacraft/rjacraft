@@ -17,6 +17,5 @@ bytes.workspace = true
 uuid.workspace = true
 from_never.workspace = true
 paste.workspace = true
-async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true

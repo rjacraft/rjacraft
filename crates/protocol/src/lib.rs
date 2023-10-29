@@ -18,7 +18,6 @@ pub trait ProtocolType: Sized {
 }
 
 /// Currently used by the networking code to read packet length prefixes.
-#[async_trait::async_trait]
 pub trait ProtocolTypeRaw: ProtocolType {
     async fn decode_raw(
         read: &mut (impl io::AsyncRead + Unpin + Send),
