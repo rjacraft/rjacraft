@@ -19,7 +19,6 @@ bevy_ecs = "0.11"
 bevy_app = "0.11"
 
 # Async
-async-trait = "0.1"
 tokio = { version = "1.32", default-features = false }
 flume = "0.11"
 
