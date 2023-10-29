@@ -29,7 +29,7 @@ pub async fn read_frame(
     Ok(buffer.into())
 }
 
-#[derive(Debug, thiserror::Error, from_never::FromNever)]
+#[derive(Debug, thiserror::Error, nevermore::FromNever)]
 pub enum WritePacketError {
     #[error("Packet was too large")]
     TooLarge(#[source] num::TryFromIntError),

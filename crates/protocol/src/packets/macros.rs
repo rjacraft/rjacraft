@@ -99,7 +99,7 @@ macro_rules! packet_sumtype {
                 OutOfRange(i32),
             }
 
-            #[derive(Debug, thiserror::Error, from_never::FromNever)]
+            #[derive(Debug, thiserror::Error, nevermore::FromNever)]
             pub enum [<$ident EncodeError>] {
                 $(
                     #[error("Failed to encode variant {}", stringify!($variant))]

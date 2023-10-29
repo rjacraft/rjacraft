@@ -11,7 +11,7 @@ use crate::{error, ProtocolType};
 #[derive(Debug, Clone)]
 pub struct LenVec<T>(pub Vec<T>);
 
-#[derive(Debug, thiserror::Error, from_never::FromNever)]
+#[derive(Debug, thiserror::Error, nevermore::FromNever)]
 pub enum DecodeError<E: std::error::Error> {
     #[error(transparent)]
     Eof(#[from] error::Eof),
@@ -21,7 +21,7 @@ pub enum DecodeError<E: std::error::Error> {
     Element(#[source] E),
 }
 
-#[derive(Debug, thiserror::Error, from_never::FromNever)]
+#[derive(Debug, thiserror::Error, nevermore::FromNever)]
 pub enum EncodeError<E: std::error::Error> {
     #[error("Failed to write LengthVec element")]
     Element(#[source] E),

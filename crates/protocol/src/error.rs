@@ -4,7 +4,7 @@ pub use std::convert::Infallible;
 use std::fmt;
 
 /// Packet ended before we finished parsing.
-#[derive(Debug, thiserror::Error, from_never::FromNever)]
+#[derive(Debug, thiserror::Error, nevermore::FromNever)]
 #[error("Packet ended before we finished parsing")]
 pub struct Eof;
 
@@ -20,7 +20,7 @@ impl<const MAX_SIZE: usize> Overrun<MAX_SIZE> {
 }
 
 /// An error related to a fieldless enum.
-#[derive(Debug, thiserror::Error, from_never::FromNever)]
+#[derive(Debug, thiserror::Error, nevermore::FromNever)]
 pub enum EnumError<D: crate::ProtocolType>
 where
     D: fmt::Debug,
