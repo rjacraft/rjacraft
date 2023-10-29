@@ -76,7 +76,6 @@ impl ProtocolType for VarInt {
     }
 }
 
-#[async_trait::async_trait]
 impl ProtocolTypeRaw for VarInt {
     async fn decode_raw(
         read: &mut (impl io::AsyncRead + Unpin + Send),
