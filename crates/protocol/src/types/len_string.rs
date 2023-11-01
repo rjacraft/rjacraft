@@ -15,7 +15,7 @@ pub enum DecodeError<const MAX_SIZE: usize> {
     #[error(transparent)]
     Eof(#[from] error::Eof),
     #[error("Failed to read string length")]
-    Length(#[from] super::varint::DecodeError),
+    Length(#[from] super::varint::I32DecodeError),
     #[error(transparent)]
     Overrun(#[from] error::Overrun<MAX_SIZE>),
     #[error("UTF-8 error")]
@@ -27,7 +27,7 @@ impl<const MAX_SIZE: usize> ProtocolType for LenString<MAX_SIZE> {
     type EncodeError = error::Infallible;
 
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
-        let super::VarInt(len) = super::VarInt::decode(buffer)?;
+        let super::VarInt::<i32>(len) = super::VarInt::decode(buffer)?;
 
         if len as usize > MAX_SIZE {
             Err(error::Overrun(len as usize))?;

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{error, types::*, ProtocolType};
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum StatusPacket {
     #[variant(0x00)]
     Response(JsonString<{ 1 << 18 }, ServerStatus>),
@@ -24,7 +24,7 @@ pub struct ProfileProperty {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum LoginPacket {
     #[variant(0x00)]
     Disconnect { reason: JsonChat },
@@ -46,11 +46,11 @@ pub enum LoginPacket {
     },
 
     #[variant(0x03)]
-    SetCompression { threshold: VarInt },
+    SetCompression { threshold: VarInt<i32> },
 
     #[variant(0x04)]
     PluginRequest {
-        message_id: VarInt,
+        message_id: VarInt<i32>,
         channel: Identifier,
         data: RemainingBytes<{ 1 << 20 }>,
     },
@@ -89,7 +89,7 @@ pub struct RegistryData {
 #[derive(Debug, Clone, ProtocolType)]
 pub struct Tag {
     pub name: Identifier,
-    pub entries: LenVec<VarInt>,
+    pub entries: LenVec<VarInt<i32>>,
 }
 
 #[derive(Debug, Clone, ProtocolType)]
@@ -99,7 +99,7 @@ pub struct TagType {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum ConfigurationPacket {
     #[variant(0x00)]
     PluginMessage {
@@ -169,7 +169,7 @@ pub struct WorldPos {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(Primitive::<u8>)] // fixme
+#[variant(Primitive<u8>)]
 pub enum GameMode {
     #[variant(0)]
     Survival,
@@ -223,7 +223,7 @@ pub struct TeleportRelative {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum PlayPacket {
     #[variant(0x0C)]
     WorldDifficulty {
@@ -249,10 +249,10 @@ pub enum PlayPacket {
         center_z: Primitive<f64>,
         side_old: Primitive<f64>,
         side_new: Primitive<f64>,
-        interp_time: VarInt, // todo varlong
-        portal_boundary: VarInt,
-        warning_distance: VarInt,
-        warning_tme: VarInt,
+        interp_time: VarInt<i32>, // todo varlong
+        portal_boundary: VarInt<i32>,
+        warning_distance: VarInt<i32>,
+        warning_tme: VarInt<i32>,
     },
 
     #[variant(0x25)]
@@ -281,10 +281,10 @@ pub enum PlayPacket {
         entity_id: Primitive<u32>,
         is_hardcore: Primitive<bool>,
         dimensions: LenVec<Identifier>,
-        max_players: VarInt,
+        max_players: VarInt<i32>,
         // not to be confused with view distance, which is how far the client chooses to render
-        load_distance: VarInt,
-        simulation_distance: VarInt,
+        load_distance: VarInt<i32>,
+        simulation_distance: VarInt<i32>,
         reduced_debug_info: Primitive<bool>,
         enable_respawn_screen: Primitive<bool>,
         dimension_type: Identifier,
@@ -295,7 +295,7 @@ pub enum PlayPacket {
         is_debug: Primitive<bool>,
         is_flat: Primitive<bool>,
         died: BoolOption<WorldPos>,
-        portal_cooldown: VarInt,
+        portal_cooldown: VarInt<i32>,
     },
 
     #[variant(0x37)]
@@ -313,14 +313,17 @@ pub enum PlayPacket {
         yaw: Primitive<f32>,
         pitch: Primitive<f32>,
         relative: TeleportRelative,
-        id: VarInt,
+        id: VarInt<i32>,
     },
 
     #[variant(0x4F)]
     PlayerHotbarSlot(Primitive<i8>),
 
     #[variant(0x51)]
-    ChunkCenter { chunk_x: VarInt, chunk_z: VarInt },
+    ChunkCenter {
+        chunk_x: VarInt<i32>,
+        chunk_z: VarInt<i32>,
+    },
 
     #[variant(0x53)]
     WorldRespawn {
@@ -331,14 +334,14 @@ pub enum PlayPacket {
     #[variant(0x59)]
     PlayerExperience {
         fill_bar: Primitive<f32>,
-        exp: VarInt,
-        level: VarInt,
+        exp: VarInt<i32>,
+        level: VarInt<i32>,
     },
 
     #[variant(0x5A)]
     PlayerHealth {
         health: Primitive<f32>,
-        hunger: VarInt,
+        hunger: VarInt<i32>,
         saturation: Primitive<f32>,
     },
 

@@ -24,14 +24,14 @@ pub enum ReadFrameError {
     #[error(transparent)]
     Io(#[from] io::Error),
     #[error("Failed to decode length")]
-    DecodingLength(#[from] types::varint::DecodeError),
+    DecodingLength(#[from] types::varint::I32DecodeError),
 }
 
 /// The output future is **not cancellable**
 pub async fn read_frame(
     source: &mut (impl io::AsyncRead + Unpin + Send),
 ) -> Result<bytes::Bytes, ReadFrameError> {
-    let types::VarInt(length) = types::VarInt::decode_raw(source).await??;
+    let types::VarInt::<i32>(length) = types::VarInt::decode_raw(source).await??;
 
     let mut buffer = vec![0; length as usize];
 

@@ -10,7 +10,7 @@ pub enum DecodeError {
     #[error(transparent)]
     Eof(#[from] error::Eof),
     #[error("Failed to read BitVec length")]
-    Length(#[from] super::varint::DecodeError),
+    Length(#[from] super::varint::I32DecodeError),
 }
 
 impl ProtocolType for BitVec<u64, Lsb0> {
@@ -20,7 +20,7 @@ impl ProtocolType for BitVec<u64, Lsb0> {
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
         const BITS: usize = u64::BITS as usize;
 
-        let super::VarInt(longs) = super::VarInt::decode(buffer)?;
+        let super::VarInt::<i32>(longs) = super::VarInt::decode(buffer)?;
         if buffer.remaining() < longs as usize * 8 {
             Err(error::Eof)?
         }

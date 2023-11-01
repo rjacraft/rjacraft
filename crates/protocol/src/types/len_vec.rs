@@ -18,7 +18,7 @@ pub enum DecodeError<E: std::error::Error> {
     #[error(transparent)]
     Eof(#[from] error::Eof),
     #[error("Failed to read LengthVec length")]
-    Length(#[from] super::varint::DecodeError),
+    Length(#[from] super::varint::I32DecodeError),
     #[error("Failed to read LengthVec element")]
     Element(#[source] E),
 }
@@ -49,7 +49,7 @@ impl<T: ProtocolType> ProtocolType for LenVec<T> {
     }
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
-        super::VarInt(self.0.len().try_into()?).encode(buffer)?;
+        super::VarInt::<i32>(self.0.len().try_into()?).encode(buffer)?;
 
         for el in &self.0 {
             el.encode(buffer).map_err(|e| EncodeError::Element(e))?;
@@ -84,7 +84,7 @@ impl ProtocolType for LenVec<u8> {
     type EncodeError = error::Infallible;
 
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
-        let super::VarInt(len) = super::VarInt::decode(buffer)?;
+        let super::VarInt::<i32>(len) = super::VarInt::decode(buffer)?;
 
         if buffer.remaining() >= len as usize {
             Ok(Self(buffer.copy_to_bytes(len as usize).to_vec()))

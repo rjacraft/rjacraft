@@ -26,14 +26,14 @@ impl nbt::AsCompound for ColumnHeightmaps {
 /// Cheap to clone!
 #[derive(Debug, Clone)]
 pub enum Palette {
-    SingleValue(VarInt),
+    SingleValue(VarInt<i32>),
     Table {
-        source: LenVec<VarInt>,
-        longs: VarInt,
+        source: LenVec<VarInt<i32>>,
+        longs: VarInt<i32>,
         refs: bytes::Bytes,
     },
     None {
-        longs: VarInt,
+        longs: VarInt<i32>,
         ids: bytes::Bytes,
     },
 }
@@ -58,7 +58,7 @@ impl ProtocolType for Paletted {
         match &self.palette {
             Palette::SingleValue(id) => {
                 id.encode(buffer)?;
-                VarInt(0).encode(buffer)?;
+                VarInt(0i32).encode(buffer)?;
             }
             Palette::Table {
                 source,
@@ -115,7 +115,7 @@ impl<P: ProtocolType> ProtocolType for ColumnPalettes<P> {
 
 /// Cheap to clone!
 #[derive(Debug, Clone, ProtocolType)]
-pub struct SectionLight(pub VarInt, pub [u8; SECTION_VOLUME_BLOCKS / 2]);
+pub struct SectionLight(pub VarInt<i32>, pub [u8; SECTION_VOLUME_BLOCKS / 2]);
 
 /// Cheap to clone!
 #[derive(Debug, Clone, ProtocolType)]

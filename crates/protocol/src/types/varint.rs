@@ -5,74 +5,151 @@ use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 
 use crate::{error, ProtocolType, ProtocolTypeRaw};
 
-pub const MAX_SIZE: usize = 5;
-
 #[derive(Debug, thiserror::Error, from_never::FromNever)]
-pub enum DecodeError {
+pub enum DecodeError<const BITS: u32> {
     #[error(transparent)]
     Eof(#[from] error::Eof),
-    #[error("The var int is larger than {MAX_SIZE}")]
+    #[error("The var int is larger than {BITS} bits")]
     TooLarge,
 }
 
-#[derive(Debug, Clone)]
-pub struct VarInt(pub i32);
+pub type I32DecodeError = DecodeError<{ i32::BITS }>;
 
-impl VarInt {
-    pub const fn written_size(self) -> usize {
-        match self.0 {
-            0 => 1,
-            n => (31 - n.leading_zeros() as usize) / 7 + 1,
+fn decode_generic<const BITS: u32>(buffer: &mut impl Buf) -> Result<u128, DecodeError<BITS>> {
+    let mut result = 0;
+    let mut bit = 0;
+
+    loop {
+        if buffer.remaining() == 0 {
+            return Err(DecodeError::Eof(error::Eof));
+        }
+
+        let byte = buffer.get_u8();
+        result |= (byte as u128 & 0b01111111) << bit;
+
+        if byte & 0b10000000 == 0 {
+            return Ok(result);
+        }
+
+        bit += 7;
+
+        if bit > BITS {
+            return Err(DecodeError::TooLarge);
         }
     }
 }
 
-impl ProtocolType for VarInt {
-    type DecodeError = DecodeError;
+fn encode_generic(buffer: &mut impl BufMut, mut value: u128) {
+    loop {
+        let byte = (value as u8) & 0b01111111;
+        value >>= 7;
+        if value == 0 {
+            buffer.put_u8(byte);
+            break;
+        } else {
+            buffer.put_u8(byte | 0b10000000);
+        }
+    }
+}
+
+async fn decode_generic_raw<const BITS: u32>(
+    read: &mut (impl io::AsyncRead + Unpin + Send),
+) -> io::Result<Result<u128, DecodeError<BITS>>> {
+    let mut result = 0;
+    let mut bit = 0;
+    let mut byte = [0];
+
+    loop {
+        if read.read(&mut byte).await? == 0 {
+            return Ok(Err(DecodeError::Eof(error::Eof)));
+        }
+
+        result |= (byte[0] as u128 & 0b01111111) << bit;
+
+        if byte[0] & 0b10000000 == 0 {
+            return Ok(Ok(result.into()));
+        }
+
+        bit += 7;
+
+        if bit > BITS {
+            return Ok(Err(DecodeError::TooLarge));
+        }
+    }
+}
+
+async fn encode_generic_raw(
+    write: &mut (impl io::AsyncWrite + Unpin + Send),
+    mut value: u128,
+) -> io::Result<()> {
+    let mut result = [0; 8];
+    let mut i = 0;
+
+    loop {
+        result[i] = (value as u8) & 0b01111111;
+        value >>= 7;
+
+        if value == 0 {
+            i += 1;
+            break;
+        } else {
+            result[i] |= 0b10000000;
+            i += 1;
+        }
+    }
+
+    write.write_all(&result[..i]).await?;
+
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+pub struct VarInt<T>(pub T);
+
+impl ProtocolType for VarInt<i32> {
+    type DecodeError = I32DecodeError;
     type EncodeError = error::Infallible;
 
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
-        let mut val = 0;
-
-        for i in 0..MAX_SIZE {
-            if buffer.remaining() == 0 {
-                Err(error::Eof)?;
-            }
-
-            let byte = buffer.get_u8();
-            val |= (byte as i32 & 0b01111111) << (i * 7);
-
-            if byte & 0b10000000 == 0 {
-                return Ok(Self(val));
-            }
-        }
-
-        Err(DecodeError::TooLarge)
+        Ok(Self(decode_generic::<{ i32::BITS }>(buffer)? as i32))
     }
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
-        let x = self.0 as u64;
-        let stage1 = (x & 0x000000000000007f)
-            | ((x & 0x0000000000003f80) << 1)
-            | ((x & 0x00000000001fc000) << 2)
-            | ((x & 0x000000000fe00000) << 3)
-            | ((x & 0x00000000f0000000) << 4);
-
-        let leading = stage1.leading_zeros();
-
-        let unused_bytes = (leading - 1) >> 3;
-        let bytes_needed = 8 - unused_bytes;
-
-        // set all but the last MSBs
-        let msbs = 0x8080808080808080;
-        let msbmask = 0xffffffffffffffff >> (((8 - bytes_needed + 1) << 3) - 1);
-
-        let merged = stage1 | (msbs & msbmask);
-        let bytes = merged.to_le_bytes();
-
-        buffer.put(&bytes[..bytes_needed as usize]);
+        encode_generic(buffer, self.0 as u32 as u128);
 
         Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl ProtocolTypeRaw for VarInt<i32> {
+    async fn decode_raw(
+        read: &mut (impl io::AsyncRead + Unpin + Send),
+    ) -> io::Result<Result<Self, Self::DecodeError>> {
+        decode_generic_raw::<{ i32::BITS }>(read)
+            .await
+            .map(|x| x.map(|x| Self(x as i32)))
+    }
+
+    async fn encode_raw(
+        &self,
+        write: &mut (impl io::AsyncWrite + Unpin + Send),
+    ) -> io::Result<Result<(), Self::EncodeError>> {
+        encode_generic_raw(write, self.0 as u32 as u128).await?;
+
+        Ok(Ok(()))
+    }
+}
+
+impl From<i32> for VarInt<i32> {
+    fn from(value: i32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<VarInt<i32>> for i32 {
+    fn from(value: VarInt<i32>) -> Self {
+        value.0
     }
 }
 
@@ -80,97 +157,37 @@ impl ProtocolType for VarInt {
 mod tests {
     use super::*;
 
+    const DATA_I32: &[(i32, &[u8])] = &[
+        (0, &[0x00]),
+        (1, &[0x01]),
+        (2, &[0x02]),
+        (127, &[0x7f]),
+        (128, &[0x80, 0x01]),
+        (255, &[0xff, 0x01]),
+        (25565, &[0xdd, 0xc7, 0x01]),
+        (2097151, &[0xff, 0xff, 0x7f]),
+        (2147483647, &[0xff, 0xff, 0xff, 0xff, 0x07]),
+        (-1, &[0xff, 0xff, 0xff, 0xff, 0x0f]),
+        (-2147483648, &[0x80, 0x80, 0x80, 0x80, 0x08]),
+    ];
+
     #[test]
-    fn encode() {
-        assert_eq!(VarInt(0).encode_owned().unwrap(), vec![0x00]);
-        assert_eq!(VarInt(1).encode_owned().unwrap(), vec![0x01]);
-        assert_eq!(VarInt(2).encode_owned().unwrap(), vec![0x02]);
-        assert_eq!(VarInt(127).encode_owned().unwrap(), vec![0x7f]);
-        assert_eq!(VarInt(128).encode_owned().unwrap(), vec![0x80, 0x01]);
-        assert_eq!(VarInt(255).encode_owned().unwrap(), vec![0xff, 0x01]);
-        assert_eq!(
-            VarInt(25565).encode_owned().unwrap(),
-            vec![0xdd, 0xc7, 0x01]
-        );
-        assert_eq!(
-            VarInt(2097151).encode_owned().unwrap(),
-            vec![0xff, 0xff, 0x7f]
-        );
-        assert_eq!(
-            VarInt(2147483647).encode_owned().unwrap(),
-            vec![0xff, 0xff, 0xff, 0xff, 0x07]
-        );
-        assert_eq!(
-            VarInt(-1).encode_owned().unwrap(),
-            vec![0xff, 0xff, 0xff, 0xff, 0x0f]
-        );
-        assert_eq!(
-            VarInt(-2147483648).encode_owned().unwrap(),
-            vec![0x80, 0x80, 0x80, 0x80, 0x08]
-        );
-    }
-}
-
-#[async_trait::async_trait]
-impl ProtocolTypeRaw for VarInt {
-    async fn decode_raw(
-        read: &mut (impl io::AsyncRead + Unpin + Send),
-    ) -> io::Result<Result<Self, Self::DecodeError>> {
-        let mut val = 0;
-        let mut byte = [0];
-
-        for i in 0..MAX_SIZE {
-            if read.read(&mut byte).await? == 0 {
-                return Ok(Err(Self::DecodeError::Eof(error::Eof)));
-            }
-
-            val |= (byte[0] as i32 & 0b01111111) << (i * 7);
-
-            if byte[0] & 0b10000000 == 0 {
-                return Ok(Ok(Self(val)));
-            }
+    fn decode_i32() {
+        for &(input, output) in DATA_I32 {
+            let mut buffer = bytes::Bytes::from(output);
+            assert_eq!(
+                decode_generic::<{ i32::BITS }>(&mut buffer).unwrap() as i32,
+                input
+            );
         }
-
-        Ok(Err(DecodeError::TooLarge))
     }
 
-    async fn encode_raw(
-        &self,
-        write: &mut (impl io::AsyncWrite + Unpin + Send),
-    ) -> io::Result<Result<(), Self::EncodeError>> {
-        let x = self.0 as u64;
-        let stage1 = (x & 0x000000000000007f)
-            | ((x & 0x0000000000003f80) << 1)
-            | ((x & 0x00000000001fc000) << 2)
-            | ((x & 0x000000000fe00000) << 3)
-            | ((x & 0x00000000f0000000) << 4);
-
-        let leading = stage1.leading_zeros();
-
-        let unused_bytes = (leading - 1) >> 3;
-        let bytes_needed = 8 - unused_bytes;
-
-        // set all but the last MSBs
-        let msbs = 0x8080808080808080;
-        let msbmask = 0xffffffffffffffff >> (((8 - bytes_needed + 1) << 3) - 1);
-
-        let merged = stage1 | (msbs & msbmask);
-        let bytes = merged.to_le_bytes();
-
-        write.write_all(&bytes[..bytes_needed as usize]).await?;
-
-        Ok(Ok(()))
-    }
-}
-
-impl From<i32> for VarInt {
-    fn from(value: i32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<VarInt> for i32 {
-    fn from(value: VarInt) -> Self {
-        value.0
+    #[test]
+    fn encode_i32() {
+        for &(input, output) in DATA_I32 {
+            let mut buffer = bytes::BytesMut::new();
+            encode_generic(&mut buffer, input as u32 as u128);
+            assert_eq!(buffer.chunk(), output);
+        }
     }
 }

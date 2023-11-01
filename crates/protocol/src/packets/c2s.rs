@@ -6,7 +6,7 @@ use rjacraft_macro::ProtocolType;
 use crate::{error, types::*, ProtocolType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum NextState {
     #[variant(1)]
     Status,
@@ -16,7 +16,7 @@ pub enum NextState {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum HandshakePacket {
     #[variant(0x00)]
     Handshake {
@@ -28,7 +28,7 @@ pub enum HandshakePacket {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum StatusPacket {
     #[variant(0x00)]
     Request,
@@ -38,7 +38,7 @@ pub enum StatusPacket {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum LoginPacket {
     #[variant(0x00)]
     LoginStart {
@@ -54,7 +54,7 @@ pub enum LoginPacket {
 
     #[variant(0x02)]
     LoginPluginResponse {
-        message_id: VarInt,
+        message_id: VarInt<i32>,
         successful: Primitive<bool>,
         data: RemainingBytes<{ 1 << 20 }>,
     },
@@ -64,7 +64,7 @@ pub enum LoginPacket {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum ConfigurationPacket {
     #[variant(0x00)]
     PluginMessage {
@@ -82,7 +82,7 @@ pub enum ConfigurationPacket {
     Pong { payload: Primitive<i64> },
 
     #[variant(0x04)]
-    ResourcePack { result: VarInt },
+    ResourcePack { result: VarInt<i32> },
 }
 
 #[derive(Debug, Clone, ProtocolType)]
@@ -92,7 +92,7 @@ pub struct ArgumentSignature {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum ClientCommand {
     #[variant(0)]
     Respawn,
@@ -114,7 +114,7 @@ pub struct SkinParts {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum ChatMode {
     #[variant(0)]
     Enabled,
@@ -125,7 +125,7 @@ pub enum ChatMode {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum HandAbs {
     #[variant(0)]
     Left,
@@ -147,7 +147,7 @@ pub struct PlayerAbilities {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum HandRel {
     #[variant(0)]
     Main,
@@ -156,7 +156,7 @@ pub enum HandRel {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum PlayerAction {
     #[variant(0)]
     DigStart,
@@ -205,7 +205,7 @@ pub struct PlayerInputFlags {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum PlayerCommand {
     #[variant(0)]
     SneakDown,
@@ -228,7 +228,7 @@ pub enum PlayerCommand {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum AdvancementCommand {
     #[variant(0)]
     OpenTab(Identifier),
@@ -237,10 +237,10 @@ pub enum AdvancementCommand {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(VarInt)]
+#[variant(VarInt<i32>)]
 pub enum PlayPacket {
     #[variant(0x00)]
-    PlayerTeleport { id: VarInt },
+    PlayerTeleport { id: VarInt<i32> },
 
     #[variant(0x04)]
     ChatCommand {
@@ -248,7 +248,7 @@ pub enum PlayPacket {
         timestamp: Primitive<i64>,
         salt: Primitive<i64>,
         signatures: LenVec<ArgumentSignature>,
-        message_count: VarInt,
+        message_count: VarInt<i32>,
         acknowledged: BitVec<u64>,
     },
 
@@ -258,7 +258,7 @@ pub enum PlayPacket {
         timestamp: Primitive<i64>,
         salt: Primitive<i64>,
         signature: BoolOption<[u8; 256]>,
-        message_count: VarInt,
+        message_count: VarInt<i32>,
         acknowledged: BitVec<u64>,
     },
 
@@ -325,14 +325,14 @@ pub enum PlayPacket {
         action: PlayerAction,
         position: Position,
         face: Face,
-        sequence: VarInt,
+        sequence: VarInt<i32>,
     },
 
     #[variant(0x21)]
     PlayerCommand {
-        player: VarInt,
+        player: VarInt<i32>,
         action: PlayerCommand,
-        extra: VarInt,
+        extra: VarInt<i32>,
     },
 
     #[variant(0x22)]
@@ -363,6 +363,6 @@ pub enum PlayPacket {
         cursor_y: Primitive<f32>,
         cursor_z: Primitive<f32>,
         head_buried: Primitive<bool>,
-        sequence: VarInt,
+        sequence: VarInt<i32>,
     },
 }

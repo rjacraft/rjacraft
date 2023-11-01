@@ -5,7 +5,7 @@ use bytes::{Buf, BufMut};
 use crate::{error, ProtocolType, ProtocolVersion};
 
 impl ProtocolType for ProtocolVersion {
-    type DecodeError = super::varint::DecodeError;
+    type DecodeError = super::varint::I32DecodeError;
     type EncodeError = error::Infallible;
 
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {

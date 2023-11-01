@@ -131,6 +131,15 @@ fn handle_enum(item: ItemEnum) -> TokenStream {
     let Ok(disc_type) = disc_attr.parse_args::<Type>() else {
         return quote! { compile_error!("failed to parse variant type"); };
     };
+    let mut disc_type_turbofish = disc_type.clone();
+
+    if let Type::Path(path) = &mut disc_type_turbofish {
+        for segment in &mut path.path.segments {
+            if let PathArguments::AngleBracketed(args) = &mut segment.arguments {
+                args.colon2_token = Some(parse_quote!(::));
+            }
+        }
+    }
 
     let mut de_errors = Vec::new();
     let mut en_errors = Vec::new();
@@ -225,7 +234,7 @@ fn handle_enum(item: ItemEnum) -> TokenStream {
         });
         en_variants.push(quote! {
             Self::#variant_name #en_construct => {
-                #disc_type::from(#disc_value).encode(buffer).map_err(#en_error::Discriminator)?;
+                #disc_type_turbofish::from(#disc_value).encode(buffer).map_err(#en_error::Discriminator)?;
 
                 #(#en_fields)*
             },
@@ -254,7 +263,7 @@ fn handle_enum(item: ItemEnum) -> TokenStream {
             type EncodeError = #en_error;
 
             fn decode(buffer: &mut impl ::bytes::Buf) -> Result<Self, Self::DecodeError> {
-                let disc = #disc_type::decode(buffer).map_err(#de_error::Discriminator)?.into();
+                let disc = #disc_type_turbofish::decode(buffer).map_err(#de_error::Discriminator)?.into();
 
                 match disc {
                     #(#de_variants)*
