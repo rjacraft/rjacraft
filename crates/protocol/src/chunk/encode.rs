@@ -197,7 +197,7 @@ pub fn to_network<const SECTIONS: usize>(
     (
         net_chunk::ColumnHeightmaps {
             world_surface: build_heightmap(&column.blockstates, |id| id != 0),
-            // todo implement this corrently
+            // todo implement this correctly
             motion_blocking: build_heightmap(&column.blockstates, |id| id != 0),
         },
         net_chunk::ColumnPalettes(
