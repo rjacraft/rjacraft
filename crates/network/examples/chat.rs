@@ -2,10 +2,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use rjacraft_macro::*;
 use rjacraft_network::*;
-use rjacraft_protocol::{
-    packets::s2c,
-    types::{self, server_status},
-};
+use rjacraft_protocol::{chunk, packets::s2c, types::*};
 use tracing::*;
 
 fn main() {
@@ -82,7 +79,7 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
 }
 
 fn auth_system(
-    In((entity, username, uuid)): In<(Entity, String, uuid::Uuid)>,
+    In((entity, username, uuid)): In<(Entity, String, Uuid)>,
     mut commands: Commands,
 ) -> AuthOutcome {
     commands.entity(entity).insert(Login {
@@ -104,6 +101,8 @@ fn brand_system(mut events_in: EventReader<C2sPacket<packet::ClientBrand>>) {
 
 fn init_play_system(players: Query<(Entity, &Play), Added<Play>>) {
     for (entity, play) in players.iter() {
+        let (heightmaps, palettes, light) = chunk::to_network(&chunk::Column::<16>::default());
+
         play.send_packet(&s2c::PlayPacket::Login {
             entity_id: entity.index().into(),
             is_hardcore: false.into(),
@@ -131,7 +130,7 @@ fn init_play_system(players: Query<(Entity, &Play), Added<Play>>) {
         })
         .unwrap()
         .send_packet(&s2c::PlayPacket::WorldRespawn {
-            position: types::Position(0, 40, 0),
+            position: Position(0, 40, 0),
             pitch: 0.0.into(),
         })
         .unwrap()
@@ -143,6 +142,15 @@ fn init_play_system(players: Query<(Entity, &Play), Added<Play>>) {
             pitch: 0.0.into(),
             flags: 0b00000000.into(),
             id: 0.into(),
+        })
+        .unwrap()
+        .send_packet(&s2c::PlayPacket::ChunkData {
+            chunk_x: 0.into(),
+            chunk_z: 0.into(),
+            heightmaps: Nbt(heightmaps),
+            palettes,
+            block_entities: vec![].into(),
+            light,
         })
         .unwrap();
     }
@@ -157,7 +165,7 @@ fn chat_system(
 
     for C2sPacket(from, data) in events.iter() {
         let login: &Login = world.get(*from).unwrap();
-        let formatted: types::JsonChat =
+        let formatted: JsonChat =
             chat!(("{}", login.username) (c[GRAY] " > ") ("{}", data.content)).into();
 
         for play in players.iter() {
