@@ -45,7 +45,7 @@ fn encode_paletted<const SIDE: usize, const MIN_BITS: u32>(
     let mut palette_array = Vec::new();
     // key and value flipped
     let mut palette_lookup = HashMap::new();
-    let mut i = 0;
+    let mut i = 0u32;
 
     for layer in section {
         for row in layer {
@@ -76,9 +76,9 @@ fn encode_paletted<const SIDE: usize, const MIN_BITS: u32>(
     } else {
         let mut buffer = bytes::BytesMut::new();
 
-        let bits_per_block = Ord::max(MIN_BITS, i32::ilog2(i) + 1);
+        let bits_per_block = Ord::max(MIN_BITS, u32::ilog2(i) + 1);
 
-        let blocks_per_cell = u64::BITS.div_ceil(bits_per_block);
+        let blocks_per_cell = u64::BITS / bits_per_block;
         let longs = (SIDE * SIDE * SIDE).div_ceil(blocks_per_cell as usize);
 
         let mut current = 0;

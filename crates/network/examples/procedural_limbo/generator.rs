@@ -218,7 +218,7 @@ pub fn generate(output: &mut Column<16>, chunk_x: i32, chunk_z: i32) {
                     }
                 } else if y == 42 {
                     // a stained glass pattern with a prime interval
-                    output.blockstates[s][sy][sz][sx] = 5946 + i32::unsigned_abs((x + z) % 11);
+                    output.blockstates[s][sy][sz][sx] = 5946 + i32::unsigned_abs((x + z) % 13);
                 }
 
                 output.sky_light.world[s][sy][sz][sx] =
