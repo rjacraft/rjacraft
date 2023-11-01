@@ -1,4 +1,4 @@
-//! A u64 bitfield used for position in many packets.
+//! Odd position types
 
 use bitfield_struct::bitfield;
 use rjacraft_macro::ProtocolType;

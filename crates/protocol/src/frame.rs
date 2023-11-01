@@ -1,4 +1,4 @@
-//! Functions for asychronously decoding packet frames
+//! Functions for asychronously decoding and encoding packet frames
 
 use core::num;
 
@@ -27,7 +27,7 @@ pub enum ReadFrameError {
     DecodingLength(#[from] types::varint::I32DecodeError),
 }
 
-/// The output future is **not cancellable**
+/// Reads a raw frame from a source. The output future is **not cancellable**.
 pub async fn read_frame(
     source: &mut (impl io::AsyncRead + Unpin + Send),
 ) -> Result<bytes::Bytes, ReadFrameError> {
@@ -50,7 +50,7 @@ pub enum WriteFrameError {
     Io(#[from] io::Error),
 }
 
-/// The output future is **not cancellable**
+/// Writes a raw frame to a writer. The output future is **not cancellable**.
 pub async fn write_frame(
     dest: &mut (impl io::AsyncWrite + Unpin + Send),
     buffer: &[u8],

@@ -6,8 +6,8 @@ use super::*;
 use crate::types::*;
 
 fn build_heightmap<const SECTIONS: usize>(
-    sections: &[Section<BlockId, SECTION_SIDE_BLOCKS>; SECTIONS],
-    predicate: impl Fn(BlockId) -> bool,
+    sections: &[Section<BlockstateId, SECTION_SIDE_BLOCKS>; SECTIONS],
+    predicate: impl Fn(BlockstateId) -> bool,
 ) -> Vec<i64> {
     let bits_per_entry = (SECTIONS * SECTION_SIDE_BLOCKS).ilog2() + 1;
     let mut result = vec![0];
@@ -39,7 +39,7 @@ fn build_heightmap<const SECTIONS: usize>(
 }
 
 fn encode_paletted<const SIDE: usize>(
-    section: &Section<BlockId, SIDE>,
+    section: &Section<BlockstateId, SIDE>,
     bits_min_lut: u32,
     bits_max_lut: u32,
     bits_min_array: u32,
@@ -198,6 +198,7 @@ fn encode_light<const SECTIONS: usize>(
     (mask, arrays)
 }
 
+/// Converts a friendly column to a network column.
 pub fn to_network<const SECTIONS: usize>(
     column: &super::Column<SECTIONS>,
 ) -> (

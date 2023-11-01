@@ -41,10 +41,7 @@ pub enum StatusPacket {
 #[variant(VarInt<i32>)]
 pub enum LoginPacket {
     #[variant(0x00)]
-    LoginStart {
-        username: LenString<16>,
-        uuid: ::uuid::Uuid,
-    },
+    LoginStart { username: LenString<16>, uuid: Uuid },
 
     #[variant(0x01)]
     EncryptionResponse {

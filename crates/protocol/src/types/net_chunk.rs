@@ -1,3 +1,6 @@
+//! The network representation of chunk data. For a convenient memory representation, see
+//! [`crate::chunk`].
+
 use bytes::Buf;
 use rjacraft_macro::ProtocolType;
 use valence_nbt::*;

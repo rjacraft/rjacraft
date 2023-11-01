@@ -38,7 +38,7 @@ pub enum LoginPacket {
 
     #[variant(0x02)]
     Success {
-        uuid: ::uuid::Uuid,
+        uuid: Uuid,
         username: LenString<16>,
         /// See [Mojang's API](https://wiki.vg/Mojang_API#UUID_to_Profile_and_Skin.2FCape) for the
         /// meaning of these
@@ -73,7 +73,7 @@ pub mod registry {
     }
 }
 
-/// In theory, there could be more registries than this, but we don't care at all.
+/// In theory, there could be more registries than this. This is not a current concern.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RegistryData {
     #[serde(rename = "minecraft:chat_type")]
