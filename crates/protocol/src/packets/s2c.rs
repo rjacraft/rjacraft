@@ -249,7 +249,7 @@ pub enum PlayPacket {
         center_z: Primitive<f64>,
         side_old: Primitive<f64>,
         side_new: Primitive<f64>,
-        interp_time: VarInt<i32>, // todo varlong
+        interp_time: VarInt<i64>,
         portal_boundary: VarInt<i32>,
         warning_distance: VarInt<i32>,
         warning_tme: VarInt<i32>,

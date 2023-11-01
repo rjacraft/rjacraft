@@ -1,4 +1,4 @@
-//! The variable-length integer type. Backed by an [`i32`]
+//! The variable-length integer type. Backed by either [`i32`] or [`i64`]
 
 use bytes::{Buf, BufMut};
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
@@ -14,6 +14,7 @@ pub enum DecodeError<const BITS: u32> {
 }
 
 pub type I32DecodeError = DecodeError<{ i32::BITS }>;
+pub type I64DecodeError = DecodeError<{ i64::BITS }>;
 
 fn decode_generic<const BITS: u32>(buffer: &mut impl Buf) -> Result<u128, DecodeError<BITS>> {
     let mut result = 0;
@@ -121,6 +122,7 @@ impl ProtocolType for VarInt<i32> {
     }
 }
 
+/// The var int that everyone calls var int
 #[async_trait::async_trait]
 impl ProtocolTypeRaw for VarInt<i32> {
     async fn decode_raw(
@@ -153,6 +155,54 @@ impl From<VarInt<i32>> for i32 {
     }
 }
 
+/// The var int that everyone calls var long
+impl ProtocolType for VarInt<i64> {
+    type DecodeError = I64DecodeError;
+    type EncodeError = error::Infallible;
+
+    fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
+        Ok(Self(decode_generic::<{ i64::BITS }>(buffer)? as i64))
+    }
+
+    fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
+        encode_generic(buffer, self.0 as u32 as u128);
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl ProtocolTypeRaw for VarInt<i64> {
+    async fn decode_raw(
+        read: &mut (impl io::AsyncRead + Unpin + Send),
+    ) -> io::Result<Result<Self, Self::DecodeError>> {
+        decode_generic_raw::<{ i64::BITS }>(read)
+            .await
+            .map(|x| x.map(|x| Self(x as i64)))
+    }
+
+    async fn encode_raw(
+        &self,
+        write: &mut (impl io::AsyncWrite + Unpin + Send),
+    ) -> io::Result<Result<(), Self::EncodeError>> {
+        encode_generic_raw(write, self.0 as u64 as u128).await?;
+
+        Ok(Ok(()))
+    }
+}
+
+impl From<i64> for VarInt<i64> {
+    fn from(value: i64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<VarInt<i64>> for i64 {
+    fn from(value: VarInt<i64>) -> Self {
+        value.0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,6 +221,32 @@ mod tests {
         (-2147483648, &[0x80, 0x80, 0x80, 0x80, 0x08]),
     ];
 
+    const DATA_I64: &[(i64, &[u8])] = &[
+        (0, &[0x00]),
+        (1, &[0x01]),
+        (2, &[0x02]),
+        (127, &[0x7f]),
+        (128, &[0x80, 0x01]),
+        (255, &[0xff, 0x01]),
+        (2147483647, &[0xff, 0xff, 0xff, 0xff, 0x07]),
+        (
+            9223372036854775807,
+            &[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f],
+        ),
+        (
+            -1,
+            &[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01],
+        ),
+        (
+            -2147483648,
+            &[0x80, 0x80, 0x80, 0x80, 0xf8, 0xff, 0xff, 0xff, 0xff, 0x01],
+        ),
+        (
+            -9223372036854775808,
+            &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01],
+        ),
+    ];
+
     #[test]
     fn decode_i32() {
         for &(input, output) in DATA_I32 {
@@ -187,6 +263,26 @@ mod tests {
         for &(input, output) in DATA_I32 {
             let mut buffer = bytes::BytesMut::new();
             encode_generic(&mut buffer, input as u32 as u128);
+            assert_eq!(buffer.chunk(), output);
+        }
+    }
+
+    #[test]
+    fn decode_i64() {
+        for &(input, output) in DATA_I64 {
+            let mut buffer = bytes::Bytes::from(output);
+            assert_eq!(
+                decode_generic::<{ i64::BITS }>(&mut buffer).unwrap() as i64,
+                input
+            );
+        }
+    }
+
+    #[test]
+    fn encode_i64() {
+        for &(input, output) in DATA_I64 {
+            let mut buffer = bytes::BytesMut::new();
+            encode_generic(&mut buffer, input as u64 as u128);
             assert_eq!(buffer.chunk(), output);
         }
     }
