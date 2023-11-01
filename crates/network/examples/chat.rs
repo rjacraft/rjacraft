@@ -132,7 +132,7 @@ fn init_play_system(players: Query<(Entity, &Play), Added<Play>>) {
         })
         .unwrap()
         .send_packet(&s2c::PlayPacket::WorldRespawn {
-            position: Position(0, 40, 0),
+            position: BlockPos::new().with_x(0).with_y(40).with_z(0),
             pitch: 0.0.into(),
         })
         .unwrap()

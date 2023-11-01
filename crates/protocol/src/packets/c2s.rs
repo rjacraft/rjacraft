@@ -323,7 +323,7 @@ pub enum PlayPacket {
     #[variant(0x20)]
     PlayerAction {
         action: PlayerAction,
-        position: Position,
+        position: BlockPos,
         face: Face,
         sequence: VarInt<i32>,
     },
@@ -357,7 +357,7 @@ pub enum PlayPacket {
     #[variant(0x34)]
     UseItemOn {
         hand: HandRel,
-        block_pos: Position,
+        block_pos: BlockPos,
         block_face: Face,
         cursor_x: Primitive<f32>,
         cursor_y: Primitive<f32>,

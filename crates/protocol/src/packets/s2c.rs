@@ -165,7 +165,7 @@ pub struct BlockEntity {
 #[derive(Debug, Clone, ProtocolType)]
 pub struct WorldPos {
     pub dimension_name: Identifier,
-    pub position: Position,
+    pub position: BlockPos,
 }
 
 #[derive(Debug, Clone, ProtocolType)]
@@ -235,8 +235,8 @@ pub enum PlayPacket {
     #[variant(0x0F)]
     ChunkBiomes(LenVec<ChunkBiomeData>),
 
-    /// The order of X and Z is flipped, because Minecraft reads this as a weird long bitfield.
-    /// Despite this, the order in [`PlayPacket::ChunkData`] still remains normal.
+    /// The order of X and Z is flipped, because Minecraft encodes this as some kind of MSB
+    /// bitfield. Despite this, the order in [`PlayPacket::ChunkData`] still remains normal.
     #[variant(0x20)]
     ChunkUnload {
         chunk_z: Primitive<i32>,
@@ -327,7 +327,7 @@ pub enum PlayPacket {
 
     #[variant(0x53)]
     WorldRespawn {
-        position: Position,
+        position: BlockPos,
         pitch: Primitive<f32>,
     },
 

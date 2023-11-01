@@ -33,7 +33,7 @@ pub use self::{
     len_string::LenString,
     len_vec::LenVec,
     nbt::Nbt,
-    position::Position,
+    position::BlockPos,
     primitive::Primitive,
     remaining_bytes::RemainingBytes,
     server_status::ServerStatus,
