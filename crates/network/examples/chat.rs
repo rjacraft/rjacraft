@@ -13,7 +13,7 @@ fn main() {
 
     App::new()
         .insert_resource(Runtime(
-            tokio::runtime::Runtime::new().expect("Failed to create a Tokio lifetime"),
+            tokio::runtime::Runtime::new().expect("Failed to create a Tokio runtime"),
         ))
         .add_plugins((
             NetworkPlugin {
