@@ -5,7 +5,7 @@ use rjacraft_network::*;
 use rjacraft_protocol::{chunk, packets::s2c, types::*};
 use tracing::*;
 
-use crate::{c2s, generator};
+use crate::{components, generator};
 
 pub const MIN_RADIUS: u32 = 3;
 pub const MAX_RADIUS: u32 = 32;
@@ -95,11 +95,14 @@ pub fn chunk_send_system(
     mut query: Query<
         (
             &Play,
-            &c2s::Position,
-            Option<&c2s::ClientInfo>,
+            &components::Position,
+            Option<&components::ClientInfo>,
             &mut ViewFilter,
         ),
-        Or<(Changed<c2s::Position>, Changed<c2s::ClientInfo>)>,
+        Or<(
+            Changed<components::Position>,
+            Changed<components::ClientInfo>,
+        )>,
     >,
     mut chunk_cache: Local<ChunkCache>,
 ) {
@@ -110,7 +113,7 @@ pub fn chunk_send_system(
             center_x,
             center_z,
             // when the client asks for n you give it n + 1
-            radius: if let Some(c2s::ClientInfo(info)) = client_info {
+            radius: if let Some(components::ClientInfo(info)) = client_info {
                 u32::clamp(info.view_distance as u32 + 1, MIN_RADIUS, MAX_RADIUS)
             } else {
                 MIN_RADIUS

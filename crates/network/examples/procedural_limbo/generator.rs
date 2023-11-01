@@ -1,7 +1,7 @@
 use rjacraft_protocol::chunk::*;
 
 fn generate_number(sec: &mut Section<u32, 16>, n: i32, mut x: usize, y: usize, z: usize) {
-    const BLOCK: u32 = 15;
+    const BLOCK: u32 = 9235;
 
     let string = n.to_string();
 
@@ -227,6 +227,40 @@ pub fn generate(output: &mut Column<16>, chunk_x: i32, chunk_z: i32) {
         }
     }
 
+    // the chunk coordinates
     generate_number(&mut output.blockstates[4], chunk_x, 1, 7, 1);
     generate_number(&mut output.blockstates[4], chunk_z, 1, 1, 1);
+
+    // single-valued section
+    if chunk_x == 310 && chunk_z == -64 {
+        for sx in 0..16 {
+            for sy in 0..16 {
+                for sz in 0..16 {
+                    output.blockstates[3][sy][sz][sx] = 1;
+                }
+            }
+        }
+    }
+
+    // noisy section, biggest possible LUT
+    if chunk_x == 312 && chunk_z == -64 {
+        for sx in 0..16 {
+            for sy in 0..16 {
+                for sz in 0..16 {
+                    output.blockstates[3][sy][sz][sx] = ((16 * sy) + sz) as u32;
+                }
+            }
+        }
+    }
+
+    // noisy section, biggest possible array
+    if chunk_x == 314 && chunk_z == -64 {
+        for sx in 0..16 {
+            for sy in 0..16 {
+                for sz in 0..16 {
+                    output.blockstates[3][sy][sz][sx] = ((16 * 16 * sx) + (16 * sy) + sz) as u32;
+                }
+            }
+        }
+    }
 }

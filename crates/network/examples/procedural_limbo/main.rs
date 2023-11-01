@@ -4,8 +4,8 @@ use rjacraft_macro::*;
 use rjacraft_network::*;
 use rjacraft_protocol::{packets::s2c, types::*};
 
-mod c2s;
 mod chunks;
+mod components;
 mod generator;
 
 fn main() {
@@ -35,14 +35,15 @@ fn main() {
             Update,
             (
                 init_play_system,
-                c2s::brand_system,
-                c2s::movement_system,
-                c2s::client_info_system,
+                components::brand_system,
+                components::movement_system,
+                components::send_position_system,
+                components::client_info_system,
                 chunks::init_filter_system,
                 chunks::chunk_send_system
                     .after(init_play_system)
-                    .after(c2s::movement_system)
-                    .after(c2s::client_info_system)
+                    .after(components::movement_system)
+                    .after(components::client_info_system)
                     .after(chunks::init_filter_system),
             ),
         )
@@ -128,26 +129,16 @@ fn init_play_system(players: Query<(Entity, &Play), Added<Play>>, mut commands: 
             fov_modifier: 0.1.into(),
         })
         .unwrap()
-        .send_packet(&s2c::PlayPacket::PlayerTeleport {
-            x: 0.0.into(),
-            y: 45.0.into(),
-            z: 0.0.into(),
-            yaw: 180.0.into(),
-            pitch: 0.0.into(),
-            relative: s2c::TeleportRelative::new(),
-            id: 0.into(),
-        })
-        .unwrap()
         .send_packet(&s2c::PlayPacket::WorldRespawn {
             position: BlockPos::new().with_x(0).with_y(45).with_z(0),
             pitch: 0.0.into(),
         })
         .unwrap();
 
-        commands.entity(entity).insert((c2s::Position {
-            x: 0.0,
+        commands.entity(entity).insert((components::Position {
+            x: 5000.0,
             y: 45.0,
-            z: 0.0,
+            z: -1000.0,
         },));
     }
 }

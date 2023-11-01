@@ -38,87 +38,101 @@ fn build_heightmap<const SECTIONS: usize>(
     result
 }
 
-fn encode_paletted<const SIDE: usize, const MIN_BITS: u32>(
+fn encode_paletted<const SIDE: usize>(
     section: &Section<BlockId, SIDE>,
+    bits_min_lut: u32,
+    bits_max_lut: u32,
+    bits_min_array: u32,
 ) -> (Primitive<i16>, net_chunk::Paletted) {
     let mut non_zero = 0;
     let mut palette_array = Vec::new();
     // key and value flipped
     let mut palette_lookup = HashMap::new();
-    let mut i = 0u32;
 
     for layer in section {
         for row in layer {
-            for &id in row {
-                if !palette_lookup.contains_key(&id) {
-                    palette_lookup.insert(id, i);
-                    palette_array.push(VarInt(id as i32));
-                    i += 1;
+            for &protocol_id in row {
+                if !palette_lookup.contains_key(&protocol_id) {
+                    palette_lookup.insert(protocol_id, palette_array.len());
+                    palette_array.push(VarInt(protocol_id as i32));
                 }
 
-                if id != 0 {
+                if protocol_id != 0 {
                     non_zero += 1;
                 }
             }
         }
     }
 
-    if i == 1 {
-        let value = palette_array.last().unwrap().clone();
+    let paletted = match usize::ilog2(palette_array.len()) {
+        0 => net_chunk::Paletted::SingleValue(palette_array.last().unwrap().clone()),
+        log if log <= bits_max_lut => {
+            let bits_per_value = log.max(bits_min_lut);
+            let values_per_long = u64::BITS / bits_per_value;
+            let longs = (SIDE * SIDE * SIDE).div_ceil(values_per_long as usize);
+            let mut buffer = bytes::BytesMut::new();
+            let mut current = 0;
+            let mut n_bit = 0;
 
-        (
-            non_zero.into(),
-            net_chunk::Paletted {
-                bits_per_entry: 0.into(),
-                palette: net_chunk::Palette::SingleValue(value),
-            },
-        )
-    } else {
-        let mut buffer = bytes::BytesMut::new();
+            for layer in section {
+                for row in layer {
+                    for &protocol_id in row {
+                        let &palette_id = palette_lookup.get(&protocol_id).unwrap();
 
-        let bits_per_block = Ord::max(MIN_BITS, u32::ilog2(i) + 1);
+                        if n_bit + bits_per_value > u64::BITS {
+                            buffer.put_u64(current);
+                            current = 0;
+                            n_bit = 0;
+                        }
 
-        let blocks_per_cell = u64::BITS / bits_per_block;
-        let longs = (SIDE * SIDE * SIDE).div_ceil(blocks_per_cell as usize);
-
-        let mut current = 0;
-        let mut n_bit = 0;
-
-        for layer in section {
-            for row in layer {
-                for protocol_id in row {
-                    let palette_id = palette_lookup.get(protocol_id).unwrap();
-
-                    if n_bit + bits_per_block > u64::BITS {
-                        buffer.put_u64(current);
-                        current = 0;
-                        n_bit = 0;
+                        current |= (palette_id as u64) << n_bit;
+                        n_bit += bits_per_value;
                     }
-
-                    if u32::BITS - palette_id.leading_zeros() > bits_per_block {
-                        panic!("palette reference too wide {palette_id}");
-                    }
-
-                    current |= (*palette_id as u64) << n_bit;
-                    n_bit += bits_per_block;
                 }
             }
+
+            buffer.put_u64(current);
+
+            net_chunk::Paletted::Lut {
+                bits_per_value: Primitive(bits_per_value as i8),
+                table: palette_array.into(),
+                longs: VarInt(longs as i32),
+                values: buffer.freeze(),
+            }
         }
+        _ => {
+            let values_per_long = u64::BITS / bits_min_array;
+            let longs = (SIDE * SIDE * SIDE).div_ceil(values_per_long as usize);
+            let mut buffer = bytes::BytesMut::new();
+            let mut current = 0;
+            let mut n_bit = 0;
 
-        buffer.put_u64(current);
+            for layer in section {
+                for row in layer {
+                    for &protocol_id in row {
+                        if n_bit + bits_min_array > u64::BITS {
+                            buffer.put_u64(current);
+                            current = 0;
+                            n_bit = 0;
+                        }
 
-        (
-            non_zero.into(),
-            net_chunk::Paletted {
-                bits_per_entry: Primitive(bits_per_block as u8),
-                palette: net_chunk::Palette::Table {
-                    source: palette_array.into(),
-                    longs: VarInt(longs as i32),
-                    refs: buffer.freeze(),
-                },
-            },
-        )
-    }
+                        current |= (protocol_id as u64) << n_bit;
+                        n_bit += bits_min_array;
+                    }
+                }
+            }
+
+            buffer.put_u64(current);
+
+            net_chunk::Paletted::Array {
+                bits_per_value: Primitive(bits_min_array as i8),
+                longs: VarInt(longs as i32),
+                values: buffer.freeze(),
+            }
+        }
+    };
+
+    (non_zero.into(), paletted)
 }
 
 fn encode_light<const SECTIONS: usize>(
@@ -203,10 +217,14 @@ pub fn to_network<const SECTIONS: usize>(
         net_chunk::ColumnPalettes(
             (0..SECTIONS)
                 .map(|n_section| {
-                    let (non_air_blocks, blockstates) =
-                        encode_paletted::<SECTION_SIDE_BLOCKS, 4>(&column.blockstates[n_section]);
+                    let (non_air_blocks, blockstates) = encode_paletted::<SECTION_SIDE_BLOCKS>(
+                        &column.blockstates[n_section],
+                        4,
+                        8,
+                        15,
+                    );
                     let (_, biomes) =
-                        encode_paletted::<SECTION_SIDE_BIOMES, 2>(&column.biomes[n_section]);
+                        encode_paletted::<SECTION_SIDE_BIOMES>(&column.biomes[n_section], 1, 3, 6);
 
                     net_chunk::FullPalettes {
                         non_air_blocks,

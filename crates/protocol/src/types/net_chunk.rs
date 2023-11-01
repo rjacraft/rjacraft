@@ -25,24 +25,19 @@ impl nbt::AsCompound for ColumnHeightmaps {
 
 /// Cheap to clone!
 #[derive(Debug, Clone)]
-pub enum Palette {
+pub enum Paletted {
     SingleValue(VarInt<i32>),
-    Table {
-        source: LenVec<VarInt<i32>>,
+    Lut {
+        bits_per_value: Primitive<i8>,
+        table: LenVec<VarInt<i32>>,
         longs: VarInt<i32>,
-        refs: bytes::Bytes,
+        values: bytes::Bytes,
     },
-    None {
+    Array {
+        bits_per_value: Primitive<i8>,
         longs: VarInt<i32>,
-        ids: bytes::Bytes,
+        values: bytes::Bytes,
     },
-}
-
-/// Cheap to clone!
-#[derive(Debug, Clone)]
-pub struct Paletted {
-    pub bits_per_entry: Primitive<u8>,
-    pub palette: Palette,
 }
 
 impl ProtocolType for Paletted {
@@ -54,24 +49,31 @@ impl ProtocolType for Paletted {
     }
 
     fn encode(&self, buffer: &mut impl bytes::BufMut) -> Result<(), Self::EncodeError> {
-        self.bits_per_entry.encode(buffer)?;
-        match &self.palette {
-            Palette::SingleValue(id) => {
+        match &self {
+            Paletted::SingleValue(id) => {
+                Primitive(0i8).encode(buffer)?;
                 id.encode(buffer)?;
                 VarInt(0i32).encode(buffer)?;
             }
-            Palette::Table {
-                source,
+            Paletted::Lut {
+                bits_per_value,
+                table,
                 longs,
-                refs,
+                values,
             } => {
-                source.encode(buffer)?;
+                bits_per_value.encode(buffer)?;
+                table.encode(buffer)?;
                 longs.encode(buffer)?;
-                buffer.put(refs.chunk());
+                buffer.put(values.chunk());
             }
-            Palette::None { longs, ids } => {
+            Paletted::Array {
+                bits_per_value,
+                longs,
+                values,
+            } => {
+                bits_per_value.encode(buffer)?;
                 longs.encode(buffer)?;
-                buffer.put(ids.chunk());
+                buffer.put(values.chunk());
             }
         }
 

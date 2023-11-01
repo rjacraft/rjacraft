@@ -175,7 +175,7 @@ pub enum PlayerAction {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(Primitive::<i8>)]
+#[variant(Primitive<i8>)]
 pub enum Face {
     #[variant(0)]
     Bottom,
