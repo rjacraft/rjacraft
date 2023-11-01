@@ -1,8 +1,9 @@
 //! Server-bound packets
 
+use bitfield_struct::bitfield;
 use rjacraft_macro::ProtocolType;
 
-use crate::{types::*, ProtocolType};
+use crate::{error, types::*, ProtocolType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ProtocolType)]
 #[variant(VarInt)]
@@ -99,6 +100,19 @@ pub enum ClientCommand {
     StatsRequest,
 }
 
+#[derive(ProtocolType)]
+#[bitfield(u8)]
+pub struct SkinParts {
+    pub cape: bool,
+    pub jacket: bool,
+    pub left_sleeve: bool,
+    pub right_sleeve: bool,
+    pub left_pants: bool,
+    pub right_pants: bool,
+    pub hat: bool,
+    __: bool,
+}
+
 #[derive(Debug, Clone, ProtocolType)]
 #[variant(VarInt)]
 pub enum ChatMode {
@@ -117,6 +131,19 @@ pub enum HandAbs {
     Left,
     #[variant(1)]
     Right,
+}
+
+#[derive(ProtocolType)]
+#[bitfield(u8)]
+pub struct PlayerAbilities {
+    __: bool,
+    pub flying: bool,
+    __: bool,
+    __: bool,
+    __: bool,
+    __: bool,
+    __: bool,
+    __: bool,
 }
 
 #[derive(Debug, Clone, ProtocolType)]
@@ -162,6 +189,19 @@ pub enum Face {
     West,
     #[variant(5)]
     East,
+}
+
+#[derive(ProtocolType)]
+#[bitfield(u8)]
+pub struct PlayerInputFlags {
+    pub jump: bool,
+    pub unmount: bool,
+    __: bool,
+    __: bool,
+    __: bool,
+    __: bool,
+    __: bool,
+    __: bool,
 }
 
 #[derive(Debug, Clone, ProtocolType)]
@@ -231,7 +271,7 @@ pub enum PlayPacket {
         view_distance: Primitive<i8>,
         chat_mode: ChatMode,
         chat_colors: Primitive<bool>,
-        skin_parts: Primitive<u8>, // todo bitfield
+        skin_parts: SkinParts,
         main_hand: HandAbs,
         text_filtering: Primitive<bool>,
         show_on_listings: Primitive<bool>,
@@ -250,7 +290,7 @@ pub enum PlayPacket {
     NetKeepAlive { id: Primitive<i64> },
 
     #[variant(0x16)]
-    PlayerPosition {
+    PlayerPosOng {
         x: Primitive<f64>,
         y: Primitive<f64>,
         z: Primitive<f64>,
@@ -268,7 +308,7 @@ pub enum PlayPacket {
     },
 
     #[variant(0x18)]
-    PlayerRotation {
+    PlayerRotOng {
         yaw: Primitive<f32>,
         pitch: Primitive<f32>,
         on_ground: Primitive<bool>,
@@ -278,7 +318,7 @@ pub enum PlayPacket {
     PlayerOnGround(Primitive<bool>),
 
     #[variant(0x1F)]
-    PlayerAbilties(Primitive<u8>), // todo bitfield
+    PlayerAbilties(PlayerAbilities),
 
     #[variant(0x20)]
     PlayerAction {
@@ -299,7 +339,7 @@ pub enum PlayPacket {
     PlayerInput {
         sideways: Primitive<f32>,
         forward: Primitive<f32>,
-        flags: Primitive<u8>, // todo bitfield
+        flags: PlayerInputFlags,
     },
 
     #[variant(0x24)]

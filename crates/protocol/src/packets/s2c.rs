@@ -1,9 +1,10 @@
 //! Client-bound packets
 
+use bitfield_struct::bitfield;
 use rjacraft_macro::ProtocolType;
 use serde::{Deserialize, Serialize};
 
-use crate::{types::*, ProtocolType};
+use crate::{error, types::*, ProtocolType};
 
 #[derive(Debug, Clone, ProtocolType)]
 #[variant(VarInt)]
@@ -195,6 +196,32 @@ pub enum PreviousGameMode {
     Spectator,
 }
 
+#[derive(ProtocolType)]
+#[bitfield(u8)]
+pub struct PlayerAbilities {
+    pub invulnerable: bool,
+    pub flying: bool,
+    pub can_fly: bool,
+    pub instant_break: bool,
+    __: bool,
+    __: bool,
+    __: bool,
+    __: bool,
+}
+
+#[derive(ProtocolType)]
+#[bitfield(u8)]
+pub struct TeleportRelative {
+    pub x: bool,
+    pub y: bool,
+    pub z: bool,
+    pub pitch: bool,
+    pub yaw: bool,
+    __: bool,
+    __: bool,
+    __: bool,
+}
+
 #[derive(Debug, Clone, ProtocolType)]
 #[variant(VarInt)]
 pub enum PlayPacket {
@@ -273,7 +300,7 @@ pub enum PlayPacket {
 
     #[variant(0x37)]
     PlayerAbilities {
-        flags: Primitive<u8>, // todo bitfield
+        flags: PlayerAbilities,
         flying_speed: Primitive<f32>,
         fov_modifier: Primitive<f32>,
     },
@@ -285,7 +312,7 @@ pub enum PlayPacket {
         z: Primitive<f64>,
         yaw: Primitive<f32>,
         pitch: Primitive<f32>,
-        flags: Primitive<u8>,
+        relative: TeleportRelative,
         id: VarInt,
     },
 

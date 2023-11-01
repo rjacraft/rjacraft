@@ -115,7 +115,7 @@ fn init_play_system(players: Query<(Entity, &Play), Added<Play>>) {
             dimension_type: id!("overworld"),
             dimension_name: id!("overworld"),
             hashed_seed: 0.into(),
-            gamemode: s2c::GameMode::Survival,
+            gamemode: s2c::GameMode::Adventure,
             previous_gamemode: s2c::PreviousGameMode::None,
             is_debug: false.into(),
             is_flat: false.into(),
@@ -124,7 +124,9 @@ fn init_play_system(players: Query<(Entity, &Play), Added<Play>>) {
         })
         .unwrap()
         .send_packet(&s2c::PlayPacket::PlayerAbilities {
-            flags: 0b00000010.into(),
+            flags: s2c::PlayerAbilities::new()
+                .with_flying(true)
+                .with_can_fly(true),
             flying_speed: 0.05.into(),
             fov_modifier: 0.1.into(),
         })
@@ -140,7 +142,7 @@ fn init_play_system(players: Query<(Entity, &Play), Added<Play>>) {
             z: 0.0.into(),
             yaw: 0.0.into(),
             pitch: 0.0.into(),
-            flags: 0b00000000.into(),
+            relative: s2c::TeleportRelative::new(),
             id: 0.into(),
         })
         .unwrap()

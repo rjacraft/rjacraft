@@ -233,11 +233,14 @@ impl ConnectionState {
                     c2s::PlayPacket::ContainerButton { _bytes } => {}
                     c2s::PlayPacket::ContainerClick { _bytes } => {}
                     c2s::PlayPacket::ContainerClose { window_id } => {}
-                    c2s::PlayPacket::PlayerPosition { x, y, z, on_ground } => {
+                    c2s::PlayPacket::PlayerPosOng { x, y, z, on_ground } => {
                         let _ = n2b.send(N2bEvent::Movement(packet::Movement::Position(
                             x.into(),
                             y.into(),
                             z.into(),
+                        )));
+                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
+                            on_ground.into(),
                         )));
                     }
                     c2s::PlayPacket::PlayerPosRotOng {
@@ -261,7 +264,7 @@ impl ConnectionState {
                             on_ground.into(),
                         )));
                     }
-                    c2s::PlayPacket::PlayerRotation {
+                    c2s::PlayPacket::PlayerRotOng {
                         yaw,
                         pitch,
                         on_ground,
@@ -269,6 +272,9 @@ impl ConnectionState {
                         let _ = n2b.send(N2bEvent::Movement(packet::Movement::Rotation(
                             yaw.into(),
                             pitch.into(),
+                        )));
+                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
+                            on_ground.into(),
                         )));
                     }
                     c2s::PlayPacket::PlayerOnGround(on_ground) => {

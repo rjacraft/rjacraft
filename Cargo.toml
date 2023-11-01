@@ -31,6 +31,7 @@ thiserror = "1.0"
 uuid = { version = "1.4", features = ["serde"] }
 valence_nbt = { version = "0.8", features = ["binary", "snbt", "serde"] }
 bitvec = "1.0"
+bitfield-struct = "0.5"
 
 # Documentation
 document-features = "0.2"
