@@ -1,4 +1,7 @@
 //! The crucial parts of Minecraft's protocol.
+//!
+//! # Credits
+//! This crate is a substantial reproduction of [wiki.vg](https://wiki.vg).
 
 use tokio::io;
 
