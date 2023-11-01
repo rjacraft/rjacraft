@@ -67,8 +67,10 @@ where
         };
 
         app.add_event::<PeerDisconnected>()
-            .add_event::<ClientBrand>()
-            .add_event::<ChatMessageSent>()
+            .add_event::<C2sPacket<events::packet::ClientBrand>>()
+            .add_event::<C2sPacket<events::packet::ChatMessage>>()
+            .add_event::<C2sPacket<events::packet::Movement>>()
+            .add_event::<C2sPacket<events::packet::ClientInfo>>()
             .add_systems(PostStartup, net_thread_system)
             .add_systems(
                 PreUpdate,

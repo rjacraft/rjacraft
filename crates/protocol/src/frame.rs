@@ -37,7 +37,7 @@ pub async fn read_frame(
 
     source.read_exact(&mut buffer).await?;
 
-    debug!("READ {:?}", buffer.hex_conf(HEX_CONFIG));
+    trace!("READ {:?}", buffer.hex_conf(HEX_CONFIG));
 
     Ok(buffer.into())
 }
@@ -55,7 +55,7 @@ pub async fn write_frame(
     dest: &mut (impl io::AsyncWrite + Unpin + Send),
     buffer: &[u8],
 ) -> Result<(), WriteFrameError> {
-    debug!("WRITE {:?}", buffer.hex_conf(HEX_CONFIG));
+    trace!("WRITE {:?}", buffer.hex_conf(HEX_CONFIG));
 
     let length: i32 = buffer.len().try_into().map_err(WriteFrameError::TooLarge)?;
 

@@ -29,6 +29,7 @@ pub trait ProtocolTypeRaw: ProtocolType {
     ) -> io::Result<Result<(), Self::EncodeError>>;
 }
 
+pub mod chunk;
 pub mod error;
 pub mod frame;
 pub mod packets;

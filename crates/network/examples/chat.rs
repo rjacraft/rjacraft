@@ -96,20 +96,20 @@ fn server_brand_system(_peer: In<Entity>) -> Option<BrandString> {
     Some("rjacraft-derivative".try_into().unwrap())
 }
 
-fn brand_system(mut events_in: EventReader<ClientBrand>) {
-    for e in events_in.into_iter() {
-        info!("client brand: {}", e.brand);
+fn brand_system(mut events_in: EventReader<C2sPacket<packet::ClientBrand>>) {
+    for C2sPacket(_, data) in events_in.into_iter() {
+        info!("client brand: {}", data.brand);
     }
 }
 
 fn init_play_system(players: Query<(Entity, &Play), Added<Play>>) {
     for (entity, play) in players.iter() {
-        play.send_packet(s2c::PlayPacket::Login {
+        play.send_packet(&s2c::PlayPacket::Login {
             entity_id: entity.index().into(),
             is_hardcore: false.into(),
             dimensions: vec![id!["overworld"]].into(),
             max_players: 20.into(),
-            view_distance: 8.into(),
+            load_distance: 8.into(),
             simulation_distance: 8.into(),
             reduced_debug_info: false.into(),
             enable_respawn_screen: false.into(),
@@ -124,34 +124,44 @@ fn init_play_system(players: Query<(Entity, &Play), Added<Play>>) {
             portal_cooldown: 0.into(),
         })
         .unwrap()
-        .send_packet(s2c::PlayPacket::SetRespawn {
+        .send_packet(&s2c::PlayPacket::PlayerAbilities {
+            flags: 0b00000010.into(),
+            flying_speed: 0.05.into(),
+            fov_modifier: 0.1.into(),
+        })
+        .unwrap()
+        .send_packet(&s2c::PlayPacket::WorldRespawn {
             position: types::Position(0, 40, 0),
             pitch: 0.0.into(),
         })
         .unwrap()
-        .send_packet(s2c::PlayPacket::Teleport {
+        .send_packet(&s2c::PlayPacket::PlayerTeleport {
             x: 0.0.into(),
             y: 40.0.into(),
             z: 0.0.into(),
             yaw: 0.0.into(),
             pitch: 0.0.into(),
-            flags: 0.into(),
+            flags: 0b00000000.into(),
             id: 0.into(),
         })
         .unwrap();
     }
 }
 
-fn chat_system(world: &World, players: Query<&Play>, mut events: EventReader<ChatMessageSent>) {
+fn chat_system(
+    world: &World,
+    players: Query<&Play>,
+    mut events: EventReader<C2sPacket<packet::ChatMessage>>,
+) {
     const GRAY: &str = "#555555";
 
-    for event in events.iter() {
-        let login: &Login = world.get(event.from).unwrap();
+    for C2sPacket(from, data) in events.iter() {
+        let login: &Login = world.get(*from).unwrap();
         let formatted: types::JsonChat =
-            chat!(("{}", login.username) (c[GRAY] " > ") ("{}", event.content)).into();
+            chat!(("{}", login.username) (c[GRAY] " > ") ("{}", data.content)).into();
 
         for play in players.iter() {
-            play.send_packet(s2c::PlayPacket::SystemChatMessage {
+            play.send_packet(&s2c::PlayPacket::ChatSystemMessage {
                 content: formatted.clone(),
                 overlay: false.into(),
             })

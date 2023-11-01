@@ -5,7 +5,7 @@ use bytes::{Buf, BufMut};
 use crate::{error, ProtocolType};
 
 /// This always reads a constant amount of bytes from the buffer.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Primitive<T>(pub T);
 
 macro_rules! primitive_impl {

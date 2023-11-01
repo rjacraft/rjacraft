@@ -5,6 +5,7 @@ use tokio::{io, net};
 use tracing::*;
 
 use super::traced_error;
+use crate::packet;
 
 mod frames;
 mod keepalive;
@@ -30,12 +31,14 @@ pub enum N2bEvent {
     Disconnected,
     HandshakeComplete(ProtocolVersion, String, u16),
     NeedStatus,
-    Authenticate(String, ::uuid::Uuid),
+    Authenticate(String, Uuid),
     NeedConfiguration,
     ConfigurationFinished(flume::Sender<bytes::Bytes>),
-    Brand(String),
+    Brand(packet::ClientBrand),
     // ConfigurationRpResponse(i32),
-    Chat(String),
+    Chat(packet::ChatMessage),
+    Movement(packet::Movement),
+    ClientInfo(packet::ClientInfo),
 }
 
 #[derive(Debug, thiserror::Error)]

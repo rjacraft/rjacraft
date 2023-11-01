@@ -60,7 +60,6 @@ impl ConnectionState {
             B2nEvent::Drop => Ok(Action::DropConnection),
             B2nEvent::Status(status) => {
                 let _ = s2c.send(s2c::StatusPacket::Response(status.into()).encode_owned()?);
-
                 Ok(Action::Continue)
             }
             B2nEvent::LoginSucceeded => {
@@ -68,12 +67,10 @@ impl ConnectionState {
             }
             B2nEvent::LoginPacket(packet) => {
                 let _ = s2c.send(packet.encode_owned()?);
-
                 Ok(Action::Continue)
             }
             B2nEvent::ConfigurationPacket(packet) => {
                 let _ = s2c.send(packet.encode_owned()?);
-
                 Ok(Action::Continue)
             }
         }
@@ -105,14 +102,13 @@ impl ConnectionState {
 
                 match next_state {
                     c2s::NextState::Status => {
-                        // yeah ok whatever
-                        Ok(Action::NewState(ConnectionState::Status))
+                        return Ok(Action::NewState(ConnectionState::Status));
                     }
                     c2s::NextState::Login => {
                         if protocol_version == rjacraft_protocol::SUPPORTED_PROTOCOL {
-                            Ok(Action::NewState(ConnectionState::Login {
+                            return Ok(Action::NewState(ConnectionState::Login {
                                 completed: false,
-                            }))
+                            }));
                         } else {
                             let _ = s2c.send(
                                 s2c::LoginPacket::Disconnect {
@@ -125,7 +121,7 @@ impl ConnectionState {
                                 .encode_owned()?,
                             );
 
-                            Err(Error::WrongVersion(protocol_version))
+                            Err(Error::WrongVersion(protocol_version))?
                         }
                     }
                 }
@@ -137,12 +133,10 @@ impl ConnectionState {
                     c2s::StatusPacket::Ping { payload } => {
                         let _ = s2c.send(s2c::StatusPacket::Pong { payload }.encode_owned()?);
 
-                        Ok(Action::DropConnection)
+                        return Ok(Action::DropConnection);
                     }
                     c2s::StatusPacket::Request => {
                         let _ = n2b.send(N2bEvent::NeedStatus);
-
-                        Ok(Action::Continue)
                     }
                 }
             }
@@ -154,8 +148,6 @@ impl ConnectionState {
                 match packet {
                     c2s::LoginPacket::LoginStart { username, uuid } => {
                         let _ = n2b.send(N2bEvent::Authenticate(username.into(), uuid));
-
-                        Ok(Action::Continue)
                     }
                     c2s::LoginPacket::EncryptionResponse { .. } => todo!(),
                     c2s::LoginPacket::LoginPluginResponse { .. } => todo!(),
@@ -163,9 +155,9 @@ impl ConnectionState {
                         if completed {
                             let _ = n2b.send(N2bEvent::NeedConfiguration);
 
-                            Ok(Action::NewState(ConnectionState::Configuration))
+                            return Ok(Action::NewState(ConnectionState::Configuration));
                         } else {
-                            Err(Error::FakeLoginAck)
+                            Err(Error::FakeLoginAck)?
                         }
                     }
                 }
@@ -183,20 +175,18 @@ impl ConnectionState {
                             let brand = types::LenString::<128>::decode(&mut data)
                                 .map_err(Error::DecodingBrand)?;
 
-                            let _ = n2b.send(N2bEvent::Brand(brand.into()));
+                            let _ = n2b.send(N2bEvent::Brand(packet::ClientBrand {
+                                brand: brand.into(),
+                            }));
                         }
-
-                        Ok(Action::Continue)
                     }
                     c2s::ConfigurationPacket::FinishConfiguration => {
                         let _ = n2b.send(N2bEvent::ConfigurationFinished(s2c.clone()));
 
-                        Ok(Action::NewState(ConnectionState::Play))
+                        return Ok(Action::NewState(ConnectionState::Play));
                     }
                     c2s::ConfigurationPacket::KeepAlive { id } => {
                         let _ = to_ka.send(id.into());
-
-                        Ok(Action::Continue)
                     }
                     c2s::ConfigurationPacket::Pong { .. } => todo!(),
                     c2s::ConfigurationPacket::ResourcePack { .. } => todo!(),
@@ -208,49 +198,112 @@ impl ConnectionState {
                 debug!("{packet:?}");
 
                 match packet {
-                    c2s::PlayPacket::ConfirmTeleport { .. } => Ok(Action::Continue),
-                    c2s::PlayPacket::ChatCommand { command, .. } => Ok(Action::Continue),
+                    c2s::PlayPacket::PlayerTeleport { .. } => {}
+                    c2s::PlayPacket::ChatCommand { command, .. } => {}
                     c2s::PlayPacket::ChatMessage { message, .. } => {
-                        let _ = n2b.send(N2bEvent::Chat(message.into()));
-
-                        Ok(Action::Continue)
+                        let _ = n2b.send(N2bEvent::Chat(packet::ChatMessage {
+                            content: message.into(),
+                        }));
                     }
-                    c2s::PlayPacket::KeepAlive { id } => {
+                    c2s::PlayPacket::NetKeepAlive { id } => {
                         let _ = to_ka.send(id.into());
-
-                        Ok(Action::Continue)
                     }
-                    c2s::PlayPacket::ClientCommand(_) => Ok(Action::Continue),
-                    c2s::PlayPacket::ClientInfo { .. } => Ok(Action::Continue),
-                    c2s::PlayPacket::Position { x, y, z, on_ground } => Ok(Action::Continue),
-                    c2s::PlayPacket::PositionRotation {
+                    c2s::PlayPacket::ClientCommand(_) => {}
+                    c2s::PlayPacket::ClientInfo {
+                        locale,
+                        view_distance,
+                        chat_mode,
+                        chat_colors,
+                        skin_parts,
+                        main_hand,
+                        text_filtering,
+                        show_on_listings,
+                    } => {
+                        let _ = n2b.send(N2bEvent::ClientInfo(packet::ClientInfo {
+                            locale: locale.into(),
+                            view_distance: view_distance.into(),
+                            chat_mode,
+                            chat_colors: chat_colors.into(),
+                            main_hand,
+                            skin_parts: skin_parts.into(),
+                            text_filtering: text_filtering.into(),
+                            show_on_listings: show_on_listings.into(),
+                        }));
+                    }
+                    c2s::PlayPacket::ContainerButton { _bytes } => {}
+                    c2s::PlayPacket::ContainerClick { _bytes } => {}
+                    c2s::PlayPacket::ContainerClose { window_id } => {}
+                    c2s::PlayPacket::PlayerPosition { x, y, z, on_ground } => {
+                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::Position(
+                            x.into(),
+                            y.into(),
+                            z.into(),
+                        )));
+                    }
+                    c2s::PlayPacket::PlayerPosRotOng {
                         x,
                         y,
                         z,
                         yaw,
                         pitch,
                         on_ground,
-                    } => Ok(Action::Continue),
-                    c2s::PlayPacket::Rotation {
+                    } => {
+                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::Position(
+                            x.into(),
+                            y.into(),
+                            z.into(),
+                        )));
+                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::Rotation(
+                            yaw.into(),
+                            pitch.into(),
+                        )));
+                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
+                            on_ground.into(),
+                        )));
+                    }
+                    c2s::PlayPacket::PlayerRotation {
                         yaw,
                         pitch,
                         on_ground,
-                    } => Ok(Action::Continue),
-                    c2s::PlayPacket::OnGround(on_ground) => Ok(Action::Continue),
-                    c2s::PlayPacket::PlayerCommand { action, .. } => Ok(Action::Continue),
+                    } => {
+                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::Rotation(
+                            yaw.into(),
+                            pitch.into(),
+                        )));
+                    }
+                    c2s::PlayPacket::PlayerOnGround(on_ground) => {
+                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
+                            on_ground.into(),
+                        )));
+                    }
+                    c2s::PlayPacket::PlayerAbilties(bitfield) => {}
+                    c2s::PlayPacket::PlayerCommand { action, .. } => {}
                     c2s::PlayPacket::PlayerAction {
                         action,
                         position,
                         face,
                         ..
-                    } => Ok(Action::Continue),
-                    c2s::PlayPacket::PlayerInput { .. } => Ok(Action::Continue),
-                    c2s::PlayPacket::AdvancementCommand(_) => Ok(Action::Continue),
-                    c2s::PlayPacket::SwitchSlots(slot) => Ok(Action::Continue),
-                    c2s::PlayPacket::SwingArm(hand) => Ok(Action::Continue),
+                    } => {}
+                    c2s::PlayPacket::PlayerInput { .. } => {}
+                    c2s::PlayPacket::RecipeBookState { _bytes } => {}
+                    c2s::PlayPacket::AdvancementCommand(_) => {}
+                    c2s::PlayPacket::PlayerHotbarSlot(slot) => {}
+                    c2s::PlayPacket::PlayerSwingArm(hand) => {}
+                    c2s::PlayPacket::UseItemOn {
+                        hand,
+                        block_pos,
+                        block_face,
+                        cursor_x,
+                        cursor_y,
+                        cursor_z,
+                        head_buried,
+                        sequence,
+                    } => {}
                 }
             }
         }
+
+        Ok(Action::Continue)
     }
 
     async fn on_keepalive(
@@ -262,12 +315,10 @@ impl ConnectionState {
             (keepalive::Message::Packet(id), ConnectionState::Configuration) => {
                 let _ =
                     s2c.send(s2c::ConfigurationPacket::KeepAlive { id: id.into() }.encode_owned()?);
-
                 Ok(Action::Continue)
             }
             (keepalive::Message::Packet(id), ConnectionState::Play) => {
-                let _ = s2c.send(s2c::PlayPacket::KeepAlive { id: id.into() }.encode_owned()?);
-
+                let _ = s2c.send(s2c::PlayPacket::NetKeepAlive { id: id.into() }.encode_owned()?);
                 Ok(Action::Continue)
             }
             (keepalive::Message::Mismatch, _) => Ok(Action::DropConnection),

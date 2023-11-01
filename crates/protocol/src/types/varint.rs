@@ -76,6 +76,41 @@ impl ProtocolType for VarInt {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode() {
+        assert_eq!(VarInt(0).encode_owned().unwrap(), vec![0x00]);
+        assert_eq!(VarInt(1).encode_owned().unwrap(), vec![0x01]);
+        assert_eq!(VarInt(2).encode_owned().unwrap(), vec![0x02]);
+        assert_eq!(VarInt(127).encode_owned().unwrap(), vec![0x7f]);
+        assert_eq!(VarInt(128).encode_owned().unwrap(), vec![0x80, 0x01]);
+        assert_eq!(VarInt(255).encode_owned().unwrap(), vec![0xff, 0x01]);
+        assert_eq!(
+            VarInt(25565).encode_owned().unwrap(),
+            vec![0xdd, 0xc7, 0x01]
+        );
+        assert_eq!(
+            VarInt(2097151).encode_owned().unwrap(),
+            vec![0xff, 0xff, 0x7f]
+        );
+        assert_eq!(
+            VarInt(2147483647).encode_owned().unwrap(),
+            vec![0xff, 0xff, 0xff, 0xff, 0x07]
+        );
+        assert_eq!(
+            VarInt(-1).encode_owned().unwrap(),
+            vec![0xff, 0xff, 0xff, 0xff, 0x0f]
+        );
+        assert_eq!(
+            VarInt(-2147483648).encode_owned().unwrap(),
+            vec![0x80, 0x80, 0x80, 0x80, 0x08]
+        );
+    }
+}
+
 #[async_trait::async_trait]
 impl ProtocolTypeRaw for VarInt {
     async fn decode_raw(

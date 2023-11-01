@@ -30,3 +30,20 @@ where
     #[error("Received invalid enum {0:?}")]
     OutOfRange(D),
 }
+
+/// An error related to a fieldless enum.
+#[derive(Debug, thiserror::Error, from_never::FromNever)]
+#[error("{0}")]
+pub struct StringError(pub String);
+
+impl From<String> for StringError {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl From<&str> for StringError {
+    fn from(value: &str) -> Self {
+        Self(value.into())
+    }
+}

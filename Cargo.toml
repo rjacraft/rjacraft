@@ -30,6 +30,7 @@ bytes = "1.4"
 thiserror = "1.0"
 uuid = { version = "1.4", features = ["serde"] }
 valence_nbt = { version = "0.8", features = ["binary", "snbt", "serde"] }
+bitvec = "1.0"
 
 # Documentation
 document-features = "0.2"

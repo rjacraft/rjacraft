@@ -137,6 +137,31 @@ pub enum ConfigurationPacket {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
+#[variant(Primitive::<u8>)]
+pub enum Difficulty {
+    #[variant(0)]
+    Peaceful,
+    #[variant(1)]
+    Easy,
+    #[variant(2)]
+    Normal,
+    #[variant(3)]
+    Hard,
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+pub struct ChunkBiomeData {
+    pub chunk_x: Primitive<i32>,
+    pub chunk_z: Primitive<i32>,
+    palettes: net_chunk::ColumnPalettes<net_chunk::Paletted>,
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+pub struct BlockEntity {
+    // todo
+}
+
+#[derive(Debug, Clone, ProtocolType)]
 pub struct WorldPos {
     pub dimension_name: Identifier,
     pub position: Position,
@@ -173,8 +198,56 @@ pub enum PreviousGameMode {
 #[derive(Debug, Clone, ProtocolType)]
 #[variant(VarInt)]
 pub enum PlayPacket {
+    #[variant(0x0C)]
+    WorldDifficulty {
+        difficulty: Difficulty,
+        locked: Primitive<bool>,
+    },
+
+    /// Not tested
+    #[variant(0x0F)]
+    ChunkBiomes(LenVec<ChunkBiomeData>),
+
+    /// The order of X and Z is flipped, because Minecraft reads this as a weird long bitfield.
+    /// Despite this, the order in [`PlayPacket::ChunkData`] still remains normal.
+    #[variant(0x20)]
+    ChunkUnload {
+        chunk_z: Primitive<i32>,
+        chunk_x: Primitive<i32>,
+    },
+
+    #[variant(0x24)]
+    BorderInit {
+        center_x: Primitive<f64>,
+        center_z: Primitive<f64>,
+        side_old: Primitive<f64>,
+        side_new: Primitive<f64>,
+        interp_time: VarInt, // todo varlong
+        portal_boundary: VarInt,
+        warning_distance: VarInt,
+        warning_tme: VarInt,
+    },
+
     #[variant(0x25)]
-    KeepAlive { id: Primitive<i64> },
+    NetKeepAlive { id: Primitive<i64> },
+
+    #[variant(0x26)]
+    ChunkData {
+        chunk_x: Primitive<i32>,
+        chunk_z: Primitive<i32>,
+        heightmaps: Nbt<net_chunk::ColumnHeightmaps>,
+        palettes: net_chunk::ColumnPalettes<net_chunk::FullPalettes>,
+        block_entities: LenVec<BlockEntity>,
+        light: net_chunk::ColumnLight,
+    },
+
+    /// Not tested
+    #[variant(0x29)]
+    ChunkLighting {
+        chunk_x: Primitive<i32>,
+        chunk_z: Primitive<i32>,
+        light: net_chunk::ColumnLight,
+    },
 
     #[variant(0x2A)]
     Login {
@@ -182,7 +255,8 @@ pub enum PlayPacket {
         is_hardcore: Primitive<bool>,
         dimensions: LenVec<Identifier>,
         max_players: VarInt,
-        view_distance: VarInt,
+        // not to be confused with view distance, which is how far the client chooses to render
+        load_distance: VarInt,
         simulation_distance: VarInt,
         reduced_debug_info: Primitive<bool>,
         enable_respawn_screen: Primitive<bool>,
@@ -197,8 +271,15 @@ pub enum PlayPacket {
         portal_cooldown: VarInt,
     },
 
+    #[variant(0x37)]
+    PlayerAbilities {
+        flags: Primitive<u8>, // todo bitfield
+        flying_speed: Primitive<f32>,
+        fov_modifier: Primitive<f32>,
+    },
+
     #[variant(0x3F)]
-    Teleport {
+    PlayerTeleport {
         x: Primitive<f64>,
         y: Primitive<f64>,
         z: Primitive<f64>,
@@ -208,14 +289,40 @@ pub enum PlayPacket {
         id: VarInt,
     },
 
+    #[variant(0x4F)]
+    PlayerHotbarSlot(Primitive<i8>),
+
+    #[variant(0x51)]
+    ChunkCenter { chunk_x: VarInt, chunk_z: VarInt },
+
     #[variant(0x53)]
-    SetRespawn {
+    WorldRespawn {
         position: Position,
         pitch: Primitive<f32>,
     },
 
+    #[variant(0x59)]
+    PlayerExperience {
+        fill_bar: Primitive<f32>,
+        exp: VarInt,
+        level: VarInt,
+    },
+
+    #[variant(0x5A)]
+    PlayerHealth {
+        health: Primitive<f32>,
+        hunger: VarInt,
+        saturation: Primitive<f32>,
+    },
+
+    #[variant(0x61)]
+    WorldTime {
+        world_age: Primitive<i64>,
+        time: Primitive<i64>,
+    },
+
     #[variant(0x68)]
-    SystemChatMessage {
+    ChatSystemMessage {
         content: JsonChat,
         overlay: Primitive<bool>,
     },

@@ -27,7 +27,7 @@ pub struct Play {
 impl Play {
     pub fn send_packet(
         &self,
-        packet: s2c::PlayPacket,
+        packet: &s2c::PlayPacket,
     ) -> Result<&Self, s2c::PlayPacketEncodeError> {
         let _ = self.tx.send(packet.encode_owned()?);
 

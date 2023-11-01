@@ -200,7 +200,7 @@ pub enum AdvancementCommand {
 #[variant(VarInt)]
 pub enum PlayPacket {
     #[variant(0x00)]
-    ConfirmTeleport { id: VarInt },
+    PlayerTeleport { id: VarInt },
 
     #[variant(0x04)]
     ChatCommand {
@@ -209,7 +209,7 @@ pub enum PlayPacket {
         salt: Primitive<i64>,
         signatures: LenVec<ArgumentSignature>,
         message_count: VarInt,
-        acknowledged: RemainingBytes<{ usize::MAX }>, // not sure what this is about
+        acknowledged: BitVec<u64>,
     },
 
     #[variant(0x05)]
@@ -219,7 +219,7 @@ pub enum PlayPacket {
         salt: Primitive<i64>,
         signature: BoolOption<[u8; 256]>,
         message_count: VarInt,
-        acknowledged: RemainingBytes<{ usize::MAX }>, // not sure what this is about
+        acknowledged: BitVec<u64>,
     },
 
     #[variant(0x08)]
@@ -237,11 +237,20 @@ pub enum PlayPacket {
         show_on_listings: Primitive<bool>,
     },
 
+    #[variant(0x0C)]
+    ContainerButton { _bytes: RemainingBytes<{ 1 << 20 }> }, // todo
+
+    #[variant(0x0D)]
+    ContainerClick { _bytes: RemainingBytes<{ 1 << 20 }> }, // todo
+
+    #[variant(0x0E)]
+    ContainerClose { window_id: Primitive<u8> },
+
     #[variant(0x14)]
-    KeepAlive { id: Primitive<i64> },
+    NetKeepAlive { id: Primitive<i64> },
 
     #[variant(0x16)]
-    Position {
+    PlayerPosition {
         x: Primitive<f64>,
         y: Primitive<f64>,
         z: Primitive<f64>,
@@ -249,7 +258,7 @@ pub enum PlayPacket {
     },
 
     #[variant(0x17)]
-    PositionRotation {
+    PlayerPosRotOng {
         x: Primitive<f64>,
         y: Primitive<f64>,
         z: Primitive<f64>,
@@ -259,14 +268,17 @@ pub enum PlayPacket {
     },
 
     #[variant(0x18)]
-    Rotation {
+    PlayerRotation {
         yaw: Primitive<f32>,
         pitch: Primitive<f32>,
         on_ground: Primitive<bool>,
     },
 
     #[variant(0x19)]
-    OnGround(Primitive<bool>),
+    PlayerOnGround(Primitive<bool>),
+
+    #[variant(0x1F)]
+    PlayerAbilties(Primitive<u8>), // todo bitfield
 
     #[variant(0x20)]
     PlayerAction {
@@ -290,12 +302,27 @@ pub enum PlayPacket {
         flags: Primitive<u8>, // todo bitfield
     },
 
+    #[variant(0x24)]
+    RecipeBookState { _bytes: RemainingBytes<{ 1 << 20 }> },
+
     #[variant(0x28)]
     AdvancementCommand(AdvancementCommand),
 
     #[variant(0x2B)]
-    SwitchSlots(Primitive<u8>),
+    PlayerHotbarSlot(Primitive<u8>),
 
     #[variant(0x32)]
-    SwingArm(HandRel),
+    PlayerSwingArm(HandRel),
+
+    #[variant(0x34)]
+    UseItemOn {
+        hand: HandRel,
+        block_pos: Position,
+        block_face: Face,
+        cursor_x: Primitive<f32>,
+        cursor_y: Primitive<f32>,
+        cursor_z: Primitive<f32>,
+        head_buried: Primitive<bool>,
+        sequence: VarInt,
+    },
 }

@@ -122,17 +122,13 @@ where
                             tx: play_tx.clone(),
                         });
                     }
-                    N2bEvent::Brand(brand) => {
-                        commands.add(SendEvent(ClientBrand {
-                            from: entity,
-                            brand,
-                        }));
+                    N2bEvent::Brand(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
+                    N2bEvent::Chat(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
+                    N2bEvent::Movement(packet) => {
+                        commands.add(SendEvent(C2sPacket(entity, packet)))
                     }
-                    N2bEvent::Chat(content) => {
-                        commands.add(SendEvent(ChatMessageSent {
-                            from: entity,
-                            content,
-                        }));
+                    N2bEvent::ClientInfo(packet) => {
+                        commands.add(SendEvent(C2sPacket(entity, packet)))
                     }
                 }
             }

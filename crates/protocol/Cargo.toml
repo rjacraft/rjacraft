@@ -24,3 +24,4 @@ serde_json.workspace = true
 tracing.workspace = true
 pretty-hex.workspace = true
 valence_nbt.workspace = true
+bitvec.workspace = true

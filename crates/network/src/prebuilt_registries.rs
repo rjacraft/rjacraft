@@ -2,6 +2,10 @@ use rjacraft_macro::*;
 use rjacraft_protocol::packets::s2c::{registry::*, RegistryData};
 use valence_nbt::*;
 
+/// - `minecraft:chat_type`: Vanilla `minecraft:chat`
+/// - `minecraft:damage_type`: Vanilla defaults
+/// - `minecraft:dimension_type`: Vanilla overworld
+/// - `minecraft:worldgen/biome`: Vanilla plains
 pub fn simple() -> RegistryData {
     RegistryData {
         chat_type: Registry {
@@ -445,10 +449,10 @@ pub fn simple() -> RegistryData {
                     "has_ceiling" => 0_i8,
                     "has_raids" => 1_i8,
                     "has_skylight" => 1_i8,
-                    "height" => 384_i32,
+                    "height" => 256_i32,
                     "infiniburn" => "#minecraft:infiniburn_overworld",
-                    "logical_height" => 384_i32,
-                    "min_y" => -64_i32,
+                    "logical_height" => 256_i32,
+                    "min_y" => 0_i32,
                     "monster_spawn_block_light_limit" => 0_i32,
                     "monster_spawn_light_level" => compound! {
                         "type" => "minecraft:uniform",
