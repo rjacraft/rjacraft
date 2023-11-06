@@ -10,7 +10,7 @@ pub struct PeerDisconnected {
 pub struct C2sPacket<T>(pub Entity, pub T);
 
 pub mod packet {
-    use rjacraft_protocol::packets::c2s;
+    use rjacraft_protocol::{packets::c2s, types};
 
     #[derive(Debug, Clone)]
     pub struct ClientBrand {
@@ -18,7 +18,7 @@ pub mod packet {
     }
 
     #[derive(Debug, Clone)]
-    pub struct ChatMessage {
+    pub struct Chat {
         pub content: String,
     }
 
@@ -39,5 +39,38 @@ pub mod packet {
         pub main_hand: c2s::HandAbs,
         pub text_filtering: bool,
         pub show_on_listings: bool,
+    }
+
+    #[derive(Debug, Clone)]
+    pub enum WindowAction {
+        Button(u8),
+        Click {
+            slot: c2s::OptionalSlot,
+            button: u8,
+            mode: u32,
+            new_slots: Vec<(types::Primitive<u16>, types::ItemStackProto)>,
+            carried_item: types::ItemStackProto,
+        },
+        Close,
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct Window {
+        pub sync_id: u8,
+        pub action: WindowAction,
+    }
+
+    #[derive(Debug, Clone)]
+    pub enum Item {
+        OnBlock {
+            hand: c2s::HandRel,
+            block_pos: types::BlockPos,
+            block_face: c2s::Face,
+            cursor_x: f32,
+            cursor_y: f32,
+            cursor_z: f32,
+            head_buried: bool,
+        },
+        OnAir(c2s::HandRel),
     }
 }

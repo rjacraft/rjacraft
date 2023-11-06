@@ -1,6 +1,7 @@
 //! A string of typed, [`serde`]-powered JSON
 
 use bytes::{Buf, BufMut};
+use serde::*;
 
 use crate::{error, ProtocolType};
 
@@ -24,7 +25,7 @@ pub enum EncodeError<const MAX_SIZE: usize> {
     Json(#[from] serde_json::Error),
 }
 
-impl<const MAX_SIZE: usize, T: serde::Serialize + serde::de::DeserializeOwned> ProtocolType
+impl<const MAX_SIZE: usize, T: Serialize + de::DeserializeOwned> ProtocolType
     for JsonString<MAX_SIZE, T>
 {
     type DecodeError = DecodeError<MAX_SIZE>;
@@ -42,6 +43,27 @@ impl<const MAX_SIZE: usize, T: serde::Serialize + serde::de::DeserializeOwned> P
         super::LenString::<MAX_SIZE>::try_from(serialized)?.encode(buffer)?;
 
         Ok(())
+    }
+}
+
+impl<const MAX_SIZE: usize, T: Serialize> Serialize for JsonString<MAX_SIZE, T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serde_json::to_string(&self.0)
+            .map_err(|e| ser::Error::custom(e.to_string()))?
+            .serialize(serializer)
+    }
+}
+
+impl<'de, const MAX_SIZE: usize, T: Deserialize<'de>> Deserialize<'de> for JsonString<MAX_SIZE, T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        serde_json::from_str(<&'de str>::deserialize(deserializer)?)
+            .map_err(|e| de::Error::custom(e.to_string()))
     }
 }
 

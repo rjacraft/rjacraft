@@ -130,6 +130,10 @@ where
                     N2bEvent::ClientInfo(packet) => {
                         commands.add(SendEvent(C2sPacket(entity, packet)))
                     }
+                    N2bEvent::Container(packet) => {
+                        commands.add(SendEvent(C2sPacket(entity, packet)))
+                    }
+                    N2bEvent::Item(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
                 }
             }
         }

@@ -135,10 +135,10 @@ fn init_play_system(players: Query<(Entity, &Play), Added<Play>>, mut commands: 
         })
         .unwrap();
 
-        commands.entity(entity).insert((components::Position {
+        commands.entity(entity).insert(components::Position {
             x: 5000.0,
             y: 45.0,
             z: -1000.0,
-        },));
+        });
     }
 }

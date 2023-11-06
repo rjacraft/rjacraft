@@ -18,6 +18,10 @@ impl nbt::AsCompound for ColumnHeightmaps {
     type DecodeError = error::StringError;
     type EncodeError = error::Infallible;
 
+    fn from_nbt(_compound: valence_nbt::Compound) -> Result<Self, Self::DecodeError> {
+        todo!()
+    }
+
     fn to_nbt(&self) -> Result<valence_nbt::Compound, Self::EncodeError> {
         Ok(compound! {
             "WORLD_SURFACE" => Value::LongArray(self.world_surface.clone()),

@@ -138,7 +138,7 @@ pub enum ConfigurationPacket {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(Primitive::<u8>)]
+#[variant(Primitive<u8>)]
 pub enum Difficulty {
     #[variant(0)]
     Peaceful,
@@ -155,11 +155,6 @@ pub struct ChunkBiomeData {
     pub chunk_x: Primitive<i32>,
     pub chunk_z: Primitive<i32>,
     palettes: net_chunk::ColumnPalettes<net_chunk::Paletted>,
-}
-
-#[derive(Debug, Clone, ProtocolType)]
-pub struct BlockEntity {
-    // todo
 }
 
 #[derive(Debug, Clone, ProtocolType)]
@@ -225,6 +220,18 @@ pub struct TeleportRelative {
 #[derive(Debug, Clone, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum PlayPacket {
+    #[variant(0x08)]
+    ChunkBlockEntity {
+        position: BlockPos,
+        block_entity: BlockEntity,
+    },
+
+    #[variant(0x09)]
+    ChunkBlockEvent {
+        position: BlockPos,
+        event: BlockEvent,
+    },
+
     #[variant(0x0C)]
     WorldDifficulty {
         difficulty: Difficulty,
@@ -234,6 +241,32 @@ pub enum PlayPacket {
     /// Not tested
     #[variant(0x0F)]
     ChunkBiomes(LenVec<ChunkBiomeData>),
+
+    #[variant(0x13)]
+    ContainerClose { window_id: Primitive<u8> },
+
+    #[variant(0x14)]
+    ContainerSlots {
+        sync_id: Primitive<u8>,
+        state_id: VarInt<i32>,
+        slots: LenVec<ItemStackProto>,
+        carried_item: ItemStackProto,
+    },
+
+    #[variant(0x15)]
+    ContainerProperty {
+        sync_id: Primitive<u8>,
+        property: Primitive<u16>,
+        value: Primitive<i16>,
+    },
+
+    #[variant(0x16)]
+    ContainerSlot {
+        sync_id: Primitive<i8>,
+        state_id: VarInt<i32>,
+        number: Primitive<i8>,
+        slot: ItemStackProto,
+    },
 
     /// The order of X and Z is flipped, because Minecraft encodes this as some kind of MSB
     /// bitfield. Despite this, the order in [`PlayPacket::ChunkData`] still remains normal.
@@ -264,7 +297,7 @@ pub enum PlayPacket {
         chunk_z: Primitive<i32>,
         heightmaps: Nbt<net_chunk::ColumnHeightmaps>,
         palettes: net_chunk::ColumnPalettes<net_chunk::FullPalettes>,
-        block_entities: LenVec<BlockEntity>,
+        block_entities: LenVec<(BlockPosColumn, BlockEntity)>,
         light: net_chunk::ColumnLight,
     },
 
@@ -298,6 +331,13 @@ pub enum PlayPacket {
         portal_cooldown: VarInt<i32>,
     },
 
+    #[variant(0x32)]
+    ContainerOpen {
+        sync_id: VarInt<i32>,
+        kind: VarInt<i32>,
+        title: JsonChat,
+    },
+
     #[variant(0x37)]
     PlayerAbilities {
         flags: PlayerAbilities,
@@ -317,7 +357,7 @@ pub enum PlayPacket {
     },
 
     #[variant(0x4F)]
-    PlayerHotbarSlot(Primitive<i8>),
+    PlayerHotbarSlot(Primitive<u8>),
 
     #[variant(0x51)]
     ChunkCenter {

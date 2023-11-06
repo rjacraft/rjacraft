@@ -36,9 +36,11 @@ pub enum N2bEvent {
     ConfigurationFinished(flume::Sender<bytes::Bytes>),
     Brand(packet::ClientBrand),
     // ConfigurationRpResponse(i32),
-    Chat(packet::ChatMessage),
+    Chat(packet::Chat),
     Movement(packet::Movement),
     ClientInfo(packet::ClientInfo),
+    Container(packet::Window),
+    Item(packet::Item),
 }
 
 #[derive(Debug, thiserror::Error)]

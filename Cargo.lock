@@ -796,6 +796,7 @@ name = "rjacraft_protocol"
 version = "0.0.1"
 dependencies = [
  "async-trait",
+ "bevy_ecs",
  "bitfield-struct",
  "bitvec",
  "bytes",

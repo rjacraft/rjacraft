@@ -1,7 +1,7 @@
 //! Common decoding/encoding errors
 
-pub use std::convert::Infallible;
 use std::fmt;
+pub use std::{convert::Infallible, error::Error};
 
 /// Packet ended before we finished parsing.
 #[derive(Debug, thiserror::Error, from_never::FromNever)]

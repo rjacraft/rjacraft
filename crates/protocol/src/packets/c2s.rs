@@ -130,6 +130,31 @@ pub enum HandAbs {
     Right,
 }
 
+#[derive(Debug, Clone)]
+pub enum OptionalSlot {
+    Some(u16),
+    None,
+}
+
+impl ProtocolType for OptionalSlot {
+    type DecodeError = error::Eof;
+    type EncodeError = error::Infallible;
+
+    fn decode(buffer: &mut impl bytes::Buf) -> Result<Self, Self::DecodeError> {
+        let Primitive(value) = Primitive::<i16>::decode(buffer)?;
+
+        if value == -999 {
+            Ok(Self::None)
+        } else {
+            Ok(Self::Some(value as u16))
+        }
+    }
+
+    fn encode(&self, _buffer: &mut impl bytes::BufMut) -> Result<(), Self::EncodeError> {
+        todo!()
+    }
+}
+
 #[derive(ProtocolType)]
 #[bitfield(u8)]
 pub struct PlayerAbilities {
@@ -275,13 +300,24 @@ pub enum PlayPacket {
     },
 
     #[variant(0x0C)]
-    ContainerButton { _bytes: RemainingBytes<{ 1 << 20 }> }, // todo
+    ContainerButton {
+        sync_id: Primitive<u8>,
+        button_id: Primitive<u8>,
+    },
 
     #[variant(0x0D)]
-    ContainerClick { _bytes: RemainingBytes<{ 1 << 20 }> }, // todo
+    ContainerClick {
+        sync_id: Primitive<u8>,
+        state_id: VarInt<i32>,
+        slot: OptionalSlot,
+        button: Primitive<u8>,
+        mode: VarInt<i32>,
+        new_slots: LenVec<(Primitive<u16>, ItemStackProto)>,
+        carried_item: ItemStackProto,
+    },
 
     #[variant(0x0E)]
-    ContainerClose { window_id: Primitive<u8> },
+    ContainerClose { sync_id: Primitive<u8> },
 
     #[variant(0x14)]
     NetKeepAlive { id: Primitive<i64> },
@@ -348,11 +384,17 @@ pub enum PlayPacket {
     #[variant(0x2B)]
     PlayerHotbarSlot(Primitive<u8>),
 
+    #[variant(0x2E)]
+    PlayerInventorySlot {
+        slot: Primitive<u16>,
+        stack: ItemStackProto,
+    },
+
     #[variant(0x32)]
     PlayerSwingArm(HandRel),
 
     #[variant(0x34)]
-    UseItemOn {
+    ItemUseOn {
         hand: HandRel,
         block_pos: BlockPos,
         block_face: Face,
@@ -360,6 +402,12 @@ pub enum PlayPacket {
         cursor_y: Primitive<f32>,
         cursor_z: Primitive<f32>,
         head_buried: Primitive<bool>,
+        sequence: VarInt<i32>,
+    },
+
+    #[variant(0x35)]
+    ItemUse {
+        hand: HandRel,
         sequence: VarInt<i32>,
     },
 }

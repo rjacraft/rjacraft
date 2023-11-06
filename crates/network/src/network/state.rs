@@ -201,7 +201,7 @@ impl ConnectionState {
                     c2s::PlayPacket::PlayerTeleport { .. } => {}
                     c2s::PlayPacket::ChatCommand { command, .. } => {}
                     c2s::PlayPacket::ChatMessage { message, .. } => {
-                        let _ = n2b.send(N2bEvent::Chat(packet::ChatMessage {
+                        let _ = n2b.send(N2bEvent::Chat(packet::Chat {
                             content: message.into(),
                         }));
                     }
@@ -230,9 +230,38 @@ impl ConnectionState {
                             show_on_listings: show_on_listings.into(),
                         }));
                     }
-                    c2s::PlayPacket::ContainerButton { _bytes } => {}
-                    c2s::PlayPacket::ContainerClick { _bytes } => {}
-                    c2s::PlayPacket::ContainerClose { window_id } => {}
+                    c2s::PlayPacket::ContainerButton { sync_id, button_id } => {
+                        let _ = n2b.send(N2bEvent::Container(packet::Window {
+                            sync_id: sync_id.into(),
+                            action: packet::WindowAction::Button(button_id.into()),
+                        }));
+                    }
+                    c2s::PlayPacket::ContainerClick {
+                        sync_id,
+                        slot,
+                        button,
+                        mode,
+                        new_slots,
+                        carried_item,
+                        ..
+                    } => {
+                        let _ = n2b.send(N2bEvent::Container(packet::Window {
+                            sync_id: sync_id.into(),
+                            action: packet::WindowAction::Click {
+                                slot: slot,
+                                button: button.into(),
+                                mode: mode.0 as u32,
+                                new_slots: new_slots.0,
+                                carried_item,
+                            },
+                        }));
+                    }
+                    c2s::PlayPacket::ContainerClose { sync_id } => {
+                        let _ = n2b.send(N2bEvent::Container(packet::Window {
+                            sync_id: sync_id.into(),
+                            action: packet::WindowAction::Close,
+                        }));
+                    }
                     c2s::PlayPacket::PlayerPosOng { x, y, z, on_ground } => {
                         let _ = n2b.send(N2bEvent::Movement(packet::Movement::Position(
                             x.into(),
@@ -291,11 +320,12 @@ impl ConnectionState {
                         ..
                     } => {}
                     c2s::PlayPacket::PlayerInput { .. } => {}
+                    c2s::PlayPacket::PlayerInventorySlot { slot, stack } => {}
                     c2s::PlayPacket::RecipeBookState { _bytes } => {}
                     c2s::PlayPacket::AdvancementCommand(_) => {}
                     c2s::PlayPacket::PlayerHotbarSlot(slot) => {}
                     c2s::PlayPacket::PlayerSwingArm(hand) => {}
-                    c2s::PlayPacket::UseItemOn {
+                    c2s::PlayPacket::ItemUseOn {
                         hand,
                         block_pos,
                         block_face,
@@ -303,8 +333,21 @@ impl ConnectionState {
                         cursor_y,
                         cursor_z,
                         head_buried,
-                        sequence,
-                    } => {}
+                        ..
+                    } => {
+                        let _ = n2b.send(N2bEvent::Item(packet::Item::OnBlock {
+                            hand,
+                            block_pos,
+                            block_face,
+                            cursor_x: cursor_x.into(),
+                            cursor_y: cursor_y.into(),
+                            cursor_z: cursor_z.into(),
+                            head_buried: head_buried.into(),
+                        }));
+                    }
+                    c2s::PlayPacket::ItemUse { hand, .. } => {
+                        let _ = n2b.send(N2bEvent::Item(packet::Item::OnAir(hand)));
+                    }
                 }
             }
         }

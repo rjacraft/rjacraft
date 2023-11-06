@@ -158,19 +158,15 @@ fn init_play_system(players: Query<(Entity, &Play), Added<Play>>) {
     }
 }
 
-fn chat_system(
-    world: &World,
-    players: Query<&Play>,
-    mut events: EventReader<C2sPacket<packet::ChatMessage>>,
-) {
+fn chat_system(players: Query<(&Play, &Login)>, mut events: EventReader<C2sPacket<packet::Chat>>) {
     const GRAY: &str = "#555555";
 
     for C2sPacket(from, data) in events.iter() {
-        let login: &Login = world.get(*from).unwrap();
+        let login: &Login = players.get_component(*from).unwrap();
         let formatted: JsonChat =
             chat!(("{}", login.username) (c[GRAY] " > ") ("{}", data.content)).into();
 
-        for play in players.iter() {
+        for (play, _) in players.iter() {
             play.send_packet(&s2c::PlayPacket::ChatSystemMessage {
                 content: formatted.clone(),
                 overlay: false.into(),
