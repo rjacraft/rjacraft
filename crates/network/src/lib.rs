@@ -1,9 +1,6 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use rjacraft_protocol::{
-    packets::*,
-    types::{self, Chat},
-};
+use rjacraft_protocol::{packets::*, types};
 use tokio::net;
 use tracing::*;
 
@@ -23,7 +20,7 @@ pub use self::{components::*, events::*, systems::n2b_system};
 pub struct Runtime(pub tokio::runtime::Runtime);
 
 #[derive(Resource)]
-pub struct Registries(pub s2c::RegistryData);
+pub struct Registries(pub types::CustomRegistries);
 #[derive(Resource)]
 pub struct Tags(pub Vec<s2c::TagType>);
 
@@ -35,7 +32,7 @@ pub struct UserSystems<Status, Auth, Brand> {
 
 pub enum AuthOutcome {
     Success(String, uuid::Uuid, Vec<s2c::ProfileProperty>),
-    Fail(Chat),
+    Fail(types::Chat),
 }
 
 pub type BrandString = types::LenString<128>;

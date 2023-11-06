@@ -152,6 +152,15 @@ impl ProtocolType for Identifier {
     }
 }
 
+impl serde::Serialize for Identifier {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        String::serialize(&self.to_string(), serializer)
+    }
+}
+
 impl<'de> serde::Deserialize<'de> for Identifier {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -178,12 +187,36 @@ impl<'de> serde::Deserialize<'de> for Identifier {
     }
 }
 
-impl serde::Serialize for Identifier {
+#[derive(Clone)]
+pub struct TagKey(pub Identifier);
+
+impl fmt::Display for TagKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{}", self.0)
+    }
+}
+
+impl fmt::Debug for TagKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{}", self.0)
+    }
+}
+
+impl serde::Serialize for TagKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         String::serialize(&self.to_string(), serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for TagKey {
+    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        todo!()
     }
 }
 

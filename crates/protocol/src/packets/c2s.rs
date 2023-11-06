@@ -5,12 +5,11 @@ use rjacraft_macro::ProtocolType;
 
 use crate::{error, types::*, ProtocolType};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ProtocolType)]
+#[derive(Debug, Clone, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum NextState {
     #[variant(1)]
     Status,
-
     #[variant(2)]
     Login,
 }

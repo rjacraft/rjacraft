@@ -14,6 +14,8 @@ pub mod nbt;
 pub mod net_chunk;
 pub mod position;
 pub mod primitive;
+pub mod provider;
+pub mod registry;
 pub mod remaining_bytes;
 pub mod server_status;
 pub mod slice;
@@ -34,7 +36,7 @@ pub use self::{
     block_event::BlockEvent,
     bool_option::BoolOption,
     chat::{Chat, JsonChat},
-    identifier::Identifier,
+    identifier::{Identifier, TagKey},
     itemstack::*,
     json_string::JsonString,
     len_string::LenString,
@@ -42,6 +44,8 @@ pub use self::{
     nbt::Nbt,
     position::*,
     primitive::Primitive,
+    provider::IntProvider,
+    registry::{CustomRegistries, Registry},
     remaining_bytes::RemainingBytes,
     server_status::ServerStatus,
     varint::VarInt,

@@ -2,7 +2,6 @@
 
 use bitfield_struct::bitfield;
 use rjacraft_macro::ProtocolType;
-use serde::{Deserialize, Serialize};
 
 use crate::{error, types::*, ProtocolType};
 
@@ -56,36 +55,6 @@ pub enum LoginPacket {
     },
 }
 
-pub mod registry {
-    use super::*;
-
-    #[derive(Debug, Clone, Deserialize, Serialize)]
-    pub struct Element<T> {
-        pub element: T,
-        pub id: i32,
-        pub name: Identifier,
-    }
-
-    #[derive(Debug, Clone, Deserialize, Serialize)]
-    pub struct Registry<T> {
-        pub r#type: Identifier,
-        pub value: Vec<Element<T>>,
-    }
-}
-
-/// In theory, there could be more registries than this. This is not a current concern.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct RegistryData {
-    #[serde(rename = "minecraft:chat_type")]
-    pub chat_type: registry::Registry<valence_nbt::Compound>,
-    #[serde(rename = "minecraft:damage_type")]
-    pub damage_type: registry::Registry<valence_nbt::Compound>,
-    #[serde(rename = "minecraft:dimension_type")]
-    pub dimension_type: registry::Registry<valence_nbt::Compound>,
-    #[serde(rename = "minecraft:worldgen/biome")]
-    pub biome: registry::Registry<valence_nbt::Compound>,
-}
-
 #[derive(Debug, Clone, ProtocolType)]
 pub struct Tag {
     pub name: Identifier,
@@ -120,7 +89,7 @@ pub enum ConfigurationPacket {
     Ping { payload: Primitive<i64> },
 
     #[variant(0x05)]
-    RegistryData(Nbt<RegistryData>),
+    RegistryData(Nbt<CustomRegistries>),
 
     #[variant(0x06)]
     ResourcePack {
