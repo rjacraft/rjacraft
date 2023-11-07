@@ -218,8 +218,12 @@ fn open_system(
     for C2sPacket(entity, data) in events.iter() {
         let play = players.get(*entity).unwrap();
 
-        if let packet::Item::OnBlock { block_pos, .. } = data {
-            if let Some(chest) = chests.0.get_mut(block_pos) {
+        if let packet::Item::OnBlock {
+            block_pos: chest_pos,
+            ..
+        } = data
+        {
+            if let Some(chest) = chests.0.get_mut(chest_pos) {
                 let sync_id = 1;
                 let state_id = 0;
                 chest.users += 1;
@@ -227,7 +231,7 @@ fn open_system(
                 play.send_packet(&s2c::PlayPacket::ContainerOpen {
                     sync_id: VarInt(sync_id as i32),
                     kind: VarInt(MENU_GENERIC_9X3 as i32),
-                    title: chat!("{block_pos:?}").into(),
+                    title: chat!("{chest_pos:?}").into(),
                 })
                 .unwrap()
                 .send_packet(&s2c::PlayPacket::ContainerSlots {
@@ -241,14 +245,28 @@ fn open_system(
                 for play_other in players.iter() {
                     play_other
                         .send_packet(&s2c::PlayPacket::ChunkBlockEvent {
-                            position: *block_pos,
+                            position: *chest_pos,
                             event: BlockEvent::ChestUsers(chest.users),
+                        })
+                        .unwrap()
+                        .send_packet(&s2c::PlayPacket::SoundPositioned {
+                            id: s2c::SoundId::Identifier {
+                                id: id!("block.chest.open"),
+                                range: None,
+                            },
+                            category: s2c::SoundCategory::Block,
+                            x: Primitive(chest_pos.x() * 8),
+                            y: Primitive(chest_pos.y() as i32 * 8),
+                            z: Primitive(chest_pos.z() * 8),
+                            volume: 1.0.into(),
+                            pitch: 1.0.into(),
+                            seed: 0.into(),
                         })
                         .unwrap();
                 }
 
                 commands.entity(*entity).insert((
-                    ChestWindowUp(*block_pos),
+                    ChestWindowUp(*chest_pos),
                     WindowUp {
                         sync_id,
                         state_id,
@@ -324,6 +342,20 @@ fn window_input_system(
                             .send_packet(&s2c::PlayPacket::ChunkBlockEvent {
                                 position: chest_pos,
                                 event: BlockEvent::ChestUsers(chest.users),
+                            })
+                            .unwrap()
+                            .send_packet(&s2c::PlayPacket::SoundPositioned {
+                                id: s2c::SoundId::Identifier {
+                                    id: id!("block.chest.close"),
+                                    range: None,
+                                },
+                                category: s2c::SoundCategory::Block,
+                                x: Primitive(chest_pos.x() * 8),
+                                y: Primitive(chest_pos.y() as i32 * 8),
+                                z: Primitive(chest_pos.z() * 8),
+                                volume: 1.0.into(),
+                                pitch: 1.0.into(),
+                                seed: 0.into(),
                             })
                             .unwrap();
                     }

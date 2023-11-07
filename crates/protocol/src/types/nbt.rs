@@ -31,19 +31,19 @@ where
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum DecodeError<T> {
+pub enum DecodeError<E> {
     #[error(transparent)]
     Eof(error::Eof),
     #[error("Error reading the structure")]
-    Struct(T),
+    Struct(E),
     #[error("Error reading the compound")]
     Compound(#[from] valence_nbt::binary::Error),
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum EncodeError<T> {
+pub enum EncodeError<E> {
     #[error("Error writing the structure")]
-    Struct(T),
+    Struct(E),
     #[error("Error writing the compound")]
     Compound(#[from] valence_nbt::binary::Error),
 }

@@ -15,17 +15,9 @@ pub enum DecodeError<E: std::error::Error> {
     Element(#[source] E),
 }
 
-#[derive(Debug, thiserror::Error, from_never::FromNever)]
-pub enum EncodeError<E: std::error::Error> {
-    #[error("Failed to write BoolOption marker")]
-    Marker(#[from] error::Eof),
-    #[error("Failed to write LengthVec element")]
-    Element(#[source] E),
-}
-
 impl<T: ProtocolType> ProtocolType for BoolOption<T> {
     type DecodeError = DecodeError<T::DecodeError>;
-    type EncodeError = EncodeError<T::EncodeError>;
+    type EncodeError = T::EncodeError;
 
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
         let super::Primitive(marker) = super::Primitive::<bool>::decode(buffer)?;
@@ -39,10 +31,10 @@ impl<T: ProtocolType> ProtocolType for BoolOption<T> {
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
         if let Some(el) = &self.0 {
-            super::Primitive(true).encode(buffer)?;
-            el.encode(buffer).map_err(|e| EncodeError::Element(e))?;
+            super::Primitive(true).encode(buffer).ok();
+            el.encode(buffer)?;
         } else {
-            super::Primitive(false).encode(buffer)?;
+            super::Primitive(false).encode(buffer).ok();
         }
 
         Ok(())

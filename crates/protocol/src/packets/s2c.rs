@@ -186,6 +186,61 @@ pub struct TeleportRelative {
     __: bool,
 }
 
+#[derive(Debug, Clone)]
+pub enum SoundId {
+    Protocol(u32),
+    Identifier { id: Identifier, range: Option<f32> },
+}
+
+impl ProtocolType for SoundId {
+    type DecodeError = error::Eof;
+    type EncodeError = error::Infallible;
+
+    fn decode(_buffer: &mut impl bytes::Buf) -> Result<Self, Self::DecodeError> {
+        todo!()
+    }
+
+    fn encode(&self, buffer: &mut impl bytes::BufMut) -> Result<(), Self::EncodeError> {
+        match self {
+            &Self::Protocol(id) => {
+                VarInt(id as i32 + 1).encode(buffer)?;
+            }
+            Self::Identifier { id, range } => {
+                VarInt(0).encode(buffer)?;
+                id.encode(buffer)?;
+                BoolOption(range.map(|x| Primitive(x))).encode(buffer)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(VarInt<i32>)]
+pub enum SoundCategory {
+    #[variant(0)]
+    Master,
+    #[variant(1)]
+    Music,
+    #[variant(2)]
+    Record,
+    #[variant(3)]
+    Weather,
+    #[variant(4)]
+    Block,
+    #[variant(5)]
+    Hostile,
+    #[variant(6)]
+    Neutral,
+    #[variant(7)]
+    Player,
+    #[variant(8)]
+    Ambient,
+    #[variant(9)]
+    Voice,
+}
+
 #[derive(Debug, Clone, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum PlayPacket {
@@ -358,6 +413,18 @@ pub enum PlayPacket {
     WorldTime {
         world_age: Primitive<i64>,
         time: Primitive<i64>,
+    },
+
+    #[variant(0x65)]
+    SoundPositioned {
+        id: SoundId,
+        category: SoundCategory,
+        x: Primitive<i32>,
+        y: Primitive<i32>,
+        z: Primitive<i32>,
+        volume: Primitive<f32>,
+        pitch: Primitive<f32>,
+        seed: Primitive<i64>,
     },
 
     #[variant(0x68)]
