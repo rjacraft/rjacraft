@@ -15,27 +15,31 @@ include = ["/src", "/examples"]
 
 [workspace.dependencies]
 # Bevy game engine
-bevy_ecs = "0.11"
-bevy_app = "0.11"
+bevy_ecs = "0.11.3"
+bevy_app = "0.11.3"
 
 # Async
-async-trait = "0.1"
+async-trait = "0.1.74"
 tokio = { version = "1.32", default-features = false }
-flume = "0.11"
+flume = "0.11.0"
+
+# Type-safety
+subenum = "1.1"
 
 # Encoding
-serde = { version = "1.0", features = ["derive"] }
+serde = "1.0"
 serde_json = "1.0"
 bytes = "1.4"
 thiserror = "1.0"
-uuid = { version = "1.4", features = ["serde"] }
+uuid = "1.4"
+cesu8 = "1.1"
 
 # Documentation
-document-features = "0.2"
+document-features = "0.2.7"
 
 # Tracing
-tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
 
 # Macro utils
 paste = "1.0"
