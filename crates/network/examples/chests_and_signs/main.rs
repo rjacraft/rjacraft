@@ -79,6 +79,7 @@ fn main() {
                 init_play_system,
                 open_system,
                 window_input_system,
+                disconnect_system,
             ),
         )
         .insert_resource(Registries(prebuilt_registries::simple()))
@@ -366,6 +367,18 @@ fn window_input_system(
                         .remove::<WindowUp>();
                 }
             }
+        }
+    }
+}
+
+fn disconnect_system(
+    mut chests: ResMut<Chests>,
+    players: Query<&ChestWindowUp>,
+    mut events: EventReader<PeerDisconnected>,
+) {
+    for &PeerDisconnected { peer } in events.iter() {
+        if let Ok(ChestWindowUp(chest_pos)) = players.get(peer) {
+            chests.0.get_mut(chest_pos).unwrap().users -= 1;
         }
     }
 }
