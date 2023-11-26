@@ -5,7 +5,6 @@ use bevy_ecs::prelude::*;
 use rjacraft_macro::*;
 use rjacraft_network::*;
 use rjacraft_protocol::{chunk, packets::s2c, types::*};
-use tracing::*;
 
 mod generator;
 
@@ -65,7 +64,7 @@ fn main() {
                 n2b_system: IntoSystem::into_system(n2b_system(UserSystems {
                     status: status_system,
                     authenticate: auth_system,
-                    brand: server_brand_system,
+                    brand: brand_system,
                 })),
             },
             bevy_app::ScheduleRunnerPlugin {
@@ -75,7 +74,6 @@ fn main() {
         .add_systems(
             Update,
             (
-                brand_system,
                 init_play_system,
                 open_system,
                 window_input_system,
@@ -131,14 +129,8 @@ fn auth_system(In((_, username, uuid)): In<(Entity, String, Uuid)>) -> AuthOutco
     AuthOutcome::Success(username, uuid, vec![])
 }
 
-fn server_brand_system(_peer: In<Entity>) -> Option<BrandString> {
+fn brand_system(_peer: In<Entity>) -> Option<BrandString> {
     Some("rjacraft-derivative".try_into().unwrap())
-}
-
-fn brand_system(mut events_in: EventReader<C2sPacket<packet::ClientBrand>>) {
-    for C2sPacket(_, data) in events_in.into_iter() {
-        info!("client brand: {}", data.brand);
-    }
 }
 
 const MENU_GENERIC_9X3: u32 = 2;

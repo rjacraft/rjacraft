@@ -1,13 +1,6 @@
 use bevy_ecs::prelude::*;
 use rjacraft_network::{packet::Movement, *};
 use rjacraft_protocol::packets::s2c;
-use tracing::*;
-
-pub fn brand_system(mut events: EventReader<C2sPacket<packet::ClientBrand>>) {
-    for C2sPacket(_, data) in events.into_iter() {
-        info!("client brand: {}", data.brand);
-    }
-}
 
 #[derive(Component)]
 pub struct Position {

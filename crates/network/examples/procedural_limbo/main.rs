@@ -35,7 +35,6 @@ fn main() {
             Update,
             (
                 init_play_system,
-                components::brand_system,
                 components::movement_system,
                 components::send_position_system,
                 components::client_info_system,
