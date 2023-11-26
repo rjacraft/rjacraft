@@ -38,7 +38,7 @@ document-features = "0.2"
 
 # Tracing
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["ansi"] }
+tracing-subscriber = { version = "0.3", features = ["ansi", "env-filter"] }
 pretty-hex = "0.3"
 
 # Macro utils
