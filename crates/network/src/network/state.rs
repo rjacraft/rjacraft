@@ -143,7 +143,7 @@ impl ConnectionState {
             ConnectionState::Login { completed } => {
                 let packet = c2s::LoginPacket::decode(frame)?;
 
-                debug!("{packet:?}");
+                trace!("{packet:?}");
 
                 match packet {
                     c2s::LoginPacket::LoginStart { username, uuid } => {
@@ -165,7 +165,7 @@ impl ConnectionState {
             ConnectionState::Configuration => {
                 let packet = c2s::ConfigurationPacket::decode(frame)?;
 
-                debug!("{packet:?}");
+                trace!("{packet:?}");
 
                 match packet {
                     c2s::ConfigurationPacket::PluginMessage { channel, data } => {
@@ -195,7 +195,7 @@ impl ConnectionState {
             ConnectionState::Play => {
                 let packet = c2s::PlayPacket::decode(frame)?;
 
-                debug!("{packet:?}");
+                trace!("{packet:?}");
 
                 match packet {
                     c2s::PlayPacket::PlayerTeleport { .. } => {}
@@ -392,7 +392,10 @@ pub async fn state_machine_loop(
             Ok(command) = b2n.recv_async() => {
                 match state.on_b2n(&s2c, command).await? {
                     Action::DropConnection => return Ok(()),
-                    Action::NewState(x) => state = x,
+                    Action::NewState(x) => {
+                        debug!("{state:?} -> {x:?}");
+                        state = x
+                    },
                     Action::Continue => {}
                 }
             },
@@ -403,14 +406,20 @@ pub async fn state_machine_loop(
                     .await?
                 {
                     Action::DropConnection => return Ok(()),
-                    Action::NewState(x) => state = x,
+                    Action::NewState(x) => {
+                        debug!("{state:?} -> {x:?}");
+                        state = x
+                    },
                     Action::Continue => {}
                 }
             }
             Ok(command) = from_ka.recv_async() => {
                 match state.on_keepalive(&s2c, command).await? {
                     Action::DropConnection => return Ok(()),
-                    Action::NewState(x) => state = x,
+                    Action::NewState(x) => {
+                        debug!("{state:?} -> {x:?}");
+                        state = x
+                    },
                     Action::Continue => {}
                 }
             },

@@ -29,6 +29,8 @@ impl Play {
         &self,
         packet: &s2c::PlayPacket,
     ) -> Result<&Self, s2c::PlayPacketEncodeError> {
+        trace!("{packet:?}");
+
         let _ = self.tx.send(packet.encode_owned()?);
 
         Ok(self)
