@@ -1,6 +1,8 @@
 //! The network representation of chunk data. For a convenient memory representation, see
 //! [`crate::chunk`].
 
+use std::fmt;
+
 use bytes::Buf;
 use rjacraft_macro::ProtocolType;
 use valence_nbt::*;
@@ -8,7 +10,7 @@ use valence_nbt::*;
 use crate::{chunk::SECTION_VOLUME_BLOCKS, error, types::*, ProtocolType};
 
 /// Cheap to clone!
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ColumnHeightmaps {
     pub world_surface: Vec<i64>,
     pub motion_blocking: Vec<i64>,
@@ -30,8 +32,23 @@ impl nbt::AsCompound for ColumnHeightmaps {
     }
 }
 
+impl fmt::Debug for ColumnHeightmaps {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ColumnHeightmaps")
+            .field(
+                "world_surface",
+                &format_args!("[... {} elements]", self.world_surface.len()),
+            )
+            .field(
+                "motion_blocking",
+                &format_args!("[... {} elements]", self.motion_blocking.len()),
+            )
+            .finish()
+    }
+}
+
 /// Cheap to clone!
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Paletted {
     SingleValue(VarInt<i32>),
     Lut {
@@ -88,6 +105,34 @@ impl ProtocolType for Paletted {
     }
 }
 
+impl fmt::Debug for Paletted {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Paletted::SingleValue(v) => write!(f, "SingleValue({})", v.0),
+            Paletted::Lut {
+                bits_per_value,
+                table,
+                longs,
+                ..
+            } => f
+                .debug_struct("Lut")
+                .field("bits_per_value", bits_per_value)
+                .field("table", &table.0)
+                .field("longs", &format_args!("[... {} elements]", longs.0))
+                .finish(),
+            Paletted::Array {
+                bits_per_value,
+                longs,
+                ..
+            } => f
+                .debug_struct("Array")
+                .field("bits_per_value", bits_per_value)
+                .field("longs", &format_args!("[... {} elements]", longs.0))
+                .finish(),
+        }
+    }
+}
+
 /// Cheap to clone!
 #[derive(Debug, Clone, ProtocolType)]
 pub struct FullPalettes {
@@ -123,11 +168,17 @@ impl<P: ProtocolType> ProtocolType for ColumnPalettes<P> {
 }
 
 /// Cheap to clone!
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Clone, ProtocolType)]
 pub struct SectionLight(pub VarInt<i32>, pub [u8; SECTION_VOLUME_BLOCKS / 2]);
 
+impl fmt::Debug for SectionLight {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} light values", self.0 .0)
+    }
+}
+
 /// Cheap to clone!
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Clone, ProtocolType)]
 pub struct ColumnLight {
     pub sky_light_mask: BitVec<u64>,
     pub block_light_mask: BitVec<u64>,
@@ -135,4 +186,26 @@ pub struct ColumnLight {
     pub no_block_light_mask: BitVec<u64>,
     pub sky_light: LenVec<SectionLight>,
     pub block_light: LenVec<SectionLight>,
+}
+
+impl fmt::Debug for ColumnLight {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ColumnLight")
+            .field("sky_light_mask", &format_args!("{}", self.sky_light_mask))
+            .field(
+                "block_light_mask",
+                &format_args!("{}", self.block_light_mask),
+            )
+            .field(
+                "no_sky_light_mask",
+                &format_args!("{}", self.no_sky_light_mask),
+            )
+            .field(
+                "no_block_light_mask",
+                &format_args!("{}", self.no_block_light_mask),
+            )
+            .field("sky_light", &self.sky_light)
+            .field("block_light", &self.block_light)
+            .finish()
+    }
 }
