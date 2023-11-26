@@ -34,6 +34,7 @@ pub enum N2bEvent {
     Authenticate(String, Uuid),
     NeedConfiguration,
     ConfigurationFinished(flume::Sender<bytes::Bytes>),
+    TeleportConfirm(i32),
     Brand(packet::ClientBrand),
     // ConfigurationRpResponse(i32),
     ChatMessage(packet::ChatMessage),
@@ -41,8 +42,9 @@ pub enum N2bEvent {
     Interact(packet::Interact),
     Movement(packet::Movement),
     Input(packet::Input),
+    Digging(packet::Digging),
     ClientInfo(packet::ClientInfo),
-    Container(packet::Window),
+    Window(packet::Window),
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -200,7 +200,7 @@ pub enum PlayerAction {
     #[variant(1)]
     DigCancel,
     #[variant(2)]
-    DigEnd,
+    DigFinish,
     #[variant(3)]
     DropStack,
     #[variant(4)]
@@ -266,6 +266,19 @@ pub enum PlayerCommand {
 
 #[derive(Debug, Clone, ProtocolType)]
 #[variant(VarInt<i32>)]
+pub enum RecipeBook {
+    #[variant(0)]
+    Crafting,
+    #[variant(1)]
+    Furnace,
+    #[variant(2)]
+    BlastFurnace,
+    #[variant(3)]
+    Smoker,
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(VarInt<i32>)]
 pub enum AdvancementCommand {
     #[variant(0)]
     OpenTab(Identifier),
@@ -277,7 +290,7 @@ pub enum AdvancementCommand {
 #[variant(VarInt<i32>)]
 pub enum PlayPacket {
     #[variant(0x00)]
-    PlayerTeleport { id: VarInt<i32> },
+    PlayerTeleportConfirm { id: VarInt<i32> },
 
     #[variant(0x04)]
     ChatCommand {
@@ -398,7 +411,11 @@ pub enum PlayPacket {
     },
 
     #[variant(0x24)]
-    RecipeBookState { _bytes: RemainingBytes<{ 1 << 20 }> },
+    RecipeBookState {
+        book: RecipeBook,
+        open: Primitive<bool>,
+        filter: Primitive<bool>,
+    },
 
     #[variant(0x28)]
     AdvancementCommand(AdvancementCommand),

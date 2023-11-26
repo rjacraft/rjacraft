@@ -70,6 +70,7 @@ where
             .add_event::<C2sPacket<events::packet::Interact>>()
             .add_event::<C2sPacket<events::packet::Movement>>()
             .add_event::<C2sPacket<events::packet::Input>>()
+            .add_event::<C2sPacket<events::packet::Digging>>()
             .add_event::<C2sPacket<events::packet::ClientInfo>>()
             .add_event::<C2sPacket<events::packet::Window>>()
             .add_systems(PostStartup, net_thread_system)

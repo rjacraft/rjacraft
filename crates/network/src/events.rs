@@ -56,6 +56,8 @@ pub mod packet {
 
     #[derive(Debug, Clone)]
     pub enum Input {
+        Respawn,
+        StatsRequest,
         Sneak(bool),
         LeaveBed,
         Sprint(bool),
@@ -66,11 +68,20 @@ pub mod packet {
         Move(f32, f32),
         Jump,
         Dismount,
+        HotbarSlot(u8),
+        Flight(bool),
         DropStack,
         DropItem,
         ItemUpdate,
         SwapHands,
         SwingArm(c2s::HandRel),
+    }
+
+    #[derive(Debug, Clone)]
+    pub enum Digging {
+        Start(types::BlockPos, c2s::Face),
+        Cancel(types::BlockPos, c2s::Face),
+        Finish(types::BlockPos, c2s::Face),
     }
 
     #[derive(Debug, Clone)]
@@ -86,21 +97,28 @@ pub mod packet {
     }
 
     #[derive(Debug, Clone)]
-    pub enum WindowAction {
-        Button(u8),
-        Click {
+    pub enum Window {
+        RecipeBook {
+            book: c2s::RecipeBook,
+            open: bool,
+            filter: bool,
+        },
+        AdvancementsTab(Option<types::Identifier>),
+        ContainerButton {
+            sync_id: u8,
+            button: u8,
+        },
+        ContainerClick {
+            sync_id: u8,
             slot: c2s::OptionalSlot,
             button: u8,
             mode: u32,
             new_slots: Vec<(types::Primitive<u16>, types::ItemStackProto)>,
             carried_item: types::ItemStackProto,
         },
-        Close,
-    }
-
-    #[derive(Debug, Clone)]
-    pub struct Window {
-        pub sync_id: u8,
-        pub action: WindowAction,
+        ContainerClose {
+            sync_id: u8,
+        },
+        InventorySlot(u16, types::ItemStackProto),
     }
 }

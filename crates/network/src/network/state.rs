@@ -198,7 +198,9 @@ impl ConnectionState {
                 trace!("{packet:?}");
 
                 match packet {
-                    c2s::PlayPacket::PlayerTeleport { .. } => {}
+                    c2s::PlayPacket::PlayerTeleportConfirm { id } => {
+                        let _ = n2b.send(N2bEvent::TeleportConfirm(id.into()));
+                    }
                     c2s::PlayPacket::ChatCommand { command, .. } => {
                         let _ = n2b.send(N2bEvent::Command(command.into()));
                     }
@@ -210,7 +212,12 @@ impl ConnectionState {
                     c2s::PlayPacket::NetKeepAlive { id } => {
                         let _ = to_ka.send(id.into());
                     }
-                    c2s::PlayPacket::ClientCommand(_) => {}
+                    c2s::PlayPacket::ClientCommand(c2s::ClientCommand::Respawn) => {
+                        let _ = n2b.send(N2bEvent::Input(packet::Input::Respawn));
+                    }
+                    c2s::PlayPacket::ClientCommand(c2s::ClientCommand::StatsRequest) => {
+                        let _ = n2b.send(N2bEvent::Input(packet::Input::StatsRequest));
+                    }
                     c2s::PlayPacket::ClientInfo {
                         locale,
                         view_distance,
@@ -233,9 +240,9 @@ impl ConnectionState {
                         }));
                     }
                     c2s::PlayPacket::ContainerButton { sync_id, button_id } => {
-                        let _ = n2b.send(N2bEvent::Container(packet::Window {
+                        let _ = n2b.send(N2bEvent::Window(packet::Window::ContainerButton {
                             sync_id: sync_id.into(),
-                            action: packet::WindowAction::Button(button_id.into()),
+                            button: button_id.into(),
                         }));
                     }
                     c2s::PlayPacket::ContainerClick {
@@ -247,21 +254,18 @@ impl ConnectionState {
                         carried_item,
                         ..
                     } => {
-                        let _ = n2b.send(N2bEvent::Container(packet::Window {
+                        let _ = n2b.send(N2bEvent::Window(packet::Window::ContainerClick {
                             sync_id: sync_id.into(),
-                            action: packet::WindowAction::Click {
-                                slot: slot,
-                                button: button.into(),
-                                mode: mode.0 as u32,
-                                new_slots: new_slots.0,
-                                carried_item,
-                            },
+                            slot: slot,
+                            button: button.into(),
+                            mode: mode.0 as u32,
+                            new_slots: new_slots.0,
+                            carried_item,
                         }));
                     }
                     c2s::PlayPacket::ContainerClose { sync_id } => {
-                        let _ = n2b.send(N2bEvent::Container(packet::Window {
+                        let _ = n2b.send(N2bEvent::Window(packet::Window::ContainerClose {
                             sync_id: sync_id.into(),
-                            action: packet::WindowAction::Close,
                         }));
                     }
                     c2s::PlayPacket::InteractEntity {
@@ -344,7 +348,10 @@ impl ConnectionState {
                             on_ground.into(),
                         )));
                     }
-                    c2s::PlayPacket::PlayerAbilties(_) => {}
+                    c2s::PlayPacket::PlayerAbilties(abilities) => {
+                        let _ =
+                            n2b.send(N2bEvent::Input(packet::Input::Flight(abilities.flying())));
+                    }
                     c2s::PlayPacket::PlayerCommand { action, extra, .. } => {
                         let _ = n2b.send(N2bEvent::Input(match action {
                             c2s::PlayerCommand::SneakDown => packet::Input::Sneak(true),
@@ -359,6 +366,32 @@ impl ConnectionState {
                             c2s::PlayerCommand::HorseInventory => packet::Input::HorseInventory,
                             c2s::PlayerCommand::Elytra => packet::Input::Elytra,
                         }));
+                    }
+                    c2s::PlayPacket::PlayerAction {
+                        action: c2s::PlayerAction::DigStart,
+                        position,
+                        face,
+                        ..
+                    } => {
+                        let _ = n2b.send(N2bEvent::Digging(packet::Digging::Start(position, face)));
+                    }
+                    c2s::PlayPacket::PlayerAction {
+                        action: c2s::PlayerAction::DigCancel,
+                        position,
+                        face,
+                        ..
+                    } => {
+                        let _ =
+                            n2b.send(N2bEvent::Digging(packet::Digging::Cancel(position, face)));
+                    }
+                    c2s::PlayPacket::PlayerAction {
+                        action: c2s::PlayerAction::DigFinish,
+                        position,
+                        face,
+                        ..
+                    } => {
+                        let _ =
+                            n2b.send(N2bEvent::Digging(packet::Digging::Finish(position, face)));
                     }
                     c2s::PlayPacket::PlayerAction {
                         action: c2s::PlayerAction::DropStack,
@@ -384,7 +417,6 @@ impl ConnectionState {
                     } => {
                         let _ = n2b.send(N2bEvent::Input(packet::Input::SwapHands));
                     }
-                    c2s::PlayPacket::PlayerAction { action, .. } => {}
                     c2s::PlayPacket::PlayerInput {
                         sideways,
                         forward,
@@ -402,10 +434,29 @@ impl ConnectionState {
                             let _ = n2b.send(N2bEvent::Input(packet::Input::Dismount));
                         }
                     }
-                    c2s::PlayPacket::PlayerInventorySlot { .. } => {}
-                    c2s::PlayPacket::RecipeBookState { .. } => {}
-                    c2s::PlayPacket::AdvancementCommand(_) => {}
-                    c2s::PlayPacket::PlayerHotbarSlot(_) => {}
+                    c2s::PlayPacket::PlayerInventorySlot { slot, stack } => {
+                        let _ = n2b.send(N2bEvent::Window(packet::Window::InventorySlot(
+                            slot.into(),
+                            stack,
+                        )));
+                    }
+                    c2s::PlayPacket::RecipeBookState { book, open, filter } => {
+                        let _ = n2b.send(N2bEvent::Window(packet::Window::RecipeBook {
+                            book,
+                            open: open.into(),
+                            filter: filter.into(),
+                        }));
+                    }
+                    c2s::PlayPacket::AdvancementCommand(c2s::AdvancementCommand::OpenTab(id)) => {
+                        let _ =
+                            n2b.send(N2bEvent::Window(packet::Window::AdvancementsTab(Some(id))));
+                    }
+                    c2s::PlayPacket::AdvancementCommand(c2s::AdvancementCommand::CloseScreen) => {
+                        let _ = n2b.send(N2bEvent::Window(packet::Window::AdvancementsTab(None)));
+                    }
+                    c2s::PlayPacket::PlayerHotbarSlot(n) => {
+                        let _ = n2b.send(N2bEvent::Input(packet::Input::HotbarSlot(n.into())));
+                    }
                     c2s::PlayPacket::PlayerSwingArm(hand) => {
                         let _ = n2b.send(N2bEvent::Input(packet::Input::SwingArm(hand)));
                     }

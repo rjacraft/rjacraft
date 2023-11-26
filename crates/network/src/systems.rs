@@ -122,6 +122,7 @@ where
                             tx: play_tx.clone(),
                         });
                     }
+                    N2bEvent::TeleportConfirm(_) => {} // todo
                     N2bEvent::Brand(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
                     N2bEvent::ChatMessage(packet) => {
                         commands.add(SendEvent(C2sPacket(entity, packet)))
@@ -139,12 +140,11 @@ where
                         commands.add(SendEvent(C2sPacket(entity, packet)))
                     }
                     N2bEvent::Input(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
+                    N2bEvent::Digging(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
                     N2bEvent::ClientInfo(packet) => {
                         commands.add(SendEvent(C2sPacket(entity, packet)))
                     }
-                    N2bEvent::Container(packet) => {
-                        commands.add(SendEvent(C2sPacket(entity, packet)))
-                    }
+                    N2bEvent::Window(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
                 }
             }
         }

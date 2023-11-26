@@ -282,10 +282,10 @@ fn window_input_system(
         if let Ok((_, &ChestWindowUp(chest_pos), mut window)) = players_window.get_mut(*entity) {
             let chest = chests.0.get_mut(&chest_pos).unwrap();
 
-            match &data.action {
-                packet::WindowAction::Button(_) => {}
+            match data {
+                packet::Window::ContainerButton { .. } => {}
                 // the rest of the properties are for checking whether this transaction is legal
-                packet::WindowAction::Click {
+                packet::Window::ContainerClick {
                     new_slots,
                     carried_item,
                     ..
@@ -328,7 +328,7 @@ fn window_input_system(
                         }
                     }
                 }
-                packet::WindowAction::Close => {
+                packet::Window::ContainerClose { .. } => {
                     chest.users -= 1;
                     for play_other in players.iter() {
                         play_other
@@ -358,6 +358,7 @@ fn window_input_system(
                         .remove::<ChestWindowUp>()
                         .remove::<WindowUp>();
                 }
+                _ => {}
             }
         }
     }
