@@ -123,7 +123,15 @@ where
                         });
                     }
                     N2bEvent::Brand(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
-                    N2bEvent::Chat(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
+                    N2bEvent::ChatMessage(packet) => {
+                        commands.add(SendEvent(C2sPacket(entity, packet)))
+                    }
+                    N2bEvent::Command(content) => commands.add(SendEvent(C2sPacket(
+                        entity,
+                        packet::Command {
+                            tokens: content.split(' ').map(str::to_string).collect(),
+                        },
+                    ))),
                     N2bEvent::Interact(packet) => {
                         commands.add(SendEvent(C2sPacket(entity, packet)))
                     }

@@ -199,9 +199,11 @@ impl ConnectionState {
 
                 match packet {
                     c2s::PlayPacket::PlayerTeleport { .. } => {}
-                    c2s::PlayPacket::ChatCommand { .. } => {}
+                    c2s::PlayPacket::ChatCommand { command, .. } => {
+                        let _ = n2b.send(N2bEvent::Command(command.into()));
+                    }
                     c2s::PlayPacket::ChatMessage { message, .. } => {
-                        let _ = n2b.send(N2bEvent::Chat(packet::Chat {
+                        let _ = n2b.send(N2bEvent::ChatMessage(packet::ChatMessage {
                             content: message.into(),
                         }));
                     }

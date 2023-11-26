@@ -5,6 +5,7 @@ pub mod block_entity;
 pub mod block_event;
 pub mod bool_option;
 pub mod chat;
+pub mod command;
 pub mod entity_data;
 pub mod identifier;
 pub mod itemstack;

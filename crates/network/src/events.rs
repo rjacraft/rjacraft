@@ -18,8 +18,13 @@ pub mod packet {
     }
 
     #[derive(Debug, Clone)]
-    pub struct Chat {
+    pub struct ChatMessage {
         pub content: String,
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct Command {
+        pub tokens: Vec<String>,
     }
 
     #[derive(Debug, Clone)]

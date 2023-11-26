@@ -393,6 +393,12 @@ pub enum PlayPacket {
     #[variant(0x0F)]
     ChunkBiomes(LenVec<ChunkBiomeData>),
 
+    #[variant(0x12)]
+    ChatCommands {
+        nodes: LenVec<command::Node>,
+        root: VarInt<i32>,
+    },
+
     #[variant(0x13)]
     ContainerClose { window_id: Primitive<u8> },
 
@@ -633,7 +639,7 @@ pub enum PlayPacket {
     },
 
     #[variant(0x68)]
-    ChatSystemMessage {
+    ChatUnsignedMessage {
         content: JsonChat,
         overlay: Primitive<bool>,
     },
