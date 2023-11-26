@@ -25,7 +25,7 @@ fn build_heightmap<const SECTIONS: usize>(
                     let id = sections[s][y][z][x];
                     let height = s * SECTION_SIDE_BLOCKS + y;
 
-                    if predicate(id) {
+                    if predicate(id) || y == 0 {
                         *result.last_mut().unwrap() |= (height as i64) << n_bit;
                         n_bit += bits_per_entry;
                         break 'column;
