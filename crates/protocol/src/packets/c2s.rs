@@ -167,13 +167,29 @@ pub struct PlayerAbilities {
     __: bool,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum HandRel {
     #[variant(0)]
     Main,
     #[variant(1)]
     Offhand,
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(VarInt<i32>)]
+pub enum InteractKind {
+    #[variant(0)]
+    Interact { hand: HandRel },
+    #[variant(1)]
+    Attack,
+    #[variant(2)]
+    InteractAt {
+        x: Primitive<f32>,
+        y: Primitive<f32>,
+        z: Primitive<f32>,
+        hand: HandRel,
+    },
 }
 
 #[derive(Debug, Clone, ProtocolType)]
@@ -216,7 +232,7 @@ pub enum Face {
 #[bitfield(u8)]
 pub struct PlayerInputFlags {
     pub jump: bool,
-    pub unmount: bool,
+    pub dismount: bool,
     __: bool,
     __: bool,
     __: bool,
@@ -318,6 +334,13 @@ pub enum PlayPacket {
     #[variant(0x0E)]
     ContainerClose { sync_id: Primitive<u8> },
 
+    #[variant(0x12)]
+    InteractEntity {
+        entity: VarInt<i32>,
+        kind: InteractKind,
+        sneaking: Primitive<bool>,
+    },
+
     #[variant(0x14)]
     NetKeepAlive { id: Primitive<i64> },
 
@@ -393,7 +416,7 @@ pub enum PlayPacket {
     PlayerSwingArm(HandRel),
 
     #[variant(0x34)]
-    ItemUseOn {
+    InteractBlock {
         hand: HandRel,
         block_pos: BlockPos,
         block_face: Face,
@@ -405,7 +428,7 @@ pub enum PlayPacket {
     },
 
     #[variant(0x35)]
-    ItemUse {
+    InteractItem {
         hand: HandRel,
         sequence: VarInt<i32>,
     },

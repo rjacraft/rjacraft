@@ -102,7 +102,7 @@ fn brand_system(_peer: In<Entity>) -> Option<BrandString> {
 fn init_play_system(players: Query<(Entity, &Play), Added<Play>>, mut commands: Commands) {
     for (entity, play) in players.iter() {
         play.send_packet(&s2c::PlayPacket::Login {
-            entity_id: entity.index().into(),
+            entity_id: 0.into(),
             is_hardcore: false.into(),
             dimensions: vec![id!["overworld"]].into(),
             max_players: 20.into(),

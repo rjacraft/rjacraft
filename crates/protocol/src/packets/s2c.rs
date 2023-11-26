@@ -108,6 +108,21 @@ pub enum ConfigurationPacket {
 
 #[derive(Debug, Clone, ProtocolType)]
 #[variant(Primitive<u8>)]
+pub enum EntityAnimation {
+    #[variant(0)]
+    SwingMainHand,
+    #[variant(2)]
+    LeaveBed,
+    #[variant(3)]
+    SwingOffhand,
+    #[variant(4)]
+    Crit,
+    #[variant(5)]
+    MagicCrit,
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+#[variant(Primitive<u8>)]
 pub enum Difficulty {
     #[variant(0)]
     Peaceful,
@@ -127,7 +142,7 @@ pub struct ChunkBiomeData {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-pub struct WorldPos {
+pub struct GlobalPos {
     pub dimension_name: Identifier,
     pub position: BlockPos,
 }
@@ -146,7 +161,7 @@ pub enum GameMode {
 }
 
 #[derive(Debug, Clone, ProtocolType)]
-#[variant(Primitive::<i8>)]
+#[variant(Primitive<i8>)]
 pub enum PreviousGameMode {
     #[variant(-1)]
     None,
@@ -171,6 +186,86 @@ pub struct PlayerAbilities {
     __: bool,
     __: bool,
     __: bool,
+}
+
+#[derive(Debug, Clone, ProtocolType)]
+pub struct PlayerProfile {
+    pub username: LenString<16>,
+    pub properties: LenVec<ProfileProperty>,
+}
+
+/// About the fields: There's no way to express this nicely in Rust. The lengths of each present
+/// vector have to stay the same for this to be decodable.
+#[derive(Debug, Clone)]
+pub struct PlayerInfoUpdates {
+    pub players: Vec<Uuid>,
+    pub profile: Option<Vec<PlayerProfile>>,
+    // todo signature
+    pub gamemode: Option<Vec<GameMode>>,
+    pub listed: Option<Vec<Primitive<bool>>>,
+    pub ping: Option<Vec<VarInt<i32>>>,
+    pub nickname: Option<Vec<JsonChat>>,
+}
+
+impl ProtocolType for PlayerInfoUpdates {
+    type DecodeError = error::Eof;
+    type EncodeError = error::Infallible;
+
+    fn decode(_buffer: &mut impl bytes::Buf) -> Result<Self, Self::DecodeError> {
+        todo!()
+    }
+
+    fn encode(&self, buffer: &mut impl bytes::BufMut) -> Result<(), Self::EncodeError> {
+        #[derive(ProtocolType)]
+        #[bitfield(u8)]
+        struct UsedProperties {
+            profile: bool,
+            signature: bool,
+            gamemode: bool,
+            listed: bool,
+            ping: bool,
+            nickname: bool,
+            __: bool,
+            __: bool,
+        }
+
+        UsedProperties::new()
+            .with_profile(self.profile.is_some())
+            .with_gamemode(self.gamemode.is_some())
+            .with_listed(self.listed.is_some())
+            .with_ping(self.ping.is_some())
+            .with_nickname(self.nickname.is_some())
+            .encode(buffer)?;
+
+        VarInt(self.players.len() as i32).encode(buffer)?;
+
+        for uuid in &self.players {
+            uuid.encode(buffer)?;
+            // there are no encode errors
+
+            for x in self.profile.iter().flatten() {
+                x.encode(buffer).unwrap();
+            }
+
+            for x in self.gamemode.iter().flatten() {
+                x.encode(buffer).unwrap();
+            }
+
+            for x in self.listed.iter().flatten() {
+                x.encode(buffer)?;
+            }
+
+            for x in self.ping.iter().flatten() {
+                x.encode(buffer)?;
+            }
+
+            for x in self.nickname.iter().flatten() {
+                x.encode(buffer).unwrap();
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(ProtocolType)]
@@ -244,6 +339,38 @@ pub enum SoundCategory {
 #[derive(Debug, Clone, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum PlayPacket {
+    #[variant(0x01)]
+    EntitySpawn {
+        id: VarInt<i32>,
+        uuid: Uuid,
+        kind: VarInt<i32>,
+        x: Primitive<f64>,
+        y: Primitive<f64>,
+        z: Primitive<f64>,
+        pitch: Primitive<u8>,
+        yaw: Primitive<u8>,
+        head_yaw: Primitive<u8>,
+        int_data: VarInt<i32>,
+        velocity: (Primitive<i16>, Primitive<i16>, Primitive<i16>),
+    },
+
+    #[variant(0x03)]
+    EntitySpawnPlayer {
+        id: VarInt<i32>,
+        uuid: Uuid,
+        x: Primitive<f64>,
+        y: Primitive<f64>,
+        z: Primitive<f64>,
+        yaw: Primitive<u8>,
+        pitch: Primitive<u8>,
+    },
+
+    #[variant(0x04)]
+    EntityAnimation {
+        id: VarInt<i32>,
+        animation: EntityAnimation,
+    },
+
     #[variant(0x08)]
     ChunkBlockEntity {
         position: BlockPos,
@@ -292,12 +419,29 @@ pub enum PlayPacket {
         slot: ItemStackProto,
     },
 
+    #[variant(0x1A)]
+    EntityDamage {
+        taker_id: VarInt<i32>,
+        damage_type: VarInt<i32>,
+        /// 0 or n + 1
+        source_id: VarInt<i32>,
+        /// 0 or n + 1
+        means_id: VarInt<i32>,
+        source_pos: BoolOption<(Primitive<f64>, Primitive<f64>, Primitive<f64>)>,
+    },
+
     /// The order of X and Z is flipped, because Minecraft encodes this as some kind of MSB
     /// bitfield. Despite this, the order in [`PlayPacket::ChunkData`] still remains normal.
     #[variant(0x20)]
     ChunkUnload {
         chunk_z: Primitive<i32>,
         chunk_x: Primitive<i32>,
+    },
+
+    #[variant(0x23)]
+    EntityDamageTilt {
+        id: VarInt<i32>,
+        yaw: Primitive<f32>,
     },
 
     #[variant(0x24)]
@@ -335,7 +479,7 @@ pub enum PlayPacket {
 
     #[variant(0x2A)]
     Login {
-        entity_id: Primitive<u32>,
+        entity_id: Primitive<i32>,
         is_hardcore: Primitive<bool>,
         dimensions: LenVec<Identifier>,
         max_players: VarInt<i32>,
@@ -351,8 +495,36 @@ pub enum PlayPacket {
         previous_gamemode: PreviousGameMode,
         is_debug: Primitive<bool>,
         is_flat: Primitive<bool>,
-        died: BoolOption<WorldPos>,
+        died: BoolOption<GlobalPos>,
         portal_cooldown: VarInt<i32>,
+    },
+
+    #[variant(0x2D)]
+    EntityDposOng {
+        id: VarInt<i32>,
+        dx: Primitive<i16>,
+        dy: Primitive<i16>,
+        dz: Primitive<i16>,
+        on_ground: Primitive<bool>,
+    },
+
+    #[variant(0x2E)]
+    EntityDposRotOng {
+        id: VarInt<i32>,
+        dx: Primitive<i16>,
+        dy: Primitive<i16>,
+        dz: Primitive<i16>,
+        yaw: Primitive<u8>,
+        pitch: Primitive<u8>,
+        on_ground: Primitive<bool>,
+    },
+
+    #[variant(0x2F)]
+    EntityRotOng {
+        id: VarInt<i32>,
+        yaw: Primitive<u8>,
+        pitch: Primitive<u8>,
+        on_ground: Primitive<bool>,
     },
 
     #[variant(0x32)]
@@ -369,6 +541,12 @@ pub enum PlayPacket {
         fov_modifier: Primitive<f32>,
     },
 
+    #[variant(0x3C)]
+    ServerPlayerRemove(LenVec<Uuid>),
+
+    #[variant(0x3D)]
+    ServerPlayerInfo(PlayerInfoUpdates),
+
     #[variant(0x3F)]
     PlayerTeleport {
         x: Primitive<f64>,
@@ -378,6 +556,19 @@ pub enum PlayPacket {
         pitch: Primitive<f32>,
         relative: TeleportRelative,
         id: VarInt<i32>,
+    },
+
+    #[variant(0x41)]
+    EntityRemove(LenVec<VarInt<i32>>),
+
+    #[variant(0x45)]
+    EntityHeadYaw { id: VarInt<i32>, yaw: Primitive<u8> },
+
+    #[variant(0x48)]
+    ServerMetadata {
+        description: JsonChat,
+        favicon: BoolOption<LenVec<u8>>,
+        enforces_secure_chat: Primitive<bool>,
     },
 
     #[variant(0x4F)]
@@ -393,6 +584,20 @@ pub enum PlayPacket {
     WorldRespawn {
         position: BlockPos,
         pitch: Primitive<f32>,
+    },
+
+    #[variant(0x55)]
+    EntityData {
+        id: VarInt<i32>,
+        values: EntityDataValues,
+    },
+
+    #[variant(0x57)]
+    EntityVelocity {
+        id: VarInt<i32>,
+        x: Primitive<i16>,
+        y: Primitive<i16>,
+        z: Primitive<i16>,
     },
 
     #[variant(0x59)]
@@ -431,5 +636,16 @@ pub enum PlayPacket {
     ChatSystemMessage {
         content: JsonChat,
         overlay: Primitive<bool>,
+    },
+
+    #[variant(0x6C)]
+    EntityPosRotOng {
+        id: VarInt<i32>,
+        x: Primitive<f64>,
+        y: Primitive<f64>,
+        z: Primitive<f64>,
+        yaw: Primitive<u8>,
+        pitch: Primitive<u8>,
+        on_ground: Primitive<bool>,
     },
 }

@@ -104,7 +104,7 @@ async fn encode_generic_raw(
     Ok(())
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct VarInt<T>(pub T);
 
 impl ProtocolType for VarInt<i32> {

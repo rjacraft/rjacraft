@@ -5,11 +5,48 @@ use rjacraft_network::*;
 use rjacraft_protocol::{chunk, packets::s2c, types::*};
 use tracing::*;
 
+mod combat;
+mod eid;
+mod player_entity;
+
+const SPAWN_X: f64 = 7.5;
+const SPAWN_Y: f64 = 41.0;
+const SPAWN_Z: f64 = 7.5;
+
+#[derive(Resource)]
+struct PlatformChunk(
+    net_chunk::ColumnHeightmaps,
+    net_chunk::ColumnPalettes,
+    net_chunk::ColumnLight,
+);
+
+#[derive(Resource)]
+struct EmptyChunk(
+    net_chunk::ColumnHeightmaps,
+    net_chunk::ColumnPalettes,
+    net_chunk::ColumnLight,
+);
+
 fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .pretty()
         .init();
+
+    let platform_chunk = {
+        let mut column = chunk::Column::<16>::default();
+        column.blockstates[2][8] = [[1; 16]; 16];
+        column.sky_light.world = [[[[15; 16]; 16]; 16]; 16];
+        let (heightmaps, palettes, light) = chunk::to_network(&column);
+        PlatformChunk(heightmaps, palettes, light)
+    };
+
+    let empty_chunk = {
+        let mut column = chunk::Column::<16>::default();
+        column.sky_light.world = [[[[15; 16]; 16]; 16]; 16];
+        let (heightmaps, palettes, light) = chunk::to_network(&column);
+        EmptyChunk(heightmaps, palettes, light)
+    };
 
     App::new()
         .insert_resource(Runtime(
@@ -28,7 +65,23 @@ fn main() {
                 run_mode: bevy_app::RunMode::Loop { wait: None },
             },
         ))
-        .add_systems(Update, (brand_system, init_play_system, chat_system))
+        // .add_systems(PreUpdate, eid::assign_system)
+        .add_systems(
+            Update,
+            (
+                brand_system,
+                eid::assign_system.before(init_play_system),
+                init_play_system,
+                player_entity::accept_movement_system,
+                player_entity::accept_input_system,
+                player_entity::broadcast_movement_system.after(player_entity::join_system),
+                player_entity::join_system,
+                player_entity::leave_system,
+                combat::accept_interact_system,
+                combat::losing_system,
+            ),
+        )
+        .add_systems(PostUpdate, eid::free_system)
         .insert_resource(Registries(prebuilt_registries::simple()))
         .insert_resource(Tags(vec![
             s2c::TagType {
@@ -52,12 +105,10 @@ fn main() {
                 tags: vec![].into(),
             },
         ]))
+        .insert_resource(platform_chunk)
+        .insert_resource(empty_chunk)
+        .insert_resource(eid::EidMap::default())
         .run();
-}
-
-#[derive(Component)]
-struct Profile {
-    username: String,
 }
 
 fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
@@ -71,11 +122,17 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
             online: 0,
             sample: vec![],
         },
-        description: chat!("Example: " (b "chat")),
+        description: chat!("Example: " (b "sumo")),
         favicon: None,
         enforces_secure_chat: false,
         previews_chat: false,
     }
+}
+
+#[derive(Component)]
+pub struct Profile {
+    pub username: String,
+    pub uuid: Uuid,
 }
 
 fn auth_system(
@@ -84,6 +141,7 @@ fn auth_system(
 ) -> AuthOutcome {
     commands.entity(entity).insert(Profile {
         username: username.clone(),
+        uuid,
     });
 
     AuthOutcome::Success(username, uuid, vec![])
@@ -99,12 +157,16 @@ fn brand_system(mut events_in: EventReader<C2sPacket<packet::ClientBrand>>) {
     }
 }
 
-fn init_play_system(players: Query<&Play, Added<Play>>) {
-    for play in players.iter() {
-        let (heightmaps, palettes, light) = chunk::to_network(&chunk::Column::<16>::default());
-
+fn init_play_system(
+    eids: Res<eid::EidMap>,
+    platform: Res<PlatformChunk>,
+    empty: Res<EmptyChunk>,
+    players: Query<(Entity, &Play), Added<Play>>,
+    mut commands: Commands,
+) {
+    for (entity, play) in players.iter() {
         play.send_packet(&s2c::PlayPacket::Login {
-            entity_id: 0.into(),
+            entity_id: eids.eid_of(&entity),
             is_hardcore: false.into(),
             dimensions: vec![id!["overworld"]].into(),
             max_players: 20.into(),
@@ -123,58 +185,43 @@ fn init_play_system(players: Query<&Play, Added<Play>>) {
             portal_cooldown: 0.into(),
         })
         .unwrap()
-        .send_packet(&s2c::PlayPacket::PlayerAbilities {
-            flags: s2c::PlayerAbilities::new()
-                .with_flying(true)
-                .with_can_fly(true),
-            flying_speed: 0.05.into(),
-            fov_modifier: 0.1.into(),
-        })
-        .unwrap()
         .send_packet(&s2c::PlayPacket::WorldRespawn {
-            position: BlockPos::new().with_x(0).with_y(40).with_z(0),
+            position: BlockPos::new().with_x(0).with_y(0).with_z(0),
             pitch: 0.0.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::PlayerTeleport {
-            x: 0.0.into(),
-            y: 40.0.into(),
-            z: 0.0.into(),
-            yaw: 0.0.into(),
-            pitch: 0.0.into(),
-            relative: s2c::TeleportRelative::new(),
-            id: 0.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::ChunkData {
-            chunk_x: 0.into(),
-            chunk_z: 0.into(),
-            heightmaps: Nbt(heightmaps),
-            palettes,
-            block_entities: vec![].into(),
-            light,
         })
         .unwrap();
-    }
-}
 
-fn chat_system(
-    players: Query<(&Play, &Profile)>,
-    mut events: EventReader<C2sPacket<packet::Chat>>,
-) {
-    const GRAY: &str = "#555555";
-
-    for C2sPacket(from, data) in events.iter() {
-        let login: &Profile = players.get_component(*from).unwrap();
-        let formatted: JsonChat =
-            chat!(("{}", login.username) (c[GRAY] " > ") ("{}", data.content)).into();
-
-        for (play, _) in players.iter() {
-            play.send_packet(&s2c::PlayPacket::ChatSystemMessage {
-                content: formatted.clone(),
-                overlay: false.into(),
-            })
-            .unwrap();
+        for x in -1..2 {
+            for z in -1..2 {
+                if x == 0 && z == 0 {
+                    play.send_packet(&s2c::PlayPacket::ChunkData {
+                        chunk_x: x.into(),
+                        chunk_z: z.into(),
+                        heightmaps: Nbt(platform.0.clone()),
+                        palettes: platform.1.clone(),
+                        block_entities: vec![].into(),
+                        light: platform.2.clone(),
+                    })
+                    .unwrap();
+                } else {
+                    play.send_packet(&s2c::PlayPacket::ChunkData {
+                        chunk_x: x.into(),
+                        chunk_z: z.into(),
+                        heightmaps: Nbt(empty.0.clone()),
+                        palettes: empty.1.clone(),
+                        block_entities: vec![].into(),
+                        light: empty.2.clone(),
+                    })
+                    .unwrap();
+                }
+            }
         }
+
+        commands.entity(entity).insert(player_entity::Movement {
+            pos: (SPAWN_X, SPAWN_Y, SPAWN_Z),
+            body_rot: (0.0, 30.0),
+            head_rot: (0.0, 30.0),
+            ong: true,
+        });
     }
 }

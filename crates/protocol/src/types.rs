@@ -5,6 +5,7 @@ pub mod block_entity;
 pub mod block_event;
 pub mod bool_option;
 pub mod chat;
+pub mod entity_data;
 pub mod identifier;
 pub mod itemstack;
 pub mod json_string;
@@ -36,6 +37,7 @@ pub use self::{
     block_event::BlockEvent,
     bool_option::BoolOption,
     chat::{Chat, JsonChat},
+    entity_data::EntityDataValues,
     identifier::{Identifier, TagKey},
     itemstack::*,
     json_string::JsonString,

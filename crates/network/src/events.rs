@@ -23,10 +23,49 @@ pub mod packet {
     }
 
     #[derive(Debug, Clone)]
+    pub enum Interact {
+        AttackEntity(i32),
+        TouchEntity {
+            entity: i32,
+            at: Option<(f32, f32, f32)>,
+            hand: c2s::HandRel,
+        },
+        Block {
+            hand: c2s::HandRel,
+            block_pos: types::BlockPos,
+            block_face: c2s::Face,
+            cursor_x: f32,
+            cursor_y: f32,
+            cursor_z: f32,
+            head_buried: bool,
+        },
+        Item(c2s::HandRel),
+    }
+
+    #[derive(Debug, Clone)]
     pub enum Movement {
         Position(f64, f64, f64),
         Rotation(f32, f32),
         OnGround(bool),
+    }
+
+    #[derive(Debug, Clone)]
+    pub enum Input {
+        Sneak(bool),
+        LeaveBed,
+        Sprint(bool),
+        HorseJumpStart(u8),
+        HorseJumpEnd,
+        HorseInventory,
+        Elytra,
+        Move(f32, f32),
+        Jump,
+        Dismount,
+        DropStack,
+        DropItem,
+        ItemUpdate,
+        SwapHands,
+        SwingArm(c2s::HandRel),
     }
 
     #[derive(Debug, Clone)]
@@ -58,19 +97,5 @@ pub mod packet {
     pub struct Window {
         pub sync_id: u8,
         pub action: WindowAction,
-    }
-
-    #[derive(Debug, Clone)]
-    pub enum Item {
-        OnBlock {
-            hand: c2s::HandRel,
-            block_pos: types::BlockPos,
-            block_face: c2s::Face,
-            cursor_x: f32,
-            cursor_y: f32,
-            cursor_z: f32,
-            head_buried: bool,
-        },
-        OnAir(c2s::HandRel),
     }
 }

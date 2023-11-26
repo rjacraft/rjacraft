@@ -37,10 +37,11 @@ pub enum N2bEvent {
     Brand(packet::ClientBrand),
     // ConfigurationRpResponse(i32),
     Chat(packet::Chat),
+    Interact(packet::Interact),
     Movement(packet::Movement),
+    Input(packet::Input),
     ClientInfo(packet::ClientInfo),
     Container(packet::Window),
-    Item(packet::Item),
 }
 
 #[derive(Debug, thiserror::Error)]

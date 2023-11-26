@@ -124,16 +124,19 @@ where
                     }
                     N2bEvent::Brand(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
                     N2bEvent::Chat(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
+                    N2bEvent::Interact(packet) => {
+                        commands.add(SendEvent(C2sPacket(entity, packet)))
+                    }
                     N2bEvent::Movement(packet) => {
                         commands.add(SendEvent(C2sPacket(entity, packet)))
                     }
+                    N2bEvent::Input(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
                     N2bEvent::ClientInfo(packet) => {
                         commands.add(SendEvent(C2sPacket(entity, packet)))
                     }
                     N2bEvent::Container(packet) => {
                         commands.add(SendEvent(C2sPacket(entity, packet)))
                     }
-                    N2bEvent::Item(packet) => commands.add(SendEvent(C2sPacket(entity, packet))),
                 }
             }
         }

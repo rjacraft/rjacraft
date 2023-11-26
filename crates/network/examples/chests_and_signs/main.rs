@@ -148,7 +148,7 @@ fn init_play_system(chests: Res<Chests>, players: Query<(Entity, &Play), Added<P
         let (heightmaps, palettes, light) = chunk::to_network(&generator::generate_blocks());
 
         play.send_packet(&s2c::PlayPacket::Login {
-            entity_id: entity.index().into(),
+            entity_id: Primitive(entity.index() as i32),
             is_hardcore: false.into(),
             dimensions: vec![id!["overworld"]].into(),
             max_players: 20.into(),
@@ -213,13 +213,13 @@ fn init_play_system(chests: Res<Chests>, players: Query<(Entity, &Play), Added<P
 fn open_system(
     players: Query<&Play>,
     mut chests: ResMut<Chests>,
-    mut events: EventReader<C2sPacket<packet::Item>>,
+    mut events: EventReader<C2sPacket<packet::Interact>>,
     mut commands: Commands,
 ) {
     for C2sPacket(entity, data) in events.iter() {
         let play = players.get(*entity).unwrap();
 
-        if let packet::Item::OnBlock {
+        if let packet::Interact::Block {
             block_pos: chest_pos,
             ..
         } = data

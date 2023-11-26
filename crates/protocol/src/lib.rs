@@ -33,6 +33,7 @@ pub trait ProtocolTypeRaw: ProtocolType {
 }
 
 pub mod chunk;
+pub mod entity_properties;
 pub mod error;
 pub mod frame;
 pub mod packets;
