@@ -13,26 +13,32 @@ pub enum Error {
     DecodingHandshake(#[from] c2s::HandshakePacketDecodeError),
     #[error("Failed to read packet")]
     DecodingStatus(#[from] c2s::StatusPacketDecodeError),
-    #[error("Failed to read packet")]
+    #[error("Failed to write packet")]
     EncodingStatus(#[from] s2c::StatusPacketEncodeError),
     #[error("Failed to read packet")]
     DecodingLogin(#[from] c2s::LoginPacketDecodeError),
-    #[error("Failed to read packet")]
+    #[error("Failed to write packet")]
     EncodingLogin(#[from] s2c::LoginPacketEncodeError),
     #[error("Failed to read packet")]
     DecodingConfiguration(#[from] c2s::ConfigurationPacketDecodeError),
     #[error("Failed to decode brand")]
     DecodingBrand(#[source] types::len_string::DecodeError<128>),
-    #[error("Failed to read packet")]
+    #[error("Failed to write packet")]
     EncodingConfiguration(#[from] s2c::ConfigurationPacketEncodeError),
     #[error("Failed to read packet")]
     DecodingPlay(#[from] c2s::PlayPacketDecodeError),
-    #[error("Failed to read packet")]
+    #[error("Failed to write packet")]
     EncodingPlay(#[from] s2c::PlayPacketEncodeError),
     #[error("Wrong protocol version: {0:?}")]
     WrongVersion(rjacraft_protocol::ProtocolVersion),
     #[error("Got login ack despite not being logged in")]
     FakeLoginAck,
+    #[error("Couldn't send a raw packet")]
+    SendS2c(#[from] flume::SendError<bytes::Bytes>),
+    #[error("Couldn't send a message to Bevy")]
+    SendN2b(#[from] flume::SendError<N2bEvent>),
+    #[error("Couldn't send a message to keep alive")]
+    SendKa(#[from] flume::SendError<i64>),
 }
 
 enum Action {
@@ -59,18 +65,18 @@ impl ConnectionState {
         match command {
             B2nEvent::Drop => Ok(Action::DropConnection),
             B2nEvent::Status(status) => {
-                let _ = s2c.send(s2c::StatusPacket::Response(status.into()).encode_owned()?);
+                s2c.send(s2c::StatusPacket::Response(status.into()).encode_owned()?)?;
                 Ok(Action::Continue)
             }
             B2nEvent::LoginSucceeded => {
                 Ok(Action::NewState(ConnectionState::Login { completed: true }))
             }
             B2nEvent::LoginPacket(packet) => {
-                let _ = s2c.send(packet.encode_owned()?);
+                s2c.send(packet.encode_owned()?)?;
                 Ok(Action::Continue)
             }
             B2nEvent::ConfigurationPacket(packet) => {
-                let _ = s2c.send(packet.encode_owned()?);
+                s2c.send(packet.encode_owned()?)?;
                 Ok(Action::Continue)
             }
         }
@@ -83,6 +89,11 @@ impl ConnectionState {
         n2b: &flume::Sender<N2bEvent>,
         to_ka: &flume::Sender<i64>,
     ) -> Result<Action, Error> {
+        // Handshake handles the handshake sequence
+        // Status hands the response off to Bevy
+        // Login and configuration handle low-level details and the switching
+        // Play just translates the packets into neat Bevy events
+
         match self {
             ConnectionState::Handshake => {
                 let c2s::HandshakePacket::Handshake {
@@ -94,11 +105,11 @@ impl ConnectionState {
 
                 debug!("handshake complete, {}", protocol_version);
 
-                let _ = n2b.send(N2bEvent::HandshakeComplete(
+                n2b.send(N2bEvent::HandshakeComplete(
                     protocol_version,
                     server_address.into(),
                     server_port.into(),
-                ));
+                ))?;
 
                 match next_state {
                     c2s::NextState::Status => {
@@ -110,7 +121,7 @@ impl ConnectionState {
                                 completed: false,
                             }));
                         } else {
-                            let _ = s2c.send(
+                            s2c.send(
                                 s2c::LoginPacket::Disconnect {
                                     reason: JsonString(chat::Chat {
                                         text: "Incompatible game version".into(),
@@ -119,7 +130,7 @@ impl ConnectionState {
                                     }),
                                 }
                                 .encode_owned()?,
-                            );
+                            )?;
 
                             Err(Error::WrongVersion(protocol_version))?
                         }
@@ -131,13 +142,10 @@ impl ConnectionState {
 
                 match packet {
                     c2s::StatusPacket::Ping { payload } => {
-                        let _ = s2c.send(s2c::StatusPacket::Pong { payload }.encode_owned()?);
-
+                        s2c.send(s2c::StatusPacket::Pong { payload }.encode_owned()?)?;
                         return Ok(Action::DropConnection);
                     }
-                    c2s::StatusPacket::Request => {
-                        let _ = n2b.send(N2bEvent::NeedStatus);
-                    }
+                    c2s::StatusPacket::Request => n2b.send(N2bEvent::NeedStatus)?,
                 }
             }
             ConnectionState::Login { completed } => {
@@ -147,14 +155,13 @@ impl ConnectionState {
 
                 match packet {
                     c2s::LoginPacket::LoginStart { username, uuid } => {
-                        let _ = n2b.send(N2bEvent::Authenticate(username.into(), uuid));
+                        n2b.send(N2bEvent::Authenticate(username.into(), uuid))?
                     }
                     c2s::LoginPacket::EncryptionResponse { .. } => todo!(),
                     c2s::LoginPacket::LoginPluginResponse { .. } => todo!(),
                     c2s::LoginPacket::SuccessAck => {
                         if completed {
-                            let _ = n2b.send(N2bEvent::NeedConfiguration);
-
+                            n2b.send(N2bEvent::NeedConfiguration)?;
                             return Ok(Action::NewState(ConnectionState::Configuration));
                         } else {
                             Err(Error::FakeLoginAck)?
@@ -175,19 +182,17 @@ impl ConnectionState {
                             let brand = types::LenString::<128>::decode(&mut data)
                                 .map_err(Error::DecodingBrand)?;
 
-                            let _ = n2b.send(N2bEvent::Brand(packet::ClientBrand {
+                            n2b.send(N2bEvent::Brand(packet::ClientBrand {
                                 brand: brand.into(),
-                            }));
+                            }))?;
                         }
                     }
                     c2s::ConfigurationPacket::FinishConfiguration => {
-                        let _ = n2b.send(N2bEvent::ConfigurationFinished(s2c.clone()));
+                        n2b.send(N2bEvent::ConfigurationFinished(s2c.clone()))?;
 
                         return Ok(Action::NewState(ConnectionState::Play));
                     }
-                    c2s::ConfigurationPacket::KeepAlive { id } => {
-                        let _ = to_ka.send(id.into());
-                    }
+                    c2s::ConfigurationPacket::KeepAlive { id } => to_ka.send(id.into())?,
                     c2s::ConfigurationPacket::Pong { .. } => todo!(),
                     c2s::ConfigurationPacket::ResourcePack { .. } => todo!(),
                 }
@@ -199,24 +204,22 @@ impl ConnectionState {
 
                 match packet {
                     c2s::PlayPacket::PlayerTeleportConfirm { id } => {
-                        let _ = n2b.send(N2bEvent::TeleportConfirm(id.into()));
+                        n2b.send(N2bEvent::TeleportConfirm(id.into()))?
                     }
                     c2s::PlayPacket::ChatCommand { command, .. } => {
-                        let _ = n2b.send(N2bEvent::Command(command.into()));
+                        n2b.send(N2bEvent::Command(command.into()))?
                     }
                     c2s::PlayPacket::ChatMessage { message, .. } => {
-                        let _ = n2b.send(N2bEvent::ChatMessage(packet::ChatMessage {
+                        n2b.send(N2bEvent::ChatMessage(packet::ChatMessage {
                             content: message.into(),
-                        }));
+                        }))?
                     }
-                    c2s::PlayPacket::NetKeepAlive { id } => {
-                        let _ = to_ka.send(id.into());
-                    }
+                    c2s::PlayPacket::NetKeepAlive { id } => to_ka.send(id.into())?,
                     c2s::PlayPacket::ClientCommand(c2s::ClientCommand::Respawn) => {
-                        let _ = n2b.send(N2bEvent::Input(packet::Input::Respawn));
+                        n2b.send(N2bEvent::Input(packet::Input::Respawn))?
                     }
                     c2s::PlayPacket::ClientCommand(c2s::ClientCommand::StatsRequest) => {
-                        let _ = n2b.send(N2bEvent::Input(packet::Input::StatsRequest));
+                        n2b.send(N2bEvent::Input(packet::Input::StatsRequest))?
                     }
                     c2s::PlayPacket::ClientInfo {
                         locale,
@@ -227,23 +230,21 @@ impl ConnectionState {
                         main_hand,
                         text_filtering,
                         show_on_listings,
-                    } => {
-                        let _ = n2b.send(N2bEvent::ClientInfo(packet::ClientInfo {
-                            locale: locale.into(),
-                            view_distance: view_distance.into(),
-                            chat_mode,
-                            chat_colors: chat_colors.into(),
-                            main_hand,
-                            skin_parts: skin_parts.into(),
-                            text_filtering: text_filtering.into(),
-                            show_on_listings: show_on_listings.into(),
-                        }));
-                    }
+                    } => n2b.send(N2bEvent::ClientInfo(packet::ClientInfo {
+                        locale: locale.into(),
+                        view_distance: view_distance.into(),
+                        chat_mode,
+                        chat_colors: chat_colors.into(),
+                        main_hand,
+                        skin_parts: skin_parts.into(),
+                        text_filtering: text_filtering.into(),
+                        show_on_listings: show_on_listings.into(),
+                    }))?,
                     c2s::PlayPacket::ContainerButton { sync_id, button_id } => {
-                        let _ = n2b.send(N2bEvent::Window(packet::Window::ContainerButton {
+                        n2b.send(N2bEvent::Window(packet::Window::ContainerButton {
                             sync_id: sync_id.into(),
                             button: button_id.into(),
-                        }));
+                        }))?
                     }
                     c2s::PlayPacket::ContainerClick {
                         sync_id,
@@ -253,61 +254,51 @@ impl ConnectionState {
                         new_slots,
                         carried_item,
                         ..
-                    } => {
-                        let _ = n2b.send(N2bEvent::Window(packet::Window::ContainerClick {
-                            sync_id: sync_id.into(),
-                            slot: slot,
-                            button: button.into(),
-                            mode: mode.0 as u32,
-                            new_slots: new_slots.0,
-                            carried_item,
-                        }));
-                    }
+                    } => n2b.send(N2bEvent::Window(packet::Window::ContainerClick {
+                        sync_id: sync_id.into(),
+                        slot: slot,
+                        button: button.into(),
+                        mode: mode.0 as u32,
+                        new_slots: new_slots.0,
+                        carried_item,
+                    }))?,
                     c2s::PlayPacket::ContainerClose { sync_id } => {
-                        let _ = n2b.send(N2bEvent::Window(packet::Window::ContainerClose {
+                        n2b.send(N2bEvent::Window(packet::Window::ContainerClose {
                             sync_id: sync_id.into(),
-                        }));
+                        }))?
                     }
                     c2s::PlayPacket::InteractEntity {
                         entity,
                         kind: c2s::InteractKind::Interact { hand },
                         ..
-                    } => {
-                        // sneaking is a useless field
-                        let _ = n2b.send(N2bEvent::Interact(packet::Interact::TouchEntity {
-                            entity: entity.0,
-                            at: None,
-                            hand,
-                        }));
-                    }
+                    } => n2b.send(N2bEvent::Interact(packet::Interact::TouchEntity {
+                        entity: entity.0,
+                        at: None,
+                        hand,
+                    }))?,
                     c2s::PlayPacket::InteractEntity {
                         entity,
                         kind: c2s::InteractKind::Attack,
                         ..
-                    } => {
-                        let _ =
-                            n2b.send(N2bEvent::Interact(packet::Interact::AttackEntity(entity.0)));
-                    }
+                    } => n2b.send(N2bEvent::Interact(packet::Interact::AttackEntity(entity.0)))?,
                     c2s::PlayPacket::InteractEntity {
                         entity,
                         kind: c2s::InteractKind::InteractAt { x, y, z, hand },
                         ..
-                    } => {
-                        let _ = n2b.send(N2bEvent::Interact(packet::Interact::TouchEntity {
-                            entity: entity.0,
-                            at: Some((x.into(), y.into(), z.into())),
-                            hand,
-                        }));
-                    }
+                    } => n2b.send(N2bEvent::Interact(packet::Interact::TouchEntity {
+                        entity: entity.0,
+                        at: Some((x.into(), y.into(), z.into())),
+                        hand,
+                    }))?,
                     c2s::PlayPacket::PlayerPosOng { x, y, z, on_ground } => {
-                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::Position(
+                        n2b.send(N2bEvent::Movement(packet::Movement::Position(
                             x.into(),
                             y.into(),
                             z.into(),
-                        )));
-                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
+                        )))?;
+                        n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
                             on_ground.into(),
-                        )));
+                        )))?;
                     }
                     c2s::PlayPacket::PlayerPosRotOng {
                         x,
@@ -317,43 +308,40 @@ impl ConnectionState {
                         pitch,
                         on_ground,
                     } => {
-                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::Position(
+                        n2b.send(N2bEvent::Movement(packet::Movement::Position(
                             x.into(),
                             y.into(),
                             z.into(),
-                        )));
-                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::Rotation(
+                        )))?;
+                        n2b.send(N2bEvent::Movement(packet::Movement::Rotation(
                             pitch.into(),
                             yaw.into(),
-                        )));
-                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
+                        )))?;
+                        n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
                             on_ground.into(),
-                        )));
+                        )))?;
                     }
                     c2s::PlayPacket::PlayerRotOng {
                         yaw,
                         pitch,
                         on_ground,
                     } => {
-                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::Rotation(
+                        n2b.send(N2bEvent::Movement(packet::Movement::Rotation(
                             pitch.into(),
                             yaw.into(),
-                        )));
-                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
+                        )))?;
+                        n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
                             on_ground.into(),
-                        )));
+                        )))?;
                     }
-                    c2s::PlayPacket::PlayerOnGround(on_ground) => {
-                        let _ = n2b.send(N2bEvent::Movement(packet::Movement::OnGround(
-                            on_ground.into(),
-                        )));
-                    }
+                    c2s::PlayPacket::PlayerOnGround(on_ground) => n2b.send(N2bEvent::Movement(
+                        packet::Movement::OnGround(on_ground.into()),
+                    ))?,
                     c2s::PlayPacket::PlayerAbilties(abilities) => {
-                        let _ =
-                            n2b.send(N2bEvent::Input(packet::Input::Flight(abilities.flying())));
+                        n2b.send(N2bEvent::Input(packet::Input::Flight(abilities.flying())))?
                     }
                     c2s::PlayPacket::PlayerCommand { action, extra, .. } => {
-                        let _ = n2b.send(N2bEvent::Input(match action {
+                        n2b.send(N2bEvent::Input(match action {
                             c2s::PlayerCommand::SneakDown => packet::Input::Sneak(true),
                             c2s::PlayerCommand::SneakUp => packet::Input::Sneak(false),
                             c2s::PlayerCommand::LeaveBed => packet::Input::LeaveBed,
@@ -365,100 +353,80 @@ impl ConnectionState {
                             c2s::PlayerCommand::HorseJumpUp => packet::Input::HorseJumpEnd,
                             c2s::PlayerCommand::HorseInventory => packet::Input::HorseInventory,
                             c2s::PlayerCommand::Elytra => packet::Input::Elytra,
-                        }));
+                        }))?
                     }
                     c2s::PlayPacket::PlayerAction {
                         action: c2s::PlayerAction::DigStart,
                         position,
                         face,
                         ..
-                    } => {
-                        let _ = n2b.send(N2bEvent::Digging(packet::Digging::Start(position, face)));
-                    }
+                    } => n2b.send(N2bEvent::Digging(packet::Digging::Start(position, face)))?,
                     c2s::PlayPacket::PlayerAction {
                         action: c2s::PlayerAction::DigCancel,
                         position,
                         face,
                         ..
-                    } => {
-                        let _ =
-                            n2b.send(N2bEvent::Digging(packet::Digging::Cancel(position, face)));
-                    }
+                    } => n2b.send(N2bEvent::Digging(packet::Digging::Cancel(position, face)))?,
                     c2s::PlayPacket::PlayerAction {
                         action: c2s::PlayerAction::DigFinish,
                         position,
                         face,
                         ..
-                    } => {
-                        let _ =
-                            n2b.send(N2bEvent::Digging(packet::Digging::Finish(position, face)));
-                    }
+                    } => n2b.send(N2bEvent::Digging(packet::Digging::Finish(position, face)))?,
                     c2s::PlayPacket::PlayerAction {
                         action: c2s::PlayerAction::DropStack,
                         ..
-                    } => {
-                        let _ = n2b.send(N2bEvent::Input(packet::Input::DropStack));
-                    }
+                    } => n2b.send(N2bEvent::Input(packet::Input::DropStack))?,
                     c2s::PlayPacket::PlayerAction {
                         action: c2s::PlayerAction::DropItem,
                         ..
-                    } => {
-                        let _ = n2b.send(N2bEvent::Input(packet::Input::DropItem));
-                    }
+                    } => n2b.send(N2bEvent::Input(packet::Input::DropItem))?,
                     c2s::PlayPacket::PlayerAction {
                         action: c2s::PlayerAction::ItemUpdate,
                         ..
-                    } => {
-                        let _ = n2b.send(N2bEvent::Input(packet::Input::ItemUpdate));
-                    }
+                    } => n2b.send(N2bEvent::Input(packet::Input::ItemUpdate))?,
                     c2s::PlayPacket::PlayerAction {
                         action: c2s::PlayerAction::SwapHands,
                         ..
-                    } => {
-                        let _ = n2b.send(N2bEvent::Input(packet::Input::SwapHands));
-                    }
+                    } => n2b.send(N2bEvent::Input(packet::Input::SwapHands))?,
                     c2s::PlayPacket::PlayerInput {
                         sideways,
                         forward,
                         flags,
                     } => {
-                        let _ = n2b.send(N2bEvent::Input(packet::Input::Move(
+                        n2b.send(N2bEvent::Input(packet::Input::Move(
                             sideways.into(),
                             forward.into(),
-                        )));
+                        )))?;
 
                         if flags.jump() {
-                            let _ = n2b.send(N2bEvent::Input(packet::Input::Jump));
+                            n2b.send(N2bEvent::Input(packet::Input::Jump))?
                         }
                         if flags.dismount() {
-                            let _ = n2b.send(N2bEvent::Input(packet::Input::Dismount));
+                            n2b.send(N2bEvent::Input(packet::Input::Dismount))?
                         }
                     }
-                    c2s::PlayPacket::PlayerInventorySlot { slot, stack } => {
-                        let _ = n2b.send(N2bEvent::Window(packet::Window::InventorySlot(
-                            slot.into(),
-                            stack,
-                        )));
-                    }
+                    c2s::PlayPacket::PlayerInventorySlot { slot, stack } => n2b.send(
+                        N2bEvent::Window(packet::Window::InventorySlot(slot.into(), stack)),
+                    )?,
                     c2s::PlayPacket::RecipeBookState { book, open, filter } => {
-                        let _ = n2b.send(N2bEvent::Window(packet::Window::RecipeBook {
+                        n2b.send(N2bEvent::Window(packet::Window::RecipeBook {
                             book,
                             open: open.into(),
                             filter: filter.into(),
-                        }));
+                        }))?
                     }
                     c2s::PlayPacket::AdvancementCommand(c2s::AdvancementCommand::OpenTab(id)) => {
-                        let _ =
-                            n2b.send(N2bEvent::Window(packet::Window::AdvancementsTab(Some(id))));
+                        n2b.send(N2bEvent::Window(packet::Window::AdvancementsTab(Some(id))))?
                     }
                     c2s::PlayPacket::AdvancementCommand(c2s::AdvancementCommand::CloseScreen) => {
-                        let _ = n2b.send(N2bEvent::Window(packet::Window::AdvancementsTab(None)));
+                        n2b.send(N2bEvent::Window(packet::Window::AdvancementsTab(None)))?
                     }
                     c2s::PlayPacket::PlayerHotbarSlot(n) => {
-                        let _ = n2b.send(N2bEvent::Input(packet::Input::HotbarSlot(n.into())));
+                        n2b.send(N2bEvent::Input(packet::Input::HotbarSlot(n.into())))?
                     }
                     c2s::PlayPacket::PlayerSwingArm(hand) => {
-                        let _ = n2b.send(N2bEvent::Input(packet::Input::SwingArm(hand)));
+                        n2b.send(N2bEvent::Input(packet::Input::SwingArm(hand)))?
                     }
                     c2s::PlayPacket::InteractBlock {
                         hand,
@@ -469,19 +437,17 @@ impl ConnectionState {
                         cursor_z,
                         head_buried,
                         ..
-                    } => {
-                        let _ = n2b.send(N2bEvent::Interact(packet::Interact::Block {
-                            hand,
-                            block_pos,
-                            block_face,
-                            cursor_x: cursor_x.into(),
-                            cursor_y: cursor_y.into(),
-                            cursor_z: cursor_z.into(),
-                            head_buried: head_buried.into(),
-                        }));
-                    }
+                    } => n2b.send(N2bEvent::Interact(packet::Interact::Block {
+                        hand,
+                        block_pos,
+                        block_face,
+                        cursor_x: cursor_x.into(),
+                        cursor_y: cursor_y.into(),
+                        cursor_z: cursor_z.into(),
+                        head_buried: head_buried.into(),
+                    }))?,
                     c2s::PlayPacket::InteractItem { hand, .. } => {
-                        let _ = n2b.send(N2bEvent::Interact(packet::Interact::Item(hand)));
+                        n2b.send(N2bEvent::Interact(packet::Interact::Item(hand)))?
                     }
                 }
             }
@@ -497,12 +463,11 @@ impl ConnectionState {
     ) -> Result<Action, Error> {
         match (command, self) {
             (keepalive::Message::Packet(id), ConnectionState::Configuration) => {
-                let _ =
-                    s2c.send(s2c::ConfigurationPacket::KeepAlive { id: id.into() }.encode_owned()?);
+                s2c.send(s2c::ConfigurationPacket::KeepAlive { id: id.into() }.encode_owned()?)?;
                 Ok(Action::Continue)
             }
             (keepalive::Message::Packet(id), ConnectionState::Play) => {
-                let _ = s2c.send(s2c::PlayPacket::NetKeepAlive { id: id.into() }.encode_owned()?);
+                s2c.send(s2c::PlayPacket::NetKeepAlive { id: id.into() }.encode_owned()?)?;
                 Ok(Action::Continue)
             }
             (keepalive::Message::Mismatch, _) => Ok(Action::DropConnection),
