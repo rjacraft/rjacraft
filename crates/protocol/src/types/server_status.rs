@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::Chat;
+use super::Text;
 
 fn is_false(x: &bool) -> bool {
     !x
@@ -32,7 +32,7 @@ pub struct Players {
 pub struct ServerStatus {
     pub version: Version,
     pub players: Players,
-    pub description: Chat,
+    pub description: Text,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub favicon: Option<String>,
     #[serde(default, skip_serializing_if = "is_false")]

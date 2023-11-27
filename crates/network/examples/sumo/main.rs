@@ -120,7 +120,7 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
             online: 0,
             sample: vec![],
         },
-        description: chat!("Example: " (b "sumo")),
+        description: text!("Example: " (b "sumo")),
         favicon: None,
         enforces_secure_chat: false,
         previews_chat: false,

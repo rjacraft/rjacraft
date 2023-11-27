@@ -45,7 +45,7 @@ fn status_system(In(entity): In<Entity>, world: &World) -> server_status::Server
             online: 0,
             sample: vec![],
         },
-        description: chat!(
+        description: text!(
             ("Example: " (b "basic server"))
             ("\nYour IP: " (b,c["#22ff22"] "{}", peer.addr.ip()))
         ),
@@ -56,7 +56,7 @@ fn status_system(In(entity): In<Entity>, world: &World) -> server_status::Server
 }
 
 fn auth_system(In(_): In<(Entity, String, uuid::Uuid)>) -> AuthOutcome {
-    AuthOutcome::Fail(chat!("Logging in is not supported"))
+    AuthOutcome::Fail(text!("Logging in is not supported"))
 }
 
 fn brand_system(_peer: In<Entity>) -> Option<BrandString> {

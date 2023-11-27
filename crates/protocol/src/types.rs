@@ -4,7 +4,6 @@ pub mod bitvec;
 pub mod block_entity;
 pub mod block_event;
 pub mod bool_option;
-pub mod chat;
 pub mod command;
 pub mod entity_data;
 pub mod identifier;
@@ -21,6 +20,7 @@ pub mod registry;
 pub mod remaining_bytes;
 pub mod server_status;
 pub mod slice;
+pub mod text;
 pub mod tuple;
 pub mod uuid;
 pub mod varint;
@@ -37,7 +37,6 @@ pub use self::{
     block_entity::BlockEntity,
     block_event::BlockEvent,
     bool_option::BoolOption,
-    chat::{Chat, JsonChat},
     entity_data::EntityDataValues,
     identifier::{Identifier, TagKey},
     itemstack::*,
@@ -51,5 +50,6 @@ pub use self::{
     registry::{CustomRegistries, Registry},
     remaining_bytes::RemainingBytes,
     server_status::ServerStatus,
+    text::{JsonText, Text},
     varint::VarInt,
 };

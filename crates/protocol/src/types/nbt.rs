@@ -132,3 +132,32 @@ impl<T: AsCompound> ProtocolType for Option<Nbt<T>> {
         }
     }
 }
+
+pub mod snbt {
+    use serde::{de, ser, Deserialize, Serialize};
+
+    pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: ser::Serialize,
+        S: ser::Serializer,
+    {
+        valence_nbt::snbt::to_snbt_string(&valence_nbt::Value::Compound(
+            value
+                .serialize(valence_nbt::serde::CompoundSerializer)
+                .map_err(ser::Error::custom)?,
+        ))
+        .serialize(serializer)
+    }
+
+    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+    where
+        T: de::DeserializeOwned,
+        D: de::Deserializer<'de>,
+    {
+        T::deserialize(
+            valence_nbt::snbt::from_snbt_str(<&str>::deserialize(deserializer)?)
+                .map_err(de::Error::custom)?,
+        )
+        .map_err(de::Error::custom)
+    }
+}

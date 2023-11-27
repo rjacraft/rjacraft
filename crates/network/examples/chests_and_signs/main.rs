@@ -118,7 +118,7 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
             online: 0,
             sample: vec![],
         },
-        description: chat!("Example: " (b "chests and signs")),
+        description: text!("Example: " (b "chests and signs")),
         favicon: None,
         enforces_secure_chat: false,
         previews_chat: false,
@@ -224,7 +224,7 @@ fn open_system(
                 play.send_packet(&s2c::PlayPacket::ContainerOpen {
                     sync_id: VarInt(sync_id as i32),
                     kind: VarInt(MENU_GENERIC_9X3 as i32),
-                    title: chat!("{chest_pos:?}").into(),
+                    title: text!("{chest_pos:?}").into(),
                 })
                 .unwrap()
                 .send_packet(&s2c::PlayPacket::ContainerSlots {

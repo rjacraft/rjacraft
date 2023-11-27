@@ -29,7 +29,7 @@ pub enum Dye {
 pub struct SignText {
     pub has_glowing_text: bool,
     pub color: Dye,
-    pub messages: Vec<JsonChat>,
+    pub messages: Vec<JsonText>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -1,3 +1,4 @@
+use rjacraft_macro::text;
 use rjacraft_protocol::{
     packets::{c2s, s2c},
     types::{self, *},
@@ -123,11 +124,7 @@ impl ConnectionState {
                         } else {
                             s2c.send(
                                 s2c::LoginPacket::Disconnect {
-                                    reason: JsonString(chat::Chat {
-                                        text: "Incompatible game version".into(),
-                                        attrs: Default::default(),
-                                        extra: vec![],
-                                    }),
+                                    reason: JsonString(text!("Incompatible game version")),
                                 }
                                 .encode_owned()?,
                             )?;

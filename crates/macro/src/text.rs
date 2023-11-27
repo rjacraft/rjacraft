@@ -4,20 +4,27 @@ use syn::{parse::*, punctuated::*, token::*, *};
 
 enum Flag {
     Bold,
+    Italic,
+    Underlined,
     Color(Bracket, Expr),
+    Insertion(Bracket, Expr),
+    ClickEvent(Bracket, Expr),
+    HoverEvent(Bracket, Expr),
 }
 
 impl Parse for Flag {
     fn parse(input: ParseStream) -> Result<Self> {
         let name: Ident = input.parse()?;
+        let expr;
 
         match name.to_string().as_str() {
             "b" => Ok(Flag::Bold),
-            "c" => {
-                let content;
-
-                Ok(Flag::Color(bracketed!(content in input), content.parse()?))
-            }
+            "i" => Ok(Flag::Italic),
+            "u" => Ok(Flag::Underlined),
+            "c" => Ok(Flag::Color(bracketed!(expr in input), expr.parse()?)),
+            "in" => Ok(Flag::Insertion(bracketed!(expr in input), expr.parse()?)),
+            "ce" => Ok(Flag::ClickEvent(bracketed!(expr in input), expr.parse()?)),
+            "he" => Ok(Flag::HoverEvent(bracketed!(expr in input), expr.parse()?)),
             _ => Err(input.error("unrecognized flag")),
         }
     }
@@ -26,15 +33,20 @@ impl Parse for Flag {
 impl ToTokens for Flag {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         tokens.append_all(match self {
-            Flag::Bold => quote!(result.bold = true;),
-            Flag::Color(_, name) => quote!(result.color = Some(#name.to_string());),
+            Flag::Bold => quote!(result.bold = Some(true);),
+            Flag::Italic => quote!(result.italic = Some(true);),
+            Flag::Underlined => quote!(result.underlined = Some(true);),
+            Flag::Color(_, x) => quote!(result.color = Some(#x.to_string());),
+            Flag::Insertion(_, x) => quote!(result.insertion = Some(#x.to_string());),
+            Flag::ClickEvent(_, x) => quote!(result.click_event = Some(#x);),
+            Flag::HoverEvent(_, x) => quote!(result.hover_event = Some(#x);),
         });
     }
 }
 
-struct Flags(Vec<Flag>);
+struct Style(Vec<Flag>);
 
-impl Parse for Flags {
+impl Parse for Style {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut flags = Vec::new();
 
@@ -50,14 +62,14 @@ impl Parse for Flags {
             }
         }
 
-        Ok(Flags(flags))
+        Ok(Style(flags))
     }
 }
 
-impl ToTokens for Flags {
+impl ToTokens for Style {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         tokens.append_all(
-            quote!(let mut result = ::rjacraft_protocol::types::chat::Attrs::default();),
+            quote!(let mut result = ::rjacraft_protocol::types::text::Style::default();),
         );
 
         for flag in &self.0 {
@@ -68,43 +80,51 @@ impl ToTokens for Flags {
     }
 }
 
-enum Text {
+enum Content {
     None,
     Raw(Literal),
     Format(Literal, Token![,], Punctuated<Expr, Token![,]>),
 }
 
-impl Parse for Text {
+impl Parse for Content {
     fn parse(input: ParseStream) -> Result<Self> {
         if !input.peek(Lit) {
-            return Ok(Text::None);
+            return Ok(Content::None);
         }
 
         let string = input.parse()?;
 
         if input.peek(Token![,]) {
-            Ok(Text::Format(
+            Ok(Content::Format(
                 string,
                 input.parse()?,
                 input.parse_terminated(Expr::parse, Token![,])?,
             ))
         } else {
-            Ok(Text::Raw(string))
+            Ok(Content::Raw(string))
         }
     }
 }
 
-impl ToTokens for Text {
+impl ToTokens for Content {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         match self {
-            Text::None => tokens.append_all(quote!(::std::string::String::new())),
-            Text::Raw(x) => tokens.append_all(quote!(format!(#x))),
-            Text::Format(format, _, args) => tokens.append_all(quote!(format!(#format, #args))),
+            Content::None => tokens.append_all(quote! {
+                ::rjacraft_protocol::types::text::Content::Literal {
+                    text: ::std::string::String::new()
+                }
+            }),
+            Content::Raw(x) => tokens.append_all(quote! {
+                ::rjacraft_protocol::types::text::Content::Literal { text: format!(#x) }
+            }),
+            Content::Format(format, _, args) => tokens.append_all(quote! {
+                ::rjacraft_protocol::types::text::Content::Literal { text: format!(#format, #args) }
+            }),
         };
     }
 }
 
-struct Extra(Vec<(Paren, ChatNode)>);
+struct Extra(Vec<(Paren, Node)>);
 
 impl Parse for Extra {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -129,36 +149,40 @@ impl ToTokens for Extra {
     }
 }
 
-pub struct ChatNode {
-    flags: Flags,
-    text: Text,
+pub struct Node {
+    style: Style,
+    content: Content,
     extra: Extra,
 }
 
-impl Parse for ChatNode {
+impl Parse for Node {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(ChatNode {
-            flags: input.parse()?,
-            text: input.parse()?,
+        Ok(Node {
+            style: input.parse()?,
+            content: input.parse()?,
             extra: input.parse()?,
         })
     }
 }
 
-impl ToTokens for ChatNode {
+impl ToTokens for Node {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let ChatNode { flags, text, extra } = self;
+        let Node {
+            style,
+            content,
+            extra,
+        } = self;
 
         tokens.append_all(quote! {
-            ::rjacraft_protocol::types::chat::Chat {
-                text: #text,
-                attrs: { #flags },
+            ::rjacraft_protocol::types::text::Text::Fancy {
+                content: #content,
+                style: { #style },
                 extra: vec![#extra],
             }
         });
     }
 }
 
-pub fn handle(top_node: ChatNode) -> TokenStream {
+pub fn handle(top_node: Node) -> TokenStream {
     top_node.into_token_stream()
 }

@@ -28,11 +28,11 @@ pub struct CustomRegistries {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ChatTypeChat {
+pub struct ChatTypeText {
     pub parameters: Vec<String>,
     pub translation_key: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub style: Option<chat::Attrs>,
+    pub style: Option<text::Style>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -43,7 +43,7 @@ pub struct ChatTypeNarration {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ChatType {
-    pub chat: ChatTypeChat,
+    pub chat: ChatTypeText,
     pub narration: ChatTypeNarration,
 }
 

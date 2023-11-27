@@ -32,7 +32,7 @@ pub struct UserSystems<Status, Auth, Brand> {
 
 pub enum AuthOutcome {
     Success(String, uuid::Uuid, Vec<s2c::ProfileProperty>),
-    Fail(types::Chat),
+    Fail(types::Text),
 }
 
 pub type BrandString = types::LenString<128>;

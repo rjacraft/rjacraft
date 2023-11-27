@@ -27,3 +27,4 @@ valence_nbt.workspace = true
 bitvec.workspace = true
 bitfield-struct.workspace = true
 bevy_ecs.workspace = true
+url.workspace = true

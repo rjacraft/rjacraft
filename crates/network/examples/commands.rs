@@ -68,7 +68,7 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
             online: 0,
             sample: vec![],
         },
-        description: chat!("Example: " (b "commands")),
+        description: text!("Example: " (b "commands")),
         favicon: None,
         enforces_secure_chat: false,
         previews_chat: false,
@@ -228,7 +228,7 @@ fn hi_system(
         let (_, profile) = players.get(*from).unwrap();
 
         let packet = s2c::PlayPacket::ChatUnsignedMessage {
-            content: chat!(("{} says hi to {to}!", profile.username)).into(),
+            content: text!(("{} says hi to {to}!", profile.username)).into(),
             overlay: false.into(),
         };
 
@@ -241,14 +241,20 @@ fn hi_system(
 fn google_system(players: Query<&Play>, mut events: EventReader<C2sPacket<packet::Command>>) {
     for C2sPacket(from, data) in events.iter() {
         let query = match &data.tokens[..] {
-            [google, query @ ..] if google == "google" => query.join(" "),
+            [google, query @ ..] if google == "google" && !query.is_empty() => query.join(" "),
             _ => continue,
         };
 
         let play = players.get(*from).unwrap();
+        let click = text::ClickEvent::OpenUrl(
+            url::Url::parse_with_params("https://google.com/search", [("q", &query)]).unwrap(),
+        );
+        let hover = text::HoverEvent::ShowText(Box::new(
+            text!(("Search ") (b "{query}") (" in your web browser")),
+        ));
 
         play.send_packet(&s2c::PlayPacket::ChatUnsignedMessage {
-            content: chat!(("Google: {query}")).into(),
+            content: text!(("Google: ") (u,ce[click],he[hover] "{query}")).into(),
             overlay: false.into(),
         })
         .unwrap();
@@ -266,7 +272,7 @@ fn tp_system(players: Query<&Play>, mut events: EventReader<C2sPacket<packet::Co
         let play = players.get(*from).unwrap();
 
         play.send_packet(&s2c::PlayPacket::ChatUnsignedMessage {
-            content: chat!(("Teleporting {selector} to [{x}, {y}, {z}]!")).into(),
+            content: text!(("Teleporting {selector} to [{x}, {y}, {z}]!")).into(),
             overlay: false.into(),
         })
         .unwrap();

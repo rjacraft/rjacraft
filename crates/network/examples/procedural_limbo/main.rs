@@ -83,7 +83,7 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
             online: 0,
             sample: vec![],
         },
-        description: chat!("Example: " (b "procedural limbo")),
+        description: text!("Example: " (b "procedural limbo")),
         favicon: None,
         enforces_secure_chat: false,
         previews_chat: false,

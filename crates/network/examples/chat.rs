@@ -66,7 +66,7 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
             online: 0,
             sample: vec![],
         },
-        description: chat!("Example: " (b "chat")),
+        description: text!("Example: " (b "chat")),
         favicon: None,
         enforces_secure_chat: false,
         previews_chat: false,
@@ -167,7 +167,7 @@ fn chat_system(
     for C2sPacket(from, data) in events.iter() {
         let (_, profile) = players.get(*from).unwrap();
         let packet = s2c::PlayPacket::ChatUnsignedMessage {
-            content: chat!(("{}", profile.username) (c[GRAY] " > ") ("{}", data.content)).into(),
+            content: text!(("{}", profile.username) (c[GRAY] " > ") ("{}", data.content)).into(),
             overlay: false.into(),
         };
 

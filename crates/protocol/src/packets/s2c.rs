@@ -26,7 +26,7 @@ pub struct ProfileProperty {
 #[variant(VarInt<i32>)]
 pub enum LoginPacket {
     #[variant(0x00)]
-    Disconnect { reason: JsonChat },
+    Disconnect { reason: JsonText },
 
     #[variant(0x01)]
     EncryptionRequest {
@@ -77,7 +77,7 @@ pub enum ConfigurationPacket {
     },
 
     #[variant(0x01)]
-    Disconnect { reason: JsonChat },
+    Disconnect { reason: JsonText },
 
     #[variant(0x02)]
     FinishConfiguration,
@@ -96,7 +96,7 @@ pub enum ConfigurationPacket {
         url: LenString<{ 1 << 15 }>,
         hash: LenString<40>,
         forced: Primitive<bool>,
-        prompt_message: BoolOption<JsonChat>,
+        prompt_message: BoolOption<JsonText>,
     },
 
     #[variant(0x07)]
@@ -204,7 +204,7 @@ pub struct PlayerInfoUpdates {
     pub gamemode: Option<Vec<GameMode>>,
     pub listed: Option<Vec<Primitive<bool>>>,
     pub ping: Option<Vec<VarInt<i32>>>,
-    pub nickname: Option<Vec<JsonChat>>,
+    pub nickname: Option<Vec<JsonText>>,
 }
 
 impl ProtocolType for PlayerInfoUpdates {
@@ -537,7 +537,7 @@ pub enum PlayPacket {
     ContainerOpen {
         sync_id: VarInt<i32>,
         kind: VarInt<i32>,
-        title: JsonChat,
+        title: JsonText,
     },
 
     #[variant(0x37)]
@@ -572,7 +572,7 @@ pub enum PlayPacket {
 
     #[variant(0x48)]
     ServerMetadata {
-        description: JsonChat,
+        description: JsonText,
         favicon: BoolOption<LenVec<u8>>,
         enforces_secure_chat: Primitive<bool>,
     },
@@ -640,7 +640,7 @@ pub enum PlayPacket {
 
     #[variant(0x68)]
     ChatUnsignedMessage {
-        content: JsonChat,
+        content: JsonText,
         overlay: Primitive<bool>,
     },
 

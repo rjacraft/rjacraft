@@ -11,7 +11,7 @@ pub fn simple() -> CustomRegistries {
             r#type: id!("chat_type"),
             value: vec![Element {
                 element: ChatType {
-                    chat: ChatTypeChat {
+                    chat: ChatTypeText {
                         parameters: vec!["sender".into(), "content".into()],
                         translation_key: "chat.type.text".into(),
                         style: None,

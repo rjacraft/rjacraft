@@ -1,4 +1,4 @@
-use rjacraft_macro::chat;
+use rjacraft_macro::text;
 use rjacraft_protocol::{chunk, types::*};
 
 const BLOCKSTATE_CHEST: u32 = 2955;
@@ -39,16 +39,16 @@ pub fn generate_sign(contents: &[ItemStackProto]) -> BlockEntity {
             has_glowing_text: false,
             color: block_entity::Dye::Black,
             messages: vec![
-                JsonString(chat!("Non-empty slots:")),
-                JsonString(chat!("{non_empty}")),
-                JsonString(chat!()),
-                JsonString(chat!()),
+                JsonString(text!("Non-empty slots:")),
+                JsonString(text!("{non_empty}")),
+                JsonString(text!()),
+                JsonString(text!()),
             ],
         },
         back_text: block_entity::SignText {
             has_glowing_text: false,
             color: block_entity::Dye::Blue,
-            messages: vec![JsonString(chat!("Back text")); 4],
+            messages: vec![JsonString(text!("Back text")); 4],
         },
     }))
 }

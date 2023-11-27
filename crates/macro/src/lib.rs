@@ -3,11 +3,11 @@
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
 
-mod chat;
 mod id;
 mod protocol_type;
+mod text;
 
-/// Construct recursive Minecraft chat components with a compact syntax.
+/// Construct recursive Minecraft text components with a compact syntax.
 ///
 /// # Environment
 ///
@@ -16,14 +16,14 @@ mod protocol_type;
 /// # Example
 ///
 /// ```ignore
-/// let status = chat!(
+/// let status = text!(
 ///     ("Example: " (b "basic server"))
 ///     ("\nYour IP: " (b,c["#22ff22"] "{}", peer.addr.ip()))
 /// );
 /// ```
 #[proc_macro]
-pub fn chat(input: TokenStream) -> TokenStream {
-    chat::handle(parse_macro_input!(input)).into()
+pub fn text(input: TokenStream) -> TokenStream {
+    text::handle(parse_macro_input!(input)).into()
 }
 
 /// Construct Minecraft identifiers with a compile-time guarantee about their validity.
