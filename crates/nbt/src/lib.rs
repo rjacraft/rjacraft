@@ -9,8 +9,12 @@ pub mod compound;
 // pub mod de; // FIXME
 pub mod list;
 pub mod ser;
+mod size;
 pub mod string;
 pub mod write;
+
+// no need for the extra `size` module
+pub use size::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Nbt<'a> {

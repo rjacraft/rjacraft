@@ -10,6 +10,7 @@ use crate::{
     write::NbtWrite,
     ArrayTag,
     ListTag,
+    NbtUsize,
     NotEndTag,
     Tag,
 };
@@ -65,13 +66,11 @@ impl<W: NbtWrite> SerializeSeq for ArraySeqSerializer<W> {
 pub struct ListSeqSerializer<W> {
     writer: W,
     tag: Tag,
-    len: i32,
+    len: NbtUsize,
 }
 
 impl<W: NbtWrite> ListSeqSerializer<W> {
-    pub fn new(writer: W, len: i32) -> Self {
-        assert!(len >= 0, "len cannot be negative but is {}", len);
-
+    pub fn new(writer: W, len: NbtUsize) -> Self {
         Self {
             writer,
             tag: Tag::End,
@@ -100,7 +99,7 @@ impl<W: NbtWrite> SerializeSeq for ListSeqSerializer<W> {
             // The sequence has no elements thus we do
             // what the reference implementation by Mojang does
             // and set the type to `TAG_End`
-            self.writer.start_list(Tag::End, 0i32)?;
+            self.writer.start_list(Tag::End, NbtUsize::ZERO)?;
         }
         self.writer.end_list()?;
         // FIXME: strict ype for `List`

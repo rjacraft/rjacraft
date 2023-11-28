@@ -3,7 +3,7 @@ use std::{
     ops::DerefMut,
 };
 
-use crate::{string::NbtStr, ArrayTag, Tag};
+use crate::{string::NbtStr, ArrayTag, NbtUsize, Tag};
 
 /// An object used to write data which is in a form of NBT.
 ///
@@ -41,17 +41,14 @@ pub trait NbtWrite {
     /// # Panics
     ///
     /// If `size` is negative.
-    fn start_array(&mut self, tag: ArrayTag, len: i32) -> io::Result<()>;
+    fn start_array(&mut self, tag: ArrayTag, len: NbtUsize) -> io::Result<()>;
 
     /// # Panics
     ///
     /// If the implementation detects that this is not balanced with [`Self::start_array()`].
     fn end_array(&mut self);
 
-    /// # Panics
-    ///
-    /// If `size` is negative.
-    fn start_list(&mut self, tag: Tag, len: i32) -> io::Result<()>;
+    fn start_list(&mut self, tag: Tag, len: NbtUsize) -> io::Result<()>;
 
     /// # Panics
     ///
@@ -115,7 +112,7 @@ impl<D: DerefMut<Target = T>, T: NbtWrite> NbtWrite for D {
         T::write_string(self, value)
     }
 
-    fn start_array(&mut self, tag: ArrayTag, len: i32) -> io::Result<()> {
+    fn start_array(&mut self, tag: ArrayTag, len: NbtUsize) -> io::Result<()> {
         T::start_array(self, tag, len)
     }
 
@@ -123,7 +120,7 @@ impl<D: DerefMut<Target = T>, T: NbtWrite> NbtWrite for D {
         T::end_array(self)
     }
 
-    fn start_list(&mut self, tag: Tag, len: i32) -> io::Result<()> {
+    fn start_list(&mut self, tag: Tag, len: NbtUsize) -> io::Result<()> {
         T::start_list(self, tag, len)
     }
 
@@ -200,9 +197,7 @@ impl<W: Write> NbtWrite for BinaryNbtWriter<W> {
         Ok(())
     }
 
-    fn start_array(&mut self, tag: ArrayTag, len: i32) -> io::Result<()> {
-        assert!(len >= 0, "len should be non-negative");
-
+    fn start_array(&mut self, tag: ArrayTag, len: NbtUsize) -> io::Result<()> {
         self.0.write_all(&tag.to_be_bytes())?;
         self.0.write_all(&len.to_be_bytes())?;
         Ok(())
@@ -210,9 +205,7 @@ impl<W: Write> NbtWrite for BinaryNbtWriter<W> {
 
     fn end_array(&mut self) {}
 
-    fn start_list(&mut self, tag: Tag, len: i32) -> io::Result<()> {
-        assert!(len >= 0, "len should be non-negative");
-
+    fn start_list(&mut self, tag: Tag, len: NbtUsize) -> io::Result<()> {
         self.0.write_all(&tag.to_be_bytes())?;
         self.0.write_all(&len.to_be_bytes())?;
         Ok(())

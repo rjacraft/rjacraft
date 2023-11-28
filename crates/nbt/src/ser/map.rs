@@ -61,7 +61,7 @@ impl<W: NbtWrite> MapSerializer<W> {
     }
 }
 
-impl<'w, W: NbtWrite> SerializeMap for MapSerializer<W> {
+impl<W: NbtWrite> SerializeMap for MapSerializer<W> {
     type Ok = CompoundTag;
     type Error = Error;
 

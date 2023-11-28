@@ -13,6 +13,7 @@ use crate::{
     string::{NbtStr, NbtStrFromStrError},
     write::NbtWrite,
     ArrayTag,
+    NbtUsize,
     NotEndTag,
 };
 
@@ -94,7 +95,7 @@ impl payload::Kind for NamedPayload<'_> {
 
 /// Appends a length to the tag.
 #[derive(Debug)]
-pub struct ListHeadPayload(i32);
+pub struct ListHeadPayload(NbtUsize);
 impl payload::Kind for ListHeadPayload {
     #[inline]
     fn write_tag<W: NbtWrite>(&self, writer: &mut W, tag: NotEndTag) -> Result<()> {
@@ -136,7 +137,7 @@ impl<'n, W: NbtWrite> PayloadSerializer<W, NamedPayload<'n>> {
 }
 
 impl<W: NbtWrite> PayloadSerializer<W, ListHeadPayload> {
-    pub fn list_head(writer: W, len: i32) -> Self {
+    pub fn list_head(writer: W, len: NbtUsize) -> Self {
         Self {
             writer,
             kind: ListHeadPayload(len),
@@ -320,7 +321,7 @@ impl<W: NbtWrite, S: payload::Kind> serde::Serializer for PayloadSerializer<W, S
         let Some(len) = len else {
             return Err(Error::UnknownListLen);
         };
-        let Ok(len) = i32::try_from(len) else {
+        let Ok(len) = len.try_into() else {
             return Err(Error::ListTooBig(len));
         };
         self.begin(NotEndTag::List)?;
@@ -351,7 +352,7 @@ impl<W: NbtWrite, S: payload::Kind> serde::Serializer for PayloadSerializer<W, S
             _ => return Err(Error::InvalidType(NotPayloadType::TupleStruct)),
         };
 
-        let Ok(len) = i32::try_from(len) else {
+        let Ok(len) = len.try_into() else {
             return Err(Error::ListTooBig(len));
         };
 
