@@ -6,9 +6,11 @@ use crate::{array::NbtArray, list::NbtList, string::NbtStr};
 
 pub mod array;
 pub mod compound;
+// pub mod de; // FIXME
 pub mod list;
 pub mod ser;
 pub mod string;
+pub mod write;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Nbt<'a> {

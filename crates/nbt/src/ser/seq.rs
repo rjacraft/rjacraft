@@ -1,12 +1,13 @@
 use std::{
     fmt::Display,
-    io::{self, Write},
+    io::{self},
 };
 
 use serde::{ser::SerializeSeq, Serialize};
 
 use crate::{
     ser::{payload, PayloadSerializer},
+    write::NbtWrite,
     ArrayTag,
     ListTag,
     NotEndTag,
@@ -31,24 +32,24 @@ impl serde::ser::Error for Error {
 }
 
 #[derive(Debug)]
-pub struct ArraySeqSerializer<'w, W: ?Sized> {
-    writer: &'w mut W,
+pub struct ArraySeqSerializer<W> {
+    writer: W,
     tag: ArrayTag,
 }
 
-impl<'w, W: ?Sized> ArraySeqSerializer<'w, W> {
-    pub fn new(writer: &'w mut W, tag: ArrayTag) -> Self {
+impl<W: NbtWrite> ArraySeqSerializer<W> {
+    pub fn new(writer: W, tag: ArrayTag) -> Self {
         Self { writer, tag }
     }
 }
 
-impl<'w, W: ?Sized + Write> SerializeSeq for ArraySeqSerializer<'_, W> {
+impl<W: NbtWrite> SerializeSeq for ArraySeqSerializer<W> {
     type Ok = ArrayTag;
     type Error = Error;
 
     fn serialize_element<T: ?Sized + Serialize>(&mut self, value: &T) -> Result<(), Self::Error> {
-        value.serialize(&mut PayloadSerializer::seq_element(
-            self.writer,
+        value.serialize(PayloadSerializer::seq_element(
+            self.writer.fork(),
             self.tag.element_tag().into(),
         ))?;
 
@@ -61,14 +62,14 @@ impl<'w, W: ?Sized + Write> SerializeSeq for ArraySeqSerializer<'_, W> {
 }
 
 #[derive(Debug)]
-pub struct ListSeqSerializer<'w, W: ?Sized> {
-    writer: &'w mut W,
+pub struct ListSeqSerializer<W> {
+    writer: W,
     tag: Tag,
     len: i32,
 }
 
-impl<'w, W: ?Sized> ListSeqSerializer<'w, W> {
-    pub fn new(writer: &'w mut W, len: i32) -> Self {
+impl<W: NbtWrite> ListSeqSerializer<W> {
+    pub fn new(writer: W, len: i32) -> Self {
         assert!(len >= 0, "len cannot be negative but is {}", len);
 
         Self {
@@ -79,29 +80,29 @@ impl<'w, W: ?Sized> ListSeqSerializer<'w, W> {
     }
 }
 
-impl<'w, W: ?Sized + Write> SerializeSeq for ListSeqSerializer<'_, W> {
+impl<W: NbtWrite> SerializeSeq for ListSeqSerializer<W> {
     type Ok = ListTag;
     type Error = Error;
 
     fn serialize_element<T: ?Sized + Serialize>(&mut self, value: &T) -> Result<(), Self::Error> {
         if let Ok(tag) = NotEndTag::try_from(self.tag) {
-            value.serialize(&mut PayloadSerializer::seq_element(self.writer, tag))?;
+            value.serialize(PayloadSerializer::seq_element(self.writer.fork(), tag))?;
         } else {
-            let mut serializer = PayloadSerializer::list_head(self.writer, self.len);
-            self.tag = value.serialize(&mut serializer)?.into();
+            let serializer = PayloadSerializer::list_head(self.writer.fork(), self.len);
+            self.tag = value.serialize(serializer)?.into();
         }
 
         Ok(())
     }
 
-    fn end(self) -> Result<Self::Ok, Self::Error> {
+    fn end(mut self) -> Result<Self::Ok, Self::Error> {
         if self.tag == Tag::End {
             // The sequence has no elements thus we do
             // what the reference implementation by Mojang does
             // and set the type to `TAG_End`
-            self.writer.write_all(&Tag::End.to_be_bytes())?;
-            self.writer.write_all(&0u32.to_be_bytes())?;
+            self.writer.start_list(Tag::End, 0i32)?;
         }
+        self.writer.end_list()?;
         // FIXME: strict ype for `List`
         Ok(ListTag::List)
     }

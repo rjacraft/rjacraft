@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Debug};
+use std::{borrow::Cow, fmt::Debug, io, io::Write};
 
 use serde::{ser::SerializeTupleStruct, Deserialize, Serialize, Serializer};
 
@@ -114,21 +114,35 @@ where
     const TAG: ArrayElementTag;
 
     const ARRAY_TAG: ArrayTag;
+
+    fn write(self, write: impl Write) -> io::Result<()>;
 }
 
 impl NbtArrayElement for i8 {
     const TAG: ArrayElementTag = ArrayElementTag::Byte;
     const ARRAY_TAG: ArrayTag = ArrayTag::ByteArray;
+
+    fn write(self, mut write: impl Write) -> io::Result<()> {
+        write.write_all(&self.to_be_bytes())
+    }
 }
 
 impl NbtArrayElement for i32 {
     const TAG: ArrayElementTag = ArrayElementTag::Int;
     const ARRAY_TAG: ArrayTag = ArrayTag::IntArray;
+
+    fn write(self, mut write: impl Write) -> io::Result<()> {
+        write.write_all(&self.to_be_bytes())
+    }
 }
 
 impl NbtArrayElement for i64 {
     const TAG: ArrayElementTag = ArrayElementTag::Long;
     const ARRAY_TAG: ArrayTag = ArrayTag::LongArray;
+
+    fn write(self, mut write: impl Write) -> io::Result<()> {
+        write.write_all(&self.to_be_bytes())
+    }
 }
 
 impl<T: NbtArrayElement> Serialize for NbtArray<'_, T>

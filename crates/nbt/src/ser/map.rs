@@ -1,15 +1,12 @@
-use std::{
-    fmt::Display,
-    io::{self, Write},
-};
+use std::{fmt::Display, io};
 
 use serde::{ser::SerializeMap, Serialize, Serializer};
 
 use crate::{
     ser::{payload, unserializable_type, PayloadSerializer},
     string::{NbtStr, NbtStrFromStrError},
+    write::NbtWrite,
     CompoundTag,
-    Tag,
 };
 
 /// An error occurring while serializing using [`MapSerializer`].
@@ -53,18 +50,18 @@ unserializable_type! {
 type ImpossibleKey = serde::ser::Impossible<(), Error>;
 
 #[derive(Debug)]
-pub struct MapSerializer<'w, W: ?Sized> {
-    writer: &'w mut W,
+pub struct MapSerializer<W: ?Sized> {
+    writer: W,
 }
 
-impl<'w, W: ?Sized> MapSerializer<'w, W> {
+impl<W: NbtWrite> MapSerializer<W> {
     #[inline]
-    pub fn new(writer: &'w mut W) -> Self {
+    pub fn new(writer: W) -> Self {
         Self { writer }
     }
 }
 
-impl<'w, W: ?Sized + Write> SerializeMap for MapSerializer<'w, W> {
+impl<'w, W: NbtWrite> SerializeMap for MapSerializer<W> {
     type Ok = CompoundTag;
     type Error = Error;
 
@@ -82,23 +79,23 @@ impl<'w, W: ?Sized + Write> SerializeMap for MapSerializer<'w, W> {
         value: &V,
     ) -> Result<(), Self::Error> {
         key.serialize(EntrySerializer {
-            writer: self.writer,
+            writer: self.writer.fork(),
             value,
         })
     }
 
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.writer.write_all(&Tag::End.to_be_bytes())?;
+    fn end(mut self) -> Result<Self::Ok, Self::Error> {
+        self.writer.end_compound()?;
         Ok(CompoundTag::Compound)
     }
 }
 
-struct EntrySerializer<'w, 'v, W: ?Sized, V: ?Sized> {
-    writer: &'w mut W,
+struct EntrySerializer<'v, W, V: ?Sized> {
+    writer: W,
     value: &'v V,
 }
 
-impl<W: ?Sized + Write, V: ?Sized + Serialize> Serializer for EntrySerializer<'_, '_, W, V> {
+impl<W: NbtWrite, V: ?Sized + Serialize> Serializer for EntrySerializer<'_, W, V> {
     type Ok = ();
     type Error = Error;
     type SerializeSeq = ImpossibleKey;
@@ -166,7 +163,7 @@ impl<W: ?Sized + Write, V: ?Sized + Serialize> Serializer for EntrySerializer<'_
     }
 
     fn serialize_str(self, key: &str) -> Result<Self::Ok, Self::Error> {
-        self.value.serialize(&mut PayloadSerializer::named(
+        self.value.serialize(PayloadSerializer::named(
             self.writer,
             NbtStr::try_from(key)?,
         ))?;

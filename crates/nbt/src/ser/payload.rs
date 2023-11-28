@@ -1,7 +1,4 @@
-use std::{
-    fmt::Display,
-    io::{self, Write},
-};
+use std::{fmt::Display, io};
 
 use serde::Serialize;
 
@@ -10,11 +7,11 @@ use crate::{
         adapter::{SerializeSeqAsSerializeTupleStruct, SerializerAdapter},
         macros::unserializable_type,
         map,
-        seq,
-        seq::{ArraySeqSerializer, ListSeqSerializer},
+        seq::{self, ArraySeqSerializer, ListSeqSerializer},
         structure,
     },
     string::{NbtStr, NbtStrFromStrError},
+    write::NbtWrite,
     ArrayTag,
     NotEndTag,
 };
@@ -23,9 +20,9 @@ type Result<T> = std::result::Result<T, Error>;
 type Impossible = serde::ser::Impossible<NotEndTag, Error>;
 
 #[derive(Debug)]
-pub struct PayloadSerializer<'w, W: ?Sized, S> {
+pub struct PayloadSerializer<W: NbtWrite, S> {
     /// Writer to which the data is written
-    writer: &'w mut W,
+    writer: W,
     /// Extra code called when the data is written
     kind: S,
 }
@@ -75,14 +72,11 @@ unserializable_type! {
 }
 
 mod payload {
-    use std::io::Write;
-
-    use crate::NotEndTag;
+    use crate::{write::NbtWrite, NotEndTag};
 
     /// The kind of payload stored by this
     pub trait Kind {
-        fn write_tag<W: ?Sized + Write>(&self, writer: &mut W, tag: NotEndTag)
-            -> super::Result<()>;
+        fn write_tag<W: NbtWrite>(&self, writer: &mut W, tag: NotEndTag) -> super::Result<()>;
     }
 }
 
@@ -91,9 +85,9 @@ mod payload {
 pub struct NamedPayload<'n>(NbtStr<'n>);
 impl payload::Kind for NamedPayload<'_> {
     #[inline]
-    fn write_tag<W: ?Sized + Write>(&self, writer: &mut W, tag: NotEndTag) -> Result<()> {
-        writer.write_all(&tag.to_be_bytes())?;
-        self.0.write(writer)?;
+    fn write_tag<W: NbtWrite>(&self, writer: &mut W, tag: NotEndTag) -> Result<()> {
+        writer.write_tag(tag.into())?;
+        writer.write_string(&self.0)?;
         Ok(())
     }
 }
@@ -103,9 +97,8 @@ impl payload::Kind for NamedPayload<'_> {
 pub struct ListHeadPayload(i32);
 impl payload::Kind for ListHeadPayload {
     #[inline]
-    fn write_tag<W: ?Sized + Write>(&self, writer: &mut W, tag: NotEndTag) -> Result<()> {
-        writer.write_all(&tag.to_be_bytes())?;
-        writer.write_all(&self.0.to_be_bytes())?;
+    fn write_tag<W: NbtWrite>(&self, writer: &mut W, tag: NotEndTag) -> Result<()> {
+        writer.start_list(tag.into(), self.0)?;
         Ok(())
     }
 }
@@ -115,7 +108,7 @@ impl payload::Kind for ListHeadPayload {
 pub struct SeqElementPayload(NotEndTag);
 impl payload::Kind for SeqElementPayload {
     #[inline]
-    fn write_tag<W: ?Sized + Write>(&self, _: &mut W, tag: NotEndTag) -> Result<()> {
+    fn write_tag<W: NbtWrite>(&self, _: &mut W, tag: NotEndTag) -> Result<()> {
         if tag != self.0 {
             return Err(Error::HeterogeneousSeq {
                 expected: self.0,
@@ -126,15 +119,15 @@ impl payload::Kind for SeqElementPayload {
     }
 }
 
-impl<'w, W: ?Sized + Write, S: payload::Kind> PayloadSerializer<'w, W, S> {
+impl<W: NbtWrite, S: payload::Kind> PayloadSerializer<W, S> {
     fn begin(&mut self, tag: NotEndTag) -> Result<()> {
         self.kind.write_tag(&mut self.writer, tag)?;
         Ok(())
     }
 }
 
-impl<'w, 'n, W: ?Sized + Write> PayloadSerializer<'w, W, NamedPayload<'n>> {
-    pub fn named(writer: &'w mut W, name: NbtStr<'n>) -> Self {
+impl<'n, W: NbtWrite> PayloadSerializer<W, NamedPayload<'n>> {
+    pub fn named(writer: W, name: NbtStr<'n>) -> Self {
         Self {
             writer,
             kind: NamedPayload(name),
@@ -142,8 +135,8 @@ impl<'w, 'n, W: ?Sized + Write> PayloadSerializer<'w, W, NamedPayload<'n>> {
     }
 }
 
-impl<'w, 'n, W: ?Sized + Write> PayloadSerializer<'w, W, ListHeadPayload> {
-    pub fn list_head(writer: &'w mut W, len: i32) -> Self {
+impl<W: NbtWrite> PayloadSerializer<W, ListHeadPayload> {
+    pub fn list_head(writer: W, len: i32) -> Self {
         Self {
             writer,
             kind: ListHeadPayload(len),
@@ -151,8 +144,8 @@ impl<'w, 'n, W: ?Sized + Write> PayloadSerializer<'w, W, ListHeadPayload> {
     }
 }
 
-impl<'w, 'n, W: ?Sized + Write> PayloadSerializer<'w, W, SeqElementPayload> {
-    pub fn seq_element(writer: &'w mut W, tag: NotEndTag) -> Self {
+impl<W: NbtWrite> PayloadSerializer<W, SeqElementPayload> {
+    pub fn seq_element(writer: W, tag: NotEndTag) -> Self {
         Self {
             writer,
             kind: SeqElementPayload(tag),
@@ -160,47 +153,45 @@ impl<'w, 'n, W: ?Sized + Write> PayloadSerializer<'w, W, SeqElementPayload> {
     }
 }
 
-impl<'w, W: ?Sized + Write, S: payload::Kind> serde::Serializer
-    for &'w mut PayloadSerializer<'_, W, S>
-{
+impl<W: NbtWrite, S: payload::Kind> serde::Serializer for PayloadSerializer<W, S> {
     type Ok = NotEndTag;
     type Error = Error;
-    type SerializeSeq = SerializerAdapter<ListSeqSerializer<'w, W>, NotEndTag, Error>;
+    type SerializeSeq = SerializerAdapter<ListSeqSerializer<W>, NotEndTag, Error>;
     type SerializeTuple = Impossible;
     type SerializeTupleStruct =
-        SerializeSeqAsSerializeTupleStruct<ArraySeqSerializer<'w, W>, NotEndTag, Error>;
+        SerializeSeqAsSerializeTupleStruct<ArraySeqSerializer<W>, NotEndTag, Error>;
     type SerializeTupleVariant = Impossible;
-    type SerializeMap = SerializerAdapter<map::MapSerializer<'w, W>, NotEndTag, Error>;
-    type SerializeStruct = SerializerAdapter<structure::StructSerializer<'w, W>, NotEndTag, Error>;
+    type SerializeMap = SerializerAdapter<map::MapSerializer<W>, NotEndTag, Error>;
+    type SerializeStruct = SerializerAdapter<structure::StructSerializer<W>, NotEndTag, Error>;
     type SerializeStructVariant = Impossible;
 
-    fn serialize_bool(self, v: bool) -> Result<Self::Ok> {
+    fn serialize_bool(mut self, v: bool) -> Result<Self::Ok> {
         self.begin(NotEndTag::Byte)?;
-        self.writer.write_all(&(v as u8).to_be_bytes())?;
+        self.writer.write_byte(v as i8)?;
         Ok(NotEndTag::Byte)
     }
 
-    fn serialize_i8(self, v: i8) -> Result<Self::Ok> {
+    fn serialize_i8(mut self, v: i8) -> Result<Self::Ok> {
         self.begin(NotEndTag::Byte)?;
-        self.writer.write_all(&v.to_be_bytes())?;
+        self.writer.write_byte(v)?;
         Ok(NotEndTag::Byte)
     }
 
-    fn serialize_i16(self, v: i16) -> Result<Self::Ok> {
+    fn serialize_i16(mut self, v: i16) -> Result<Self::Ok> {
         self.begin(NotEndTag::Short)?;
-        self.writer.write_all(&v.to_be_bytes())?;
+        self.writer.write_short(v)?;
         Ok(NotEndTag::Short)
     }
 
-    fn serialize_i32(self, v: i32) -> Result<Self::Ok> {
+    fn serialize_i32(mut self, v: i32) -> Result<Self::Ok> {
         self.begin(NotEndTag::Int)?;
-        self.writer.write_all(&v.to_be_bytes())?;
+        self.writer.write_int(v)?;
         Ok(NotEndTag::Int)
     }
 
-    fn serialize_i64(self, v: i64) -> Result<Self::Ok> {
+    fn serialize_i64(mut self, v: i64) -> Result<Self::Ok> {
         self.begin(NotEndTag::Long)?;
-        self.writer.write_all(&v.to_be_bytes())?;
+        self.writer.write_long(v)?;
         Ok(NotEndTag::Long)
     }
 
@@ -228,15 +219,15 @@ impl<'w, W: ?Sized + Write, S: payload::Kind> serde::Serializer
         Err(Error::InvalidType(NotPayloadType::U128))
     }
 
-    fn serialize_f32(self, v: f32) -> Result<Self::Ok> {
+    fn serialize_f32(mut self, v: f32) -> Result<Self::Ok> {
         self.begin(NotEndTag::Float)?;
-        self.writer.write_all(&v.to_be_bytes())?;
+        self.writer.write_float(v)?;
         Ok(NotEndTag::Float)
     }
 
-    fn serialize_f64(self, v: f64) -> Result<Self::Ok> {
+    fn serialize_f64(mut self, v: f64) -> Result<Self::Ok> {
         self.begin(NotEndTag::Double)?;
-        self.writer.write_all(&v.to_be_bytes())?;
+        self.writer.write_double(v)?;
         Ok(NotEndTag::Double)
     }
 
@@ -244,9 +235,9 @@ impl<'w, W: ?Sized + Write, S: payload::Kind> serde::Serializer
         Err(Error::InvalidType(NotPayloadType::Char))
     }
 
-    fn serialize_str(self, v: &str) -> Result<Self::Ok> {
+    fn serialize_str(mut self, v: &str) -> Result<Self::Ok> {
         self.begin(NotEndTag::String)?;
-        NbtStr::try_from(v)?.write(&mut self.writer)?;
+        self.writer.write_string(&NbtStr::try_from(v)?)?;
         Ok(NotEndTag::String)
     }
 
@@ -325,7 +316,7 @@ impl<'w, W: ?Sized + Write, S: payload::Kind> serde::Serializer
 
     // `NBT_Tag_List` is always used for sequences.
     // `NBT_*_Array` types are implemented using a separate `NbtArray` type.
-    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
+    fn serialize_seq(mut self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         let Some(len) = len else {
             return Err(Error::UnknownListLen);
         };
@@ -345,7 +336,7 @@ impl<'w, W: ?Sized + Write, S: payload::Kind> serde::Serializer
     }
 
     fn serialize_tuple_struct(
-        self,
+        mut self,
         name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleStruct> {
@@ -364,8 +355,7 @@ impl<'w, W: ?Sized + Write, S: payload::Kind> serde::Serializer
             return Err(Error::ListTooBig(len));
         };
 
-        self.writer.write_all(&array_tag.to_be_bytes())?;
-        self.writer.write_all(&len.to_be_bytes())?;
+        self.writer.start_array(array_tag, len)?;
 
         Ok(Self::SerializeTupleStruct::new(ArraySeqSerializer::new(
             self.writer,
@@ -383,7 +373,7 @@ impl<'w, W: ?Sized + Write, S: payload::Kind> serde::Serializer
         Err(Error::InvalidType(NotPayloadType::TupleVariant))
     }
 
-    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
+    fn serialize_map(mut self, _: Option<usize>) -> Result<Self::SerializeMap> {
         self.begin(NotEndTag::Compound)?;
 
         Ok(Self::SerializeMap::new(map::MapSerializer::new(
@@ -391,7 +381,7 @@ impl<'w, W: ?Sized + Write, S: payload::Kind> serde::Serializer
         )))
     }
 
-    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
+    fn serialize_struct(mut self, _: &'static str, _: usize) -> Result<Self::SerializeStruct> {
         self.begin(NotEndTag::Compound)?;
 
         Ok(Self::SerializeStruct::new(

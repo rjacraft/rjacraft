@@ -1,6 +1,6 @@
 use std::{
     fmt::Display,
-    io::{self, Write},
+    io::{self},
 };
 
 use serde::{ser::SerializeStruct, Serialize};
@@ -8,13 +8,13 @@ use serde::{ser::SerializeStruct, Serialize};
 use crate::{
     ser::payload::{self, PayloadSerializer},
     string::{NbtStr, NbtStrFromStrError},
+    write::NbtWrite,
     CompoundTag,
-    Tag,
 };
 
 #[derive(Debug)]
-pub struct StructSerializer<'w, W: ?Sized> {
-    writer: &'w mut W,
+pub struct StructSerializer<W> {
+    writer: W,
 }
 
 /// An error occurring while serializing using [`StructSerializer`].
@@ -36,14 +36,14 @@ impl serde::ser::Error for Error {
     }
 }
 
-impl<'w, W: ?Sized> StructSerializer<'w, W> {
+impl<W> StructSerializer<W> {
     #[inline]
-    pub fn new(writer: &'w mut W) -> Self {
+    pub fn new(writer: W) -> Self {
         Self { writer }
     }
 }
 
-impl<W: ?Sized + Write> SerializeStruct for StructSerializer<'_, W> {
+impl<W: NbtWrite> SerializeStruct for StructSerializer<W> {
     type Ok = CompoundTag;
     type Error = Error;
 
@@ -53,16 +53,16 @@ impl<W: ?Sized + Write> SerializeStruct for StructSerializer<'_, W> {
         value: &T,
     ) -> Result<(), Self::Error> {
         value
-            .serialize(&mut PayloadSerializer::named(
-                self.writer,
+            .serialize(PayloadSerializer::named(
+                self.writer.fork(),
                 NbtStr::try_from(key)?,
             ))
             .map_err(Box::new)?;
         Ok(())
     }
 
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.writer.write_all(&Tag::End.to_be_bytes())?;
+    fn end(mut self) -> Result<Self::Ok, Self::Error> {
+        self.writer.end_compound()?;
         Ok(CompoundTag::Compound)
     }
 }

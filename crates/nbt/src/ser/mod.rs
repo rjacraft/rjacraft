@@ -10,12 +10,16 @@ use std::{
     io::{self, Write},
 };
 
-use adapter::SerializerAdapter;
 use serde::Serialize;
 
-use self::macros::unserializable_type;
 pub use self::payload::PayloadSerializer;
-use crate::{string::NbtStr, CompoundTag, Tag};
+use self::{adapter::SerializerAdapter, macros::unserializable_type};
+use crate::{
+    string::NbtStr,
+    write::{BinaryNbtWriter, NbtWrite},
+    CompoundTag,
+    Tag,
+};
 
 /// An error occurring while serializing using [`RootSerializer`].
 #[derive(Debug, thiserror::Error)]
@@ -59,8 +63,9 @@ pub fn to_writer_named<W: Write, T: ?Sized + Serialize>(
     name: NbtStr,
     value: &T,
 ) -> Result<()> {
-    let mut ser = RootSerializer::new(writer, name);
-    let _ = value.serialize(&mut ser)?;
+    let writer = BinaryNbtWriter::new(writer);
+    let serializer = RootSerializer::new(writer, name);
+    let _ = value.serialize(serializer)?;
     Ok(())
 }
 
@@ -70,7 +75,7 @@ pub struct RootSerializer<'n, W> {
     name: NbtStr<'n>,
 }
 
-impl<'n, W: Write> RootSerializer<'n, W> {
+impl<'n, W: NbtWrite> RootSerializer<'n, W> {
     /// Creates a new NBT serializer.
     #[inline]
     pub fn new(writer: W, name: NbtStr<'n>) -> Self {
@@ -78,22 +83,21 @@ impl<'n, W: Write> RootSerializer<'n, W> {
     }
 
     fn begin(&mut self) -> Result<()> {
-        self.writer.write_all(&Tag::Compound.to_be_bytes())?;
-        self.name.write(&mut self.writer)?;
+        self.writer.write_tag(Tag::Compound)?;
+        self.writer.start_compound(&self.name)?;
         Ok(())
     }
 }
 
-impl<'w, W: Write> serde::Serializer for &'w mut RootSerializer<'w, W> {
+impl<'n, W: NbtWrite> serde::Serializer for RootSerializer<'n, W> {
     type Ok = CompoundTag;
     type Error = Error;
     type SerializeSeq = Impossible;
     type SerializeTuple = Impossible;
     type SerializeTupleStruct = Impossible;
     type SerializeTupleVariant = Impossible;
-    type SerializeMap = SerializerAdapter<map::MapSerializer<'w, W>, CompoundTag, Error>;
-    type SerializeStruct =
-        SerializerAdapter<structure::StructSerializer<'w, W>, CompoundTag, Error>;
+    type SerializeMap = SerializerAdapter<map::MapSerializer<W>, CompoundTag, Error>;
+    type SerializeStruct = SerializerAdapter<structure::StructSerializer<W>, CompoundTag, Error>;
     type SerializeStructVariant = Impossible;
 
     fn serialize_bool(self, _: bool) -> Result<Self::Ok> {
@@ -224,17 +228,15 @@ impl<'w, W: Write> serde::Serializer for &'w mut RootSerializer<'w, W> {
         Err(Error::InvalidType(NotRootType::TupleVariant))
     }
 
-    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
+    fn serialize_map(mut self, _: Option<usize>) -> Result<Self::SerializeMap> {
         self.begin()?;
-        Ok(SerializerAdapter::new(map::MapSerializer::new(
-            &mut self.writer,
-        )))
+        Ok(SerializerAdapter::new(map::MapSerializer::new(self.writer)))
     }
 
-    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
+    fn serialize_struct(mut self, _: &'static str, _: usize) -> Result<Self::SerializeStruct> {
         self.begin()?;
         Ok(SerializerAdapter::new(structure::StructSerializer::new(
-            &mut self.writer,
+            self.writer,
         )))
     }
 
