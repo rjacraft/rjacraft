@@ -109,17 +109,11 @@ impl Parse for Content {
 impl ToTokens for Content {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         match self {
-            Content::None => tokens.append_all(quote! {
-                ::rjacraft_protocol::types::text::Content::Literal {
-                    text: ::std::string::String::new()
-                }
-            }),
-            Content::Raw(x) => tokens.append_all(quote! {
-                ::rjacraft_protocol::types::text::Content::Literal { text: format!(#x) }
-            }),
-            Content::Format(format, _, args) => tokens.append_all(quote! {
-                ::rjacraft_protocol::types::text::Content::Literal { text: format!(#format, #args) }
-            }),
+            Content::None => tokens.append_all(quote! { ::std::string::String::new() }),
+            Content::Raw(x) => tokens.append_all(quote! { format!(#x) }),
+            Content::Format(format, _, args) => {
+                tokens.append_all(quote! { format!(#format, #args) })
+            }
         };
     }
 }
@@ -173,13 +167,23 @@ impl ToTokens for Node {
             extra,
         } = self;
 
-        tokens.append_all(quote! {
-            ::rjacraft_protocol::types::text::Text::Fancy {
-                content: #content,
-                style: { #style },
-                extra: vec![#extra],
-            }
-        });
+        match (&style.0[..], &extra.0[..], content) {
+            ([], [], _) => tokens.append_all(quote! {
+                ::rjacraft_protocol::types::text::Text::Literal(#content)
+            }),
+            ([], _, Content::None) => tokens.append_all(quote! {
+                ::rjacraft_protocol::types::text::Text::Array(vec![#extra])
+            }),
+            _ => tokens.append_all(quote! {
+                ::rjacraft_protocol::types::text::Text::Fancy {
+                    content: ::rjacraft_protocol::types::text::Content::Literal {
+                        text: #content
+                    },
+                    style: { #style },
+                    extra: vec![#extra],
+                }
+            }),
+        }
     }
 }
 
