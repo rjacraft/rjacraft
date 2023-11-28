@@ -1,6 +1,15 @@
 mod basic;
 mod servers;
 
+use std::{
+    array,
+    iter::{Chain, Copied},
+    slice,
+};
+
+use rjacraft_nbt::{ser, string::NbtStr};
+use serde::Serialize;
+
 macro_rules! concat_byte_vec {
     ($($part:expr),* $(,)?) => {{
         let mut bytes = ::std::vec![0u8; 0];
@@ -38,8 +47,7 @@ impl<'a> U16LenStr<'a> {
 
 impl<'a> IntoIterator for U16LenStr<'a> {
     type Item = u8;
-    type IntoIter =
-        Chain<<[u8; 2] as IntoIterator>::IntoIter, Copied<<&'a [u8] as IntoIterator>::IntoIter>>;
+    type IntoIter = Chain<array::IntoIter<u8, 2>, Copied<slice::Iter<'a, u8>>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.len()
@@ -66,11 +74,6 @@ fn to_bytes<V: ?Sized + Serialize>(value: &V) -> Result<Vec<u8>, ser::Error> {
 
     Ok(bytes)
 }
-
-use std::iter::{Chain, Copied};
-
-use rjacraft_nbt::{ser, string::NbtStr};
-use serde::Serialize;
 
 mod tag {
     pub const END: u8 = 0;
