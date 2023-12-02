@@ -20,9 +20,9 @@ pub use self::{components::*, events::*, systems::n2b_system};
 pub struct Runtime(pub tokio::runtime::Runtime);
 
 #[derive(Resource)]
-pub struct Registries(pub types::CustomRegistries);
+pub struct Registries(pub types::Encoded<types::Nbt<types::CustomRegistries>>);
 #[derive(Resource)]
-pub struct Tags(pub Vec<s2c::TagType>);
+pub struct Tags(pub types::Encoded<types::LenVec<s2c::TagType>>);
 
 pub struct UserSystems<Status, Auth, Brand> {
     pub status: Status,
@@ -31,10 +31,11 @@ pub struct UserSystems<Status, Auth, Brand> {
 }
 
 pub enum AuthOutcome {
-    Success(String, uuid::Uuid, Vec<s2c::ProfileProperty>),
+    Success(uuid::Uuid, types::player_info::Profile),
     Fail(types::Text),
 }
 
+pub type UsernameString = types::LenString<16>;
 pub type BrandString = types::LenString<128>;
 
 pub struct NetworkPlugin<A, S> {

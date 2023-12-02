@@ -2,7 +2,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use rjacraft_macro::*;
 use rjacraft_network::*;
-use rjacraft_protocol::{packets::s2c, types::*};
+use rjacraft_protocol::{packets::s2c, types::*, ProtocolType};
 
 mod chunks;
 mod components;
@@ -47,28 +47,7 @@ fn main() {
             ),
         )
         .insert_resource(Registries(prebuilt_registries::simple()))
-        .insert_resource(Tags(vec![
-            s2c::TagType {
-                name: id!("block"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("entity_type"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("fluid"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("game_event"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("item"),
-                tags: vec![].into(),
-            },
-        ]))
+        .insert_resource(Tags(prebuilt_registries::clean_tags()))
         .run();
 }
 
@@ -90,8 +69,14 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
     }
 }
 
-fn auth_system(In((_, username, uuid)): In<(Entity, String, Uuid)>) -> AuthOutcome {
-    AuthOutcome::Success(username, uuid, vec![])
+fn auth_system(In((_, username, uuid)): In<(Entity, UsernameString, Uuid)>) -> AuthOutcome {
+    AuthOutcome::Success(
+        uuid,
+        player_info::Profile {
+            username,
+            properties: vec![].into(),
+        },
+    )
 }
 
 fn brand_system(_peer: In<Entity>) -> Option<BrandString> {
@@ -100,39 +85,45 @@ fn brand_system(_peer: In<Entity>) -> Option<BrandString> {
 
 fn init_play_system(players: Query<(Entity, &Play), Added<Play>>, mut commands: Commands) {
     for (entity, play) in players.iter() {
-        play.send_packet(&s2c::PlayPacket::Login {
-            entity_id: 0.into(),
-            is_hardcore: false.into(),
-            dimensions: vec![id!["overworld"]].into(),
-            max_players: 20.into(),
-            load_distance: VarInt(chunks::MAX_RADIUS as i32),
-            simulation_distance: VarInt(chunks::MAX_RADIUS as i32),
-            reduced_debug_info: false.into(),
-            enable_respawn_screen: false.into(),
-            dimension_type: id!("overworld"),
-            dimension_name: id!("overworld"),
-            hashed_seed: 0.into(),
-            gamemode: s2c::GameMode::Adventure,
-            previous_gamemode: s2c::PreviousGameMode::None,
-            is_debug: false.into(),
-            is_flat: true.into(), // to make the sky not black at y = 40
-            died: None.into(),
-            portal_cooldown: 0.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::PlayerAbilities {
-            flags: s2c::PlayerAbilities::new()
-                .with_flying(true)
-                .with_can_fly(true),
-            flying_speed: 0.05.into(),
-            fov_modifier: 0.1.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::WorldRespawn {
-            position: BlockPos::new().with_x(0).with_y(45).with_z(0),
-            pitch: 0.0.into(),
-        })
-        .unwrap();
+        play.send(
+            s2c::PlayPacket::Login {
+                entity_id: 0.into(),
+                is_hardcore: false.into(),
+                dimensions: vec![id!["overworld"]].into(),
+                max_players: 20.into(),
+                load_distance: VarInt(chunks::MAX_RADIUS as i32),
+                simulation_distance: VarInt(chunks::MAX_RADIUS as i32),
+                reduced_debug_info: false.into(),
+                enable_respawn_screen: false.into(),
+                dimension_type: id!("overworld"),
+                dimension_name: id!("overworld"),
+                hashed_seed: 0.into(),
+                gamemode: s2c::GameMode::Adventure,
+                previous_gamemode: s2c::PreviousGameMode::None,
+                is_debug: false.into(),
+                is_flat: true.into(), // to make the sky not black at y = 40
+                died: None.into(),
+                portal_cooldown: 0.into(),
+            }
+            .to_encoded_expect(),
+        )
+        .send(
+            s2c::PlayPacket::PlayerAbilities {
+                flags: s2c::PlayerAbilities::new()
+                    .with_flying(true)
+                    .with_can_fly(true),
+                flying_speed: 0.05.into(),
+                fov_modifier: 0.1.into(),
+            }
+            .to_encoded_expect(),
+        )
+        .send(
+            s2c::PlayPacket::WorldRespawn {
+                position: BlockPos::new().with_x(0).with_y(45).with_z(0),
+                pitch: 0.0.into(),
+            }
+            .to_encoded_expect(),
+        );
 
         commands.entity(entity).insert(components::Position {
             x: 5000.0,

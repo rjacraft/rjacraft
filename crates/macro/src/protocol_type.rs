@@ -146,6 +146,18 @@ fn handle_enum(item: ItemEnum) -> TokenStream {
     let mut de_variants = Vec::new();
     let mut en_variants = Vec::new();
 
+    let non_unit_variants = item
+        .variants
+        .iter()
+        .filter(|x| !x.fields.is_empty())
+        .count();
+
+    let en_disc_throw = if non_unit_variants == 0 {
+        quote! { ? }
+    } else {
+        quote! { .map_err(#en_error::Discriminator)? }
+    };
+
     for variant in &item.variants {
         let variant_name = &variant.ident;
         let variant_name_str = variant_name.to_string();
@@ -234,12 +246,31 @@ fn handle_enum(item: ItemEnum) -> TokenStream {
         });
         en_variants.push(quote! {
             Self::#variant_name #en_construct => {
-                #disc_type_turbofish::from(#disc_value).encode(buffer).map_err(#en_error::Discriminator)?;
+                #disc_type_turbofish::from(#disc_value).encode(buffer)#en_disc_throw;
 
                 #(#en_fields)*
             },
         });
     }
+
+    let (en_error_decl, en_error_def) = if non_unit_variants == 0 {
+        (
+            quote! { <#disc_type as ProtocolType>::EncodeError },
+            quote!(),
+        )
+    } else {
+        (
+            quote! { #en_error },
+            quote! {
+                #[derive(Debug, ::thiserror::Error)]
+                pub enum #en_error {
+                    #[error("Failed to encode enum discriminator")]
+                    Discriminator(<#disc_type as ProtocolType>::EncodeError),
+                    #(#en_errors)*
+                }
+            },
+        )
+    };
 
     quote! {
         #[derive(Debug, ::thiserror::Error)]
@@ -251,16 +282,11 @@ fn handle_enum(item: ItemEnum) -> TokenStream {
             OutOfRange(#disc_type),
         }
 
-        #[derive(Debug, ::thiserror::Error)]
-        pub enum #en_error {
-            #[error("Failed to encode enum discriminator")]
-            Discriminator(<#disc_type as ProtocolType>::EncodeError),
-            #(#en_errors)*
-        }
+        #en_error_def
 
         impl ProtocolType for #enum_name {
             type DecodeError = #de_error;
-            type EncodeError = #en_error;
+            type EncodeError = #en_error_decl;
 
             fn decode(buffer: &mut impl ::bytes::Buf) -> Result<Self, Self::DecodeError> {
                 let disc = #disc_type_turbofish::decode(buffer).map_err(#de_error::Discriminator)?.into();

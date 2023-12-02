@@ -21,17 +21,8 @@ pub fn generate_blocks() -> chunk::Column<16> {
     result
 }
 
-pub fn generate_sign(contents: &[ItemStackProto]) -> BlockEntity {
-    let non_empty = contents
-        .iter()
-        .filter(|x| {
-            if let ItemStackProto::None = x {
-                false
-            } else {
-                true
-            }
-        })
-        .count();
+pub fn generate_sign(contents: &[Option<ItemStack<i32>>]) -> BlockEntity {
+    let non_empty = contents.iter().filter(|x| x.is_some()).count();
 
     BlockEntity::Sign(Nbt(block_entity::Sign {
         is_waxed: false,
@@ -39,16 +30,16 @@ pub fn generate_sign(contents: &[ItemStackProto]) -> BlockEntity {
             has_glowing_text: false,
             color: block_entity::Dye::Black,
             messages: vec![
-                JsonString(text!("Non-empty slots:")),
-                JsonString(text!("{non_empty}")),
-                JsonString(text!()),
-                JsonString(text!()),
+                text!("Non-empty slots:"),
+                text!("{non_empty}"),
+                text!(),
+                text!(),
             ],
         },
         back_text: block_entity::SignText {
             has_glowing_text: false,
             color: block_entity::Dye::Blue,
-            messages: vec![JsonString(text!("Back text")); 4],
+            messages: vec![text!("Back text"); 4],
         },
     }))
 }
@@ -58,20 +49,20 @@ pub fn generate_block_entities(
 ) -> Vec<(BlockPosColumn, BlockEntity)> {
     let mut result = Vec::new();
 
-    for (pos, chest) in chests {
+    for (&(x, y, z), chest) in chests {
         result.push((
             BlockPosColumn {
-                x: pos.x() as u8,
-                y: pos.y(),
-                z: pos.z() as u8,
+                x: x as u8,
+                y,
+                z: z as u8,
             },
             BlockEntity::Chest(Nbt(block_entity::Chest {})),
         ));
         result.push((
             BlockPosColumn {
-                x: pos.x() as u8,
-                y: pos.y() + 1,
-                z: pos.z() as u8,
+                x: x as u8,
+                y: y + 1,
+                z: z as u8,
             },
             generate_sign(&chest.items),
         ));

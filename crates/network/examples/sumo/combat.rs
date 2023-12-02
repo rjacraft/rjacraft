@@ -1,6 +1,6 @@
 use bevy_ecs::prelude::*;
 use rjacraft_network::*;
-use rjacraft_protocol::{packets::s2c, types::*};
+use rjacraft_protocol::{packets::s2c, types::*, ProtocolType};
 use tracing::info;
 
 use crate::{eid, player_entity};
@@ -27,12 +27,13 @@ pub fn accept_interact_system(
         if let &packet::Interact::AttackEntity(eid_taker) = data {
             let (play_taker, _) = players.get(eids.entity_of(eid_taker)).unwrap();
 
-            play_taker
-                .send_packet(&s2c::PlayPacket::EntityDamageTilt {
+            play_taker.send(
+                s2c::PlayPacket::EntityDamageTilt {
                     id: VarInt(eid_taker),
                     yaw: Primitive(mov_source.head_rot.1 - 180.0),
-                })
-                .unwrap();
+                }
+                .to_encoded_expect(),
+            );
 
             let damage_packet = s2c::PlayPacket::EntityDamage {
                 taker_id: VarInt(eid_taker),
@@ -40,7 +41,8 @@ pub fn accept_interact_system(
                 source_id: eids.eid_of(e_source),
                 means_id: eids.eid_of(e_source),
                 source_pos: None.into(),
-            };
+            }
+            .to_encoded_expect();
 
             let (sin, cos) = (mov_source.head_rot.1 as f64).to_radians().sin_cos();
             let velo_packet = s2c::PlayPacket::EntityVelocity {
@@ -48,14 +50,13 @@ pub fn accept_interact_system(
                 x: velo_to_proto(KNOCKBACK_XZ * -sin).into(),
                 y: velo_to_proto(KNOCKBACK_Y).into(),
                 z: velo_to_proto(KNOCKBACK_XZ * cos).into(),
-            };
+            }
+            .to_encoded_expect();
 
             for (play_other, _) in players.iter() {
                 play_other
-                    .send_packet(&damage_packet)
-                    .unwrap()
-                    .send_packet(&velo_packet)
-                    .unwrap();
+                    .send(damage_packet.clone())
+                    .send(velo_packet.clone());
             }
         }
     }
@@ -68,16 +69,18 @@ pub fn losing_system(mut players: Query<(&Play, &crate::Profile, &mut player_ent
 
             movement.pos = (crate::SPAWN_X, crate::SPAWN_Y, crate::SPAWN_Z);
 
-            play.send_packet(&s2c::PlayPacket::PlayerTeleport {
-                x: movement.pos.0.into(),
-                y: movement.pos.1.into(),
-                z: movement.pos.2.into(),
-                yaw: movement.body_rot.1.into(),
-                pitch: movement.body_rot.0.into(),
-                relative: s2c::TeleportRelative::new(),
-                id: 0.into(),
-            })
-            .unwrap();
+            play.send(
+                s2c::PlayPacket::PlayerTeleport {
+                    x: movement.pos.0.into(),
+                    y: movement.pos.1.into(),
+                    z: movement.pos.2.into(),
+                    yaw: movement.body_rot.1.into(),
+                    pitch: movement.body_rot.0.into(),
+                    relative: s2c::TeleportRelative::new(),
+                    id: 0.into(),
+                }
+                .to_encoded_expect(),
+            );
         }
     }
 }

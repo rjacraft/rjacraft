@@ -1,12 +1,16 @@
 use rjacraft_macro::*;
-use rjacraft_protocol::types::{registry::*, *};
+use rjacraft_protocol::{
+    packets::s2c,
+    types::{registry::*, *},
+    ProtocolType,
+};
 
 /// - `minecraft:chat_type`: Vanilla `minecraft:chat`
 /// - `minecraft:damage_type`: Vanilla defaults
 /// - `minecraft:dimension_type`: Vanilla overworld
 /// - `minecraft:worldgen/biome`: Vanilla plains
-pub fn simple() -> CustomRegistries {
-    CustomRegistries {
+pub fn simple() -> Encoded<Nbt<CustomRegistries>> {
+    let regs = CustomRegistries {
         chat_type: Registry {
             r#type: id!("chat_type"),
             value: vec![Element {
@@ -578,5 +582,33 @@ pub fn simple() -> CustomRegistries {
                 name: id!("plains"),
             }],
         },
-    }
+    };
+
+    Nbt(regs).to_encoded_expect()
+}
+
+pub fn clean_tags() -> Encoded<LenVec<s2c::TagType>> {
+    LenVec(vec![
+        s2c::TagType {
+            name: id!("block"),
+            tags: vec![].into(),
+        },
+        s2c::TagType {
+            name: id!("entity_type"),
+            tags: vec![].into(),
+        },
+        s2c::TagType {
+            name: id!("fluid"),
+            tags: vec![].into(),
+        },
+        s2c::TagType {
+            name: id!("game_event"),
+            tags: vec![].into(),
+        },
+        s2c::TagType {
+            name: id!("item"),
+            tags: vec![].into(),
+        },
+    ])
+    .to_encoded_expect()
 }

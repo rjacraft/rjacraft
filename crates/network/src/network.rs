@@ -31,7 +31,7 @@ pub enum N2bEvent {
     Disconnected,
     HandshakeComplete(ProtocolVersion, String, u16),
     NeedStatus,
-    Authenticate(String, Uuid),
+    Authenticate(crate::UsernameString, Uuid),
     NeedConfiguration,
     ConfigurationFinished(flume::Sender<bytes::Bytes>),
     TeleportConfirm(i32),

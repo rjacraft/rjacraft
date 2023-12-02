@@ -2,7 +2,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use rjacraft_macro::*;
 use rjacraft_network::*;
-use rjacraft_protocol::{chunk, packets::s2c, types::*};
+use rjacraft_protocol::{chunk, packets::s2c, types::*, ProtocolType};
 use tracing::*;
 
 fn main() {
@@ -30,28 +30,7 @@ fn main() {
         ))
         .add_systems(Update, (brand_system, init_play_system, chat_system))
         .insert_resource(Registries(prebuilt_registries::simple()))
-        .insert_resource(Tags(vec![
-            s2c::TagType {
-                name: id!("block"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("entity_type"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("fluid"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("game_event"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("item"),
-                tags: vec![].into(),
-            },
-        ]))
+        .insert_resource(Tags(prebuilt_registries::clean_tags()))
         .run();
 }
 
@@ -75,18 +54,24 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
 
 #[derive(Component)]
 struct Profile {
-    username: String,
+    username: UsernameString,
 }
 
 fn auth_system(
-    In((entity, username, uuid)): In<(Entity, String, Uuid)>,
+    In((entity, username, uuid)): In<(Entity, UsernameString, Uuid)>,
     mut commands: Commands,
 ) -> AuthOutcome {
     commands.entity(entity).insert(Profile {
         username: username.clone(),
     });
 
-    AuthOutcome::Success(username, uuid, vec![])
+    AuthOutcome::Success(
+        uuid,
+        player_info::Profile {
+            username,
+            properties: vec![].into(),
+        },
+    )
 }
 
 fn server_brand_system(_peer: In<Entity>) -> Option<BrandString> {
@@ -103,58 +88,68 @@ fn init_play_system(players: Query<&Play, Added<Play>>) {
     for play in players.iter() {
         let (heightmaps, palettes, light) = chunk::to_network(&chunk::Column::<16>::default());
 
-        play.send_packet(&s2c::PlayPacket::Login {
-            entity_id: 0.into(),
-            is_hardcore: false.into(),
-            dimensions: vec![id!["overworld"]].into(),
-            max_players: 20.into(),
-            load_distance: 8.into(),
-            simulation_distance: 8.into(),
-            reduced_debug_info: false.into(),
-            enable_respawn_screen: false.into(),
-            dimension_type: id!("overworld"),
-            dimension_name: id!("overworld"),
-            hashed_seed: 0.into(),
-            gamemode: s2c::GameMode::Adventure,
-            previous_gamemode: s2c::PreviousGameMode::None,
-            is_debug: false.into(),
-            is_flat: false.into(),
-            died: None.into(),
-            portal_cooldown: 0.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::PlayerAbilities {
-            flags: s2c::PlayerAbilities::new()
-                .with_flying(true)
-                .with_can_fly(true),
-            flying_speed: 0.05.into(),
-            fov_modifier: 0.1.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::WorldRespawn {
-            position: BlockPos::new().with_x(0).with_y(40).with_z(0),
-            pitch: 0.0.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::PlayerTeleport {
-            x: 0.0.into(),
-            y: 40.0.into(),
-            z: 0.0.into(),
-            yaw: 0.0.into(),
-            pitch: 0.0.into(),
-            relative: s2c::TeleportRelative::new(),
-            id: 0.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::ChunkData {
-            chunk_x: 0.into(),
-            chunk_z: 0.into(),
-            heightmaps: Nbt(heightmaps),
-            palettes,
-            block_entities: vec![].into(),
-            light,
-        })
-        .unwrap();
+        play.send(
+            s2c::PlayPacket::Login {
+                entity_id: 0.into(),
+                is_hardcore: false.into(),
+                dimensions: vec![id!["overworld"]].into(),
+                max_players: 20.into(),
+                load_distance: 8.into(),
+                simulation_distance: 8.into(),
+                reduced_debug_info: false.into(),
+                enable_respawn_screen: false.into(),
+                dimension_type: id!("overworld"),
+                dimension_name: id!("overworld"),
+                hashed_seed: 0.into(),
+                gamemode: s2c::GameMode::Adventure,
+                previous_gamemode: s2c::PreviousGameMode::None,
+                is_debug: false.into(),
+                is_flat: false.into(),
+                died: None.into(),
+                portal_cooldown: 0.into(),
+            }
+            .to_encoded_expect(),
+        )
+        .send(
+            s2c::PlayPacket::PlayerAbilities {
+                flags: s2c::PlayerAbilities::new()
+                    .with_flying(true)
+                    .with_can_fly(true),
+                flying_speed: 0.05.into(),
+                fov_modifier: 0.1.into(),
+            }
+            .to_encoded_expect(),
+        )
+        .send(
+            s2c::PlayPacket::WorldRespawn {
+                position: BlockPos::new().with_x(0).with_y(40).with_z(0),
+                pitch: 0.0.into(),
+            }
+            .to_encoded_expect(),
+        )
+        .send(
+            s2c::PlayPacket::PlayerTeleport {
+                x: 0.0.into(),
+                y: 40.0.into(),
+                z: 0.0.into(),
+                yaw: 0.0.into(),
+                pitch: 0.0.into(),
+                relative: s2c::TeleportRelative::new(),
+                id: 0.into(),
+            }
+            .to_encoded_expect(),
+        )
+        .send(
+            s2c::PlayPacket::ChunkData {
+                chunk_x: 0.into(),
+                chunk_z: 0.into(),
+                heightmaps: Nbt(heightmaps).to_encoded_expect(),
+                palettes: palettes.to_encoded_expect(),
+                block_entities: vec![].into(),
+                light: light.to_encoded_expect(),
+            }
+            .to_encoded_expect(),
+        );
     }
 }
 
@@ -169,10 +164,11 @@ fn chat_system(
         let packet = s2c::PlayPacket::ChatUnsignedMessage {
             content: text!(("{}", profile.username) (c[GRAY] " > ") ("{}", data.content)).into(),
             overlay: false.into(),
-        };
+        }
+        .to_encoded_expect();
 
         for (play, _) in players.iter() {
-            play.send_packet(&packet).unwrap();
+            play.send(packet.clone());
         }
     }
 }

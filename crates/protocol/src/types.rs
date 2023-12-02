@@ -5,6 +5,7 @@ pub mod block_entity;
 pub mod block_event;
 pub mod bool_option;
 pub mod command;
+pub mod encoded;
 pub mod entity_data;
 pub mod identifier;
 pub mod itemstack;
@@ -13,6 +14,7 @@ pub mod len_string;
 pub mod len_vec;
 pub mod nbt;
 pub mod net_chunk;
+pub mod player_info;
 pub mod position;
 pub mod primitive;
 pub mod provider;
@@ -37,6 +39,7 @@ pub use self::{
     block_entity::BlockEntity,
     block_event::BlockEvent,
     bool_option::BoolOption,
+    encoded::Encoded,
     entity_data::EntityDataValues,
     identifier::{Identifier, TagKey},
     itemstack::*,

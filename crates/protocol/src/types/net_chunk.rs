@@ -9,8 +9,6 @@ use valence_nbt::*;
 
 use crate::{chunk::SECTION_VOLUME_BLOCKS, error, types::*, ProtocolType};
 
-/// Cheap to clone!
-#[derive(Clone)]
 pub struct ColumnHeightmaps {
     pub world_surface: Vec<i64>,
     pub motion_blocking: Vec<i64>,
@@ -47,8 +45,6 @@ impl fmt::Debug for ColumnHeightmaps {
     }
 }
 
-/// Cheap to clone!
-#[derive(Clone)]
 pub enum Paletted {
     SingleValue(VarInt<i32>),
     Lut {
@@ -133,16 +129,14 @@ impl fmt::Debug for Paletted {
     }
 }
 
-/// Cheap to clone!
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 pub struct FullPalettes {
     pub non_air_blocks: Primitive<i16>,
     pub blockstates: Paletted,
     pub biomes: Paletted,
 }
 
-/// Cheap to clone!
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ColumnPalettes<P = FullPalettes>(pub Vec<P>);
 
 impl<P: ProtocolType> ProtocolType for ColumnPalettes<P> {
@@ -167,8 +161,7 @@ impl<P: ProtocolType> ProtocolType for ColumnPalettes<P> {
     }
 }
 
-/// Cheap to clone!
-#[derive(Clone, ProtocolType)]
+#[derive(ProtocolType)]
 pub struct SectionLight(pub VarInt<i32>, pub [u8; SECTION_VOLUME_BLOCKS / 2]);
 
 impl fmt::Debug for SectionLight {
@@ -177,8 +170,7 @@ impl fmt::Debug for SectionLight {
     }
 }
 
-/// Cheap to clone!
-#[derive(Clone, ProtocolType)]
+#[derive(ProtocolType)]
 pub struct ColumnLight {
     pub sky_light_mask: BitVec<u64>,
     pub block_light_mask: BitVec<u64>,

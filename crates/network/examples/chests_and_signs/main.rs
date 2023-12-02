@@ -4,7 +4,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use rjacraft_macro::*;
 use rjacraft_network::*;
-use rjacraft_protocol::{chunk, packets::s2c, types::*};
+use rjacraft_protocol::{chunk, packets::s2c, types::*, ProtocolType};
 
 mod generator;
 
@@ -12,33 +12,33 @@ const CHEST_SIZE: usize = 3 * 9;
 
 pub struct Chest {
     users: u8,
-    items: [ItemStackProto; CHEST_SIZE],
+    items: [Option<ItemStack<i32>>; CHEST_SIZE],
 }
 
 #[derive(Resource)]
-pub struct Chests(HashMap<BlockPos, Chest>);
+pub struct Chests(HashMap<(i32, i16, i32), Chest>);
 
 #[derive(Component)]
-pub struct ChestWindowUp(BlockPos);
+pub struct ChestWindowUp((i32, i16, i32));
 
 #[derive(Component)]
 struct WindowUp {
     sync_id: u8,
     state_id: i32,
-    carried_item: ItemStackProto,
+    carried_item: Option<ItemStack<i32>>,
 }
 
-fn create_chests() -> HashMap<BlockPos, Chest> {
+fn create_chests() -> HashMap<(i32, i16, i32), Chest> {
     let mut result = HashMap::new();
 
     for x in 0..16 {
         for z in 0..16 {
             if x % 2 == 0 && z % 2 == 0 {
                 result.insert(
-                    BlockPos::new().with_x(x).with_y(68).with_z(z),
+                    (x, 68, z),
                     Chest {
                         users: 0,
-                        items: array::from_fn(|_| ItemStackProto::None),
+                        items: array::from_fn(|_| None),
                     },
                 );
             }
@@ -81,28 +81,7 @@ fn main() {
             ),
         )
         .insert_resource(Registries(prebuilt_registries::simple()))
-        .insert_resource(Tags(vec![
-            s2c::TagType {
-                name: id!("block"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("entity_type"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("fluid"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("game_event"),
-                tags: vec![].into(),
-            },
-            s2c::TagType {
-                name: id!("item"),
-                tags: vec![].into(),
-            },
-        ]))
+        .insert_resource(Tags(prebuilt_registries::clean_tags()))
         .insert_resource(Chests(create_chests()))
         .run();
 }
@@ -125,8 +104,14 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
     }
 }
 
-fn auth_system(In((_, username, uuid)): In<(Entity, String, Uuid)>) -> AuthOutcome {
-    AuthOutcome::Success(username, uuid, vec![])
+fn auth_system(In((_, username, uuid)): In<(Entity, UsernameString, Uuid)>) -> AuthOutcome {
+    AuthOutcome::Success(
+        uuid,
+        player_info::Profile {
+            username,
+            properties: vec![].into(),
+        },
+    )
 }
 
 fn brand_system(_peer: In<Entity>) -> Option<BrandString> {
@@ -139,65 +124,77 @@ fn init_play_system(chests: Res<Chests>, players: Query<(Entity, &Play), Added<P
     for (entity, play) in players.iter() {
         let (heightmaps, palettes, light) = chunk::to_network(&generator::generate_blocks());
 
-        play.send_packet(&s2c::PlayPacket::Login {
-            entity_id: Primitive(entity.index() as i32),
-            is_hardcore: false.into(),
-            dimensions: vec![id!["overworld"]].into(),
-            max_players: 20.into(),
-            load_distance: 8.into(),
-            simulation_distance: 8.into(),
-            reduced_debug_info: false.into(),
-            enable_respawn_screen: false.into(),
-            dimension_type: id!("overworld"),
-            dimension_name: id!("overworld"),
-            hashed_seed: 0.into(),
-            gamemode: s2c::GameMode::Creative,
-            previous_gamemode: s2c::PreviousGameMode::None,
-            is_debug: false.into(),
-            is_flat: false.into(),
-            died: None.into(),
-            portal_cooldown: 0.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::PlayerAbilities {
-            flags: s2c::PlayerAbilities::new()
-                .with_flying(true)
-                .with_can_fly(true),
-            flying_speed: 0.05.into(),
-            fov_modifier: 0.1.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::WorldRespawn {
-            position: BlockPos::new().with_x(0).with_y(0).with_z(0),
-            pitch: 0.0.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::PlayerTeleport {
-            x: 7.5.into(),
-            y: 70.0.into(),
-            z: 0.0.into(),
-            yaw: 0.0.into(),
-            pitch: 30.0.into(),
-            relative: s2c::TeleportRelative::new(),
-            id: 0.into(),
-        })
-        .unwrap()
-        .send_packet(&s2c::PlayPacket::ChunkData {
-            chunk_x: 0.into(),
-            chunk_z: 0.into(),
-            heightmaps: Nbt(heightmaps),
-            palettes,
-            block_entities: generator::generate_block_entities(&chests).into(),
-            light,
-        })
-        .unwrap();
+        play.send(
+            s2c::PlayPacket::Login {
+                entity_id: Primitive(entity.index() as i32),
+                is_hardcore: false.into(),
+                dimensions: vec![id!["overworld"]].into(),
+                max_players: 20.into(),
+                load_distance: 8.into(),
+                simulation_distance: 8.into(),
+                reduced_debug_info: false.into(),
+                enable_respawn_screen: false.into(),
+                dimension_type: id!("overworld"),
+                dimension_name: id!("overworld"),
+                hashed_seed: 0.into(),
+                gamemode: s2c::GameMode::Creative,
+                previous_gamemode: s2c::PreviousGameMode::None,
+                is_debug: false.into(),
+                is_flat: false.into(),
+                died: None.into(),
+                portal_cooldown: 0.into(),
+            }
+            .to_encoded_expect(),
+        )
+        .send(
+            s2c::PlayPacket::PlayerAbilities {
+                flags: s2c::PlayerAbilities::new()
+                    .with_flying(true)
+                    .with_can_fly(true),
+                flying_speed: 0.05.into(),
+                fov_modifier: 0.1.into(),
+            }
+            .to_encoded_expect(),
+        )
+        .send(
+            s2c::PlayPacket::WorldRespawn {
+                position: BlockPos::new().with_x(0).with_y(0).with_z(0),
+                pitch: 0.0.into(),
+            }
+            .to_encoded_expect(),
+        )
+        .send(
+            s2c::PlayPacket::PlayerTeleport {
+                x: 7.5.into(),
+                y: 70.0.into(),
+                z: 0.0.into(),
+                yaw: 0.0.into(),
+                pitch: 30.0.into(),
+                relative: s2c::TeleportRelative::new(),
+                id: 0.into(),
+            }
+            .to_encoded_expect(),
+        )
+        .send(
+            s2c::PlayPacket::ChunkData {
+                chunk_x: 0.into(),
+                chunk_z: 0.into(),
+                heightmaps: Nbt(heightmaps).to_encoded_expect(),
+                palettes: palettes.to_encoded_expect(),
+                block_entities: generator::generate_block_entities(&chests).into(),
+                light: light.to_encoded_expect(),
+            }
+            .to_encoded_expect(),
+        );
 
-        for (position, chest) in &chests.0 {
-            play.send_packet(&s2c::PlayPacket::ChunkBlockEvent {
-                position: *position,
-                event: BlockEvent::ChestUsers(chest.users),
-            })
-            .unwrap();
+        for (&(x, y, z), chest) in &chests.0 {
+            play.send(
+                s2c::PlayPacket::ChunkBlockEvent {
+                    position: BlockPos::new().with_x(x).with_y(y).with_z(z),
+                    event: BlockEvent::ChestUsers(chest.users),
+                }
+                .to_encoded_expect(),
+            );
         }
     }
 }
@@ -212,58 +209,75 @@ fn open_system(
         let play = players.get(*entity).unwrap();
 
         if let packet::Interact::Block {
-            block_pos: chest_pos,
+            block_pos: chest_pos_proto,
             ..
         } = data
         {
-            if let Some(chest) = chests.0.get_mut(chest_pos) {
+            let chest_pos @ (x, y, z) = (
+                chest_pos_proto.x(),
+                chest_pos_proto.y(),
+                chest_pos_proto.z(),
+            );
+
+            if let Some(chest) = chests.0.get_mut(&(x, y, z)) {
                 let sync_id = 1;
                 let state_id = 0;
                 chest.users += 1;
 
-                play.send_packet(&s2c::PlayPacket::ContainerOpen {
-                    sync_id: VarInt(sync_id as i32),
-                    kind: VarInt(MENU_GENERIC_9X3 as i32),
-                    title: text!("{chest_pos:?}").into(),
-                })
-                .unwrap()
-                .send_packet(&s2c::PlayPacket::ContainerSlots {
-                    sync_id: sync_id.into(),
-                    state_id: state_id.into(),
-                    slots: Vec::from(chest.items.clone()).into(),
-                    carried_item: ItemStackProto::None,
-                })
-                .unwrap();
+                play.send(
+                    s2c::PlayPacket::ContainerOpen {
+                        sync_id: VarInt(sync_id as i32),
+                        kind: VarInt(MENU_GENERIC_9X3 as i32),
+                        title: text!("{chest_pos:?}").into(),
+                    }
+                    .to_encoded_expect(),
+                )
+                .send(
+                    s2c::PlayPacket::ContainerSlots {
+                        sync_id: sync_id.into(),
+                        state_id: state_id.into(),
+                        slots: Vec::from(chest.items.clone())
+                            .into_iter()
+                            .map(|x| x.into())
+                            .collect(),
+                        carried_item: BoolOption(None),
+                    }
+                    .to_encoded_expect(),
+                );
 
                 for play_other in players.iter() {
                     play_other
-                        .send_packet(&s2c::PlayPacket::ChunkBlockEvent {
-                            position: *chest_pos,
-                            event: BlockEvent::ChestUsers(chest.users),
-                        })
-                        .unwrap()
-                        .send_packet(&s2c::PlayPacket::SoundPositioned {
-                            id: s2c::SoundId::Identifier {
-                                id: id!("block.chest.open"),
-                                range: None,
-                            },
-                            category: s2c::SoundCategory::Block,
-                            x: Primitive(chest_pos.x() * 8),
-                            y: Primitive(chest_pos.y() as i32 * 8),
-                            z: Primitive(chest_pos.z() * 8),
-                            volume: 1.0.into(),
-                            pitch: 1.0.into(),
-                            seed: 0.into(),
-                        })
-                        .unwrap();
+                        .send(
+                            s2c::PlayPacket::ChunkBlockEvent {
+                                position: *chest_pos_proto,
+                                event: BlockEvent::ChestUsers(chest.users),
+                            }
+                            .to_encoded_expect(),
+                        )
+                        .send(
+                            s2c::PlayPacket::SoundPositioned {
+                                id: s2c::SoundId::Identifier {
+                                    id: id!("block.chest.open"),
+                                    range: None,
+                                },
+                                category: s2c::SoundCategory::Block,
+                                x: Primitive(x * 8),
+                                y: Primitive(y as i32 * 8),
+                                z: Primitive(z * 8),
+                                volume: 1.0.into(),
+                                pitch: 1.0.into(),
+                                seed: 0.into(),
+                            }
+                            .to_encoded_expect(),
+                        );
                 }
 
                 commands.entity(*entity).insert((
-                    ChestWindowUp(*chest_pos),
+                    ChestWindowUp(chest_pos),
                     WindowUp {
                         sync_id,
                         state_id,
-                        carried_item: ItemStackProto::None,
+                        carried_item: None,
                     },
                 ));
             }
@@ -293,22 +307,21 @@ fn window_input_system(
                     window.state_id += 1;
                     window.carried_item = carried_item.clone();
 
-                    for (slot, stack) in new_slots {
-                        let slot = slot.0 as usize;
-
-                        if slot < CHEST_SIZE {
-                            chest.items[slot] = stack.clone();
+                    for &(slot, ref stack) in new_slots {
+                        if (slot as usize) < CHEST_SIZE {
+                            chest.items[slot as usize] = stack.clone();
 
                             for play_other in players.iter() {
-                                play_other
-                                    .send_packet(&s2c::PlayPacket::ChunkBlockEntity {
+                                play_other.send(
+                                    s2c::PlayPacket::ChunkBlockEntity {
                                         position: BlockPos::new()
-                                            .with_x(chest_pos.x())
-                                            .with_y(chest_pos.y() + 1)
-                                            .with_z(chest_pos.z()),
+                                            .with_x(chest_pos.0)
+                                            .with_y(chest_pos.1 + 1)
+                                            .with_z(chest_pos.2),
                                         block_entity: generator::generate_sign(&chest.items),
-                                    })
-                                    .unwrap();
+                                    }
+                                    .to_encoded_expect(),
+                                );
                             }
                         }
                     }
@@ -317,14 +330,15 @@ fn window_input_system(
                         players_window.iter()
                     {
                         if chest_pos_other == chest_pos {
-                            play_other
-                                .send_packet(&s2c::PlayPacket::ContainerSlots {
+                            play_other.send(
+                                s2c::PlayPacket::ContainerSlots {
                                     sync_id: window_other.sync_id.into(),
                                     state_id: window_other.state_id.into(),
                                     slots: Vec::from(chest.items.clone()).into(),
-                                    carried_item: window_other.carried_item.clone(),
-                                })
-                                .unwrap();
+                                    carried_item: window_other.carried_item.clone().into(),
+                                }
+                                .to_encoded_expect(),
+                            );
                         }
                     }
                 }
@@ -332,25 +346,32 @@ fn window_input_system(
                     chest.users -= 1;
                     for play_other in players.iter() {
                         play_other
-                            .send_packet(&s2c::PlayPacket::ChunkBlockEvent {
-                                position: chest_pos,
-                                event: BlockEvent::ChestUsers(chest.users),
-                            })
-                            .unwrap()
-                            .send_packet(&s2c::PlayPacket::SoundPositioned {
-                                id: s2c::SoundId::Identifier {
-                                    id: id!("block.chest.close"),
-                                    range: None,
-                                },
-                                category: s2c::SoundCategory::Block,
-                                x: Primitive(chest_pos.x() * 8),
-                                y: Primitive(chest_pos.y() as i32 * 8),
-                                z: Primitive(chest_pos.z() * 8),
-                                volume: 1.0.into(),
-                                pitch: 1.0.into(),
-                                seed: 0.into(),
-                            })
-                            .unwrap();
+                            .send(
+                                s2c::PlayPacket::ChunkBlockEvent {
+                                    position: BlockPos::new()
+                                        .with_x(chest_pos.0)
+                                        .with_y(chest_pos.1)
+                                        .with_z(chest_pos.2),
+                                    event: BlockEvent::ChestUsers(chest.users),
+                                }
+                                .to_encoded_expect(),
+                            )
+                            .send(
+                                s2c::PlayPacket::SoundPositioned {
+                                    id: s2c::SoundId::Identifier {
+                                        id: id!("block.chest.close"),
+                                        range: None,
+                                    },
+                                    category: s2c::SoundCategory::Block,
+                                    x: Primitive(chest_pos.0 * 8),
+                                    y: Primitive(chest_pos.1 as i32 * 8),
+                                    z: Primitive(chest_pos.2 * 8),
+                                    volume: 1.0.into(),
+                                    pitch: 1.0.into(),
+                                    seed: 0.into(),
+                                }
+                                .to_encoded_expect(),
+                            );
                     }
 
                     commands

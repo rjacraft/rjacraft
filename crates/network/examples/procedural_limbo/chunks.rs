@@ -2,7 +2,7 @@ use std::{collections::HashMap, ops::Range};
 
 use bevy_ecs::prelude::*;
 use rjacraft_network::*;
-use rjacraft_protocol::{chunk, packets::s2c, types::*};
+use rjacraft_protocol::{chunk, packets::s2c, types::*, ProtocolType};
 use tracing::*;
 
 use crate::{components, generator};
@@ -64,9 +64,9 @@ pub struct ChunkCache {
     net_chunks: HashMap<
         (i32, i32),
         (
-            net_chunk::ColumnHeightmaps,
-            net_chunk::ColumnPalettes,
-            net_chunk::ColumnLight,
+            Encoded<Nbt<net_chunk::ColumnHeightmaps>>,
+            Encoded<net_chunk::ColumnPalettes>,
+            Encoded<net_chunk::ColumnLight>,
         ),
     >,
 }
@@ -76,18 +76,26 @@ impl ChunkCache {
         let (heightmaps, palettes, light) = self.net_chunks.entry((x, z)).or_insert_with(|| {
             self.generator_output = Default::default();
             generator::generate(&mut self.generator_output, x, z);
-            chunk::to_network(&self.generator_output)
+            let (h, p, l) = chunk::to_network(&self.generator_output);
+
+            (
+                Nbt(h).to_encoded_expect(),
+                p.to_encoded_expect(),
+                l.to_encoded_expect(),
+            )
         });
 
-        play.send_packet(&s2c::PlayPacket::ChunkData {
-            chunk_x: x.into(),
-            chunk_z: z.into(),
-            heightmaps: Nbt(heightmaps.clone()),
-            palettes: palettes.clone(),
-            block_entities: vec![].into(),
-            light: light.clone(),
-        })
-        .unwrap();
+        play.send(
+            s2c::PlayPacket::ChunkData {
+                chunk_x: x.into(),
+                chunk_z: z.into(),
+                heightmaps: heightmaps.clone(),
+                palettes: palettes.clone(),
+                block_entities: vec![].into(),
+                light: light.clone(),
+            }
+            .to_encoded_expect(),
+        );
     }
 }
 
@@ -126,19 +134,23 @@ pub fn chunk_send_system(
                 filter_old.as_ref()
             );
 
-            play.send_packet(&s2c::PlayPacket::ChunkCenter {
-                chunk_x: center_x.into(),
-                chunk_z: center_z.into(),
-            })
-            .unwrap();
+            play.send(
+                s2c::PlayPacket::ChunkCenter {
+                    chunk_x: center_x.into(),
+                    chunk_z: center_z.into(),
+                }
+                .to_encoded_expect(),
+            );
 
             for (x, z) in filter_old.iter() {
                 if !filter_new.contains(x, z) {
-                    play.send_packet(&s2c::PlayPacket::ChunkUnload {
-                        chunk_z: z.into(),
-                        chunk_x: x.into(),
-                    })
-                    .unwrap();
+                    play.send(
+                        s2c::PlayPacket::ChunkUnload {
+                            chunk_z: z.into(),
+                            chunk_x: x.into(),
+                        }
+                        .to_encoded_expect(),
+                    );
                 }
             }
 

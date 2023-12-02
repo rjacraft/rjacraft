@@ -4,7 +4,7 @@ use bytes::{Buf, BufMut};
 
 use crate::{error, ProtocolType};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BoolOption<T>(pub Option<T>);
 
 #[derive(Debug, thiserror::Error, from_never::FromNever)]

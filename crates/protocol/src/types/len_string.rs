@@ -1,5 +1,6 @@
 //! A length-prefixed string with a length limit (prefixed by a [`super::VarInt`])
 
+use core::fmt;
 use std::string;
 
 use bytes::{Buf, BufMut};
@@ -85,5 +86,11 @@ impl<const MAX_SIZE: usize> From<LenString<MAX_SIZE>> for String {
 impl<const MAX_SIZE: usize> AsRef<str> for LenString<MAX_SIZE> {
     fn as_ref(&self) -> &str {
         self.0.as_ref()
+    }
+}
+
+impl<const MAX_SIZE: usize> fmt::Display for LenString<MAX_SIZE> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
     }
 }

@@ -141,4 +141,5 @@ pub enum Text {
     },
 }
 
-pub type JsonText = super::JsonString<{ 1 << 18 }, Text>;
+pub const JSON_TEXT_LEN: usize = 1 << 18;
+pub type JsonText = super::JsonString<JSON_TEXT_LEN, Text>;

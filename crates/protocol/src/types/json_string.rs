@@ -5,8 +5,8 @@ use serde::*;
 
 use crate::{error, ProtocolType};
 
-/// `MAX_SIZE` will not be checked before trying to encode the packet.
-#[derive(Debug, Clone)]
+/// `MAX_SIZE` will only be checked before trying to encode the packet.
+#[derive(Debug)]
 pub struct JsonString<const MAX_SIZE: usize, T>(pub T);
 
 #[derive(Debug, thiserror::Error)]
@@ -43,27 +43,6 @@ impl<const MAX_SIZE: usize, T: Serialize + de::DeserializeOwned> ProtocolType
         super::LenString::<MAX_SIZE>::try_from(serialized)?.encode(buffer)?;
 
         Ok(())
-    }
-}
-
-impl<const MAX_SIZE: usize, T: Serialize> Serialize for JsonString<MAX_SIZE, T> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serde_json::to_string(&self.0)
-            .map_err(|e| ser::Error::custom(e.to_string()))?
-            .serialize(serializer)
-    }
-}
-
-impl<'de, const MAX_SIZE: usize, T: Deserialize<'de>> Deserialize<'de> for JsonString<MAX_SIZE, T> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        serde_json::from_str(<&'de str>::deserialize(deserializer)?)
-            .map_err(|e| de::Error::custom(e.to_string()))
     }
 }
 

@@ -1,7 +1,7 @@
 use super::VarInt;
 use crate::{error, ProtocolType};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum BlockEvent {
     ChestUsers(u8),
 }

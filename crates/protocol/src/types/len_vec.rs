@@ -10,7 +10,7 @@ use crate::{error, ProtocolType};
 ///
 /// - One for anything that's [`ProtocolType`] and can of be any length
 /// - One just for bytes (faster than decoding [`super::Primitive<u8>`])
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct LenVec<T>(pub Vec<T>);
 
 #[derive(Debug, thiserror::Error, from_never::FromNever)]
@@ -109,5 +109,11 @@ impl From<Vec<u8>> for LenVec<u8> {
 impl From<LenVec<u8>> for Vec<u8> {
     fn from(value: LenVec<u8>) -> Self {
         value.0
+    }
+}
+
+impl<A> FromIterator<A> for LenVec<A> {
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self {
+        Self(Vec::from_iter(iter))
     }
 }

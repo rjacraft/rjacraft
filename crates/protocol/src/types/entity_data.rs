@@ -6,7 +6,7 @@ use rjacraft_macro::ProtocolType;
 use super::*;
 use crate::{error, ProtocolType};
 
-#[derive(Debug, Clone, Copy, PartialEq, ProtocolType)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum Pose {
     #[variant(0)]
@@ -44,7 +44,7 @@ pub enum Pose {
 macro_rules! property_types {
     { $($id:literal => $type:ty ,)* } => {
         paste::paste! {
-            #[derive(Debug, Clone, ProtocolType)]
+            #[derive(Debug, ProtocolType)]
             #[variant(VarInt<i32>)]
             pub enum Property {
                 $( #[variant($id)] [<V $id>]($type), )*
@@ -71,7 +71,7 @@ property_types! {
     4 => LenString<{ 1 << 15 }>,
     5 => JsonText,
     6 => BoolOption<JsonText>,
-    7 => ItemStackProto,
+    7 => BoolOption<ItemStackProto>,
     8 => Primitive<bool>,
     9 => (Primitive<f32>, Primitive<f32>, Primitive<f32>),
     10 => BlockPos,
@@ -94,7 +94,7 @@ property_types! {
     // 27 vec4f
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct EntityDataValues(pub Vec<(u8, Property)>);
 
 #[derive(Debug, thiserror::Error, from_never::FromNever)]

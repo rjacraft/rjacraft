@@ -48,7 +48,7 @@ pub enum EncodeError<E> {
     Compound(#[from] valence_nbt::binary::Error),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 
 pub struct Nbt<T>(pub T);
 

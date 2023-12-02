@@ -65,7 +65,7 @@ fn encode_paletted<const SIDE: usize>(
     }
 
     let paletted = match usize::ilog2(palette_array.len()) {
-        0 => net_chunk::Paletted::SingleValue(palette_array.last().unwrap().clone()),
+        0 => net_chunk::Paletted::SingleValue(palette_array.pop().unwrap()),
         log if log <= bits_max_lut => {
             let bits_per_value = log.max(bits_min_lut);
             let values_per_long = u64::BITS / bits_per_value;

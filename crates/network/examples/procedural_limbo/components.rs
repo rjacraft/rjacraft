@@ -1,6 +1,6 @@
 use bevy_ecs::prelude::*;
 use rjacraft_network::{packet::Movement, *};
-use rjacraft_protocol::packets::s2c;
+use rjacraft_protocol::{packets::s2c, ProtocolType};
 
 #[derive(Component)]
 pub struct Position {
@@ -22,16 +22,18 @@ pub fn movement_system(
 
 pub fn send_position_system(query: Query<(&Play, &Position), Added<Position>>) {
     for (play, position) in query.iter() {
-        play.send_packet(&s2c::PlayPacket::PlayerTeleport {
-            x: position.x.into(),
-            y: position.y.into(),
-            z: position.z.into(),
-            yaw: 180.0.into(),
-            pitch: 0.0.into(),
-            relative: s2c::TeleportRelative::new(),
-            id: 0.into(),
-        })
-        .unwrap();
+        play.send(
+            s2c::PlayPacket::PlayerTeleport {
+                x: position.x.into(),
+                y: position.y.into(),
+                z: position.z.into(),
+                yaw: 180.0.into(),
+                pitch: 0.0.into(),
+                relative: s2c::TeleportRelative::new(),
+                id: 0.into(),
+            }
+            .to_encoded_expect(),
+        );
     }
 }
 

@@ -1,6 +1,6 @@
 use bevy_ecs::{event, prelude::*, system};
 use rjacraft_macro::*;
-use rjacraft_protocol::{packets::*, types, ProtocolType};
+use rjacraft_protocol::{packets::*, ProtocolType};
 use tracing::*;
 
 use crate::{components::*, events::*, network::*};
@@ -33,8 +33,11 @@ pub fn n2b_system<SStatus, MStatus, SAuth, MAuth, SBrand, MBrand>(
 where
     SStatus: SystemParamFunction<MStatus, In = Entity, Out = rjacraft_protocol::types::ServerStatus>
         + Clone,
-    SAuth: SystemParamFunction<MAuth, In = (Entity, String, uuid::Uuid), Out = crate::AuthOutcome>
-        + Clone,
+    SAuth: SystemParamFunction<
+            MAuth,
+            In = (Entity, crate::UsernameString, uuid::Uuid),
+            Out = crate::AuthOutcome,
+        > + Clone,
     SBrand: SystemParamFunction<MBrand, In = Entity, Out = Option<crate::BrandString>> + Clone,
 {
     move |world, mut commands, query, mut pset| {
@@ -63,15 +66,12 @@ where
                             .run((entity, username_in, uuid_in), pset.p1());
 
                         match outcome {
-                            crate::AuthOutcome::Success(username_out, uuid_out, props_out) => {
+                            crate::AuthOutcome::Success(uuid_out, profile_out) => {
                                 let _ = peer.b2n.send(B2nEvent::LoginSucceeded);
                                 let _ = peer.b2n.send(B2nEvent::LoginPacket(
                                     s2c::LoginPacket::Success {
-                                        username: username_out
-                                            .try_into()
-                                            .expect("authenticated username is too long"),
                                         uuid: uuid_out,
-                                        properties: props_out.into(),
+                                        profile: profile_out,
                                     },
                                 ));
                             }
@@ -87,30 +87,27 @@ where
                     }
                     N2bEvent::NeedConfiguration => {
                         let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
-                            s2c::ConfigurationPacket::RegistryData(types::Nbt(
+                            s2c::ConfigurationPacket::RegistryData(
                                 world.resource::<crate::Registries>().0.clone(),
-                            )),
+                            ),
                         ));
 
                         let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
                             s2c::ConfigurationPacket::UpdateTags(
-                                world.resource::<crate::Tags>().0.clone().into(),
+                                world.resource::<crate::Tags>().0.clone(),
                             ),
                         ));
 
                         if let Some(brand_string) = systems.brand.run(entity, pset.p2()) {
-                            let _ = peer
-                                .b2n
-                                .send(B2nEvent::ConfigurationPacket(
-                                    s2c::ConfigurationPacket::PluginMessage {
-                                        channel: id!("brand"),
-                                        data: crate::BrandString::encode_owned(&brand_string)
-                                            .unwrap()
-                                            .try_into()
-                                            .unwrap(),
-                                    },
-                                ))
-                                .unwrap();
+                            let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
+                                s2c::ConfigurationPacket::PluginMessage {
+                                    channel: id!("brand"),
+                                    data: crate::BrandString::to_bytes(&brand_string)
+                                        .expect("failed to encode brand string")
+                                        .try_into()
+                                        .expect("brand string too long"),
+                                },
+                            ));
                         }
 
                         let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(

@@ -6,7 +6,7 @@ use crate::{error, ProtocolType};
 
 /// Put this as your last field or you'll always get EOFs.
 /// Guaranteed to be no larger than `MAX_SIZE`.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct RemainingBytes<const MAX_SIZE: usize>(pub(crate) bytes::Bytes);
 
 impl<const MAX_SIZE: usize> ProtocolType for RemainingBytes<MAX_SIZE> {

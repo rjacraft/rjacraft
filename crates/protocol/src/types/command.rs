@@ -30,7 +30,7 @@ struct BoundsFields {
     __: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Bounds<T> {
     pub min: Option<T>,
     pub max: Option<T>,
@@ -63,7 +63,7 @@ impl<T: ProtocolType> ProtocolType for Bounds<T> {
     }
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum StringType {
     #[variant(0)]
@@ -87,7 +87,7 @@ pub struct EntityFlags {
     __: bool,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum Parser {
     #[variant(0)]
@@ -116,7 +116,7 @@ pub enum Parser {
     Vec2,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Node {
     Root {
         children: Vec<u32>,
@@ -137,9 +137,17 @@ pub enum Node {
     },
 }
 
+#[derive(Debug, thiserror::Error, from_never::FromNever)]
+pub enum NodeEncodeError {
+    #[error("Name is too long")]
+    Name(#[source] error::Overrun<{ 1 << 15 }>),
+    #[error("Failed to encode parser")]
+    Parser(#[from] ParserEncodeError),
+}
+
 impl ProtocolType for Node {
     type DecodeError = error::Eof;
-    type EncodeError = error::Infallible;
+    type EncodeError = NodeEncodeError;
 
     fn decode(_buffer: &mut impl bytes::Buf) -> Result<Self, Self::DecodeError> {
         todo!()
@@ -176,7 +184,7 @@ impl ProtocolType for Node {
                 }
 
                 LenString::<{ 1 << 15 }>::try_from(name.clone())
-                    .expect("command name too long")
+                    .map_err(NodeEncodeError::Name)?
                     .encode(buffer)?;
             }
             Self::Argument {
@@ -204,10 +212,9 @@ impl ProtocolType for Node {
                 }
 
                 LenString::<{ 1 << 15 }>::try_from(name.clone())
-                    .expect("command name too long")
+                    .map_err(NodeEncodeError::Name)?
                     .encode(buffer)?;
-
-                parser.encode(buffer).unwrap();
+                parser.encode(buffer)?;
 
                 if let Some(id) = suggestions {
                     id.encode(buffer)?;

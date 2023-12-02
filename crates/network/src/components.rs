@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use bevy_ecs::prelude::*;
-use rjacraft_protocol::{packets::s2c, ProtocolType};
+use rjacraft_protocol::{packets::s2c, types};
 use tracing::*;
 
 use crate::network::*;
@@ -26,25 +26,21 @@ pub struct Play {
 }
 
 impl Play {
-    pub fn send_packet(
-        &self,
-        packet: &s2c::PlayPacket,
-    ) -> Result<&Self, s2c::PlayPacketEncodeError> {
+    pub fn send(&self, packet: types::Encoded<s2c::PlayPacket>) -> &Self {
         trace!("{packet:?}");
 
-        let _ = self.tx.send(packet.encode_owned()?);
+        self.tx
+            .send(packet.data())
+            .expect("failed to put packet on queue");
 
-        Ok(self)
+        self
     }
 
-    pub fn send_packet_option(
-        &self,
-        packet: Option<&s2c::PlayPacket>,
-    ) -> Result<&Self, s2c::PlayPacketEncodeError> {
+    pub fn send_option(&self, packet: Option<types::Encoded<s2c::PlayPacket>>) -> &Self {
         if let Some(x) = packet {
-            self.send_packet(x)?;
+            self.send(x);
         }
 
-        Ok(self)
+        self
     }
 }

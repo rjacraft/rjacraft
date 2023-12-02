@@ -1,10 +1,11 @@
 use rjacraft_macro::ProtocolType;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use super::*;
 use crate::ProtocolType;
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Dye {
     White,
@@ -25,11 +26,13 @@ pub enum Dye {
     Black,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SignText {
     pub has_glowing_text: bool,
     pub color: Dye,
-    pub messages: Vec<JsonText>,
+    #[serde_as(as = "Vec<serde_with::json::JsonString>")]
+    pub messages: Vec<Text>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -43,7 +46,7 @@ pub struct Sign {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Chest {}
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum BlockEntity {
     #[variant(7)]

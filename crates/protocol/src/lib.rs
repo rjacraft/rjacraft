@@ -13,10 +13,16 @@ pub trait ProtocolType: Sized {
     fn decode(buffer: &mut impl bytes::Buf) -> Result<Self, Self::DecodeError>;
     fn encode(&self, buffer: &mut impl bytes::BufMut) -> Result<(), Self::EncodeError>;
 
-    fn encode_owned(&self) -> Result<bytes::Bytes, Self::EncodeError> {
-        let mut bytes = bytes::BytesMut::new();
-        self.encode(&mut bytes)?;
-        Ok(bytes.freeze())
+    fn to_encoded(&self) -> Result<types::Encoded<Self>, Self::EncodeError> {
+        types::Encoded::new(self)
+    }
+
+    fn to_encoded_expect(&self) -> types::Encoded<Self> {
+        types::Encoded::new(self).expect("error encoding packet")
+    }
+
+    fn to_bytes(&self) -> Result<bytes::Bytes, Self::EncodeError> {
+        Ok(types::Encoded::new(self)?.data())
     }
 }
 

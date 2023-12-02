@@ -4,6 +4,7 @@ use rjacraft_protocol::{
     entity_properties,
     packets::{c2s, s2c},
     types::*,
+    ProtocolType,
 };
 
 use crate::eid;
@@ -67,11 +68,12 @@ pub fn accept_input_system(
                         }
                         .into(),
                     )]),
-                };
+                }
+                .to_encoded_expect();
 
                 for (e_other, play_other) in others.iter() {
                     if *entity != e_other {
-                        play_other.send_packet(&packet).unwrap();
+                        play_other.send(packet.clone());
                     }
                 }
             }
@@ -82,11 +84,12 @@ pub fn accept_input_system(
                         c2s::HandRel::Main => s2c::EntityAnimation::SwingMainHand,
                         c2s::HandRel::Offhand => s2c::EntityAnimation::SwingOffhand,
                     },
-                };
+                }
+                .to_encoded_expect();
 
                 for (e_other, play_other) in others.iter() {
                     if *entity != e_other {
-                        play_other.send_packet(&packet).unwrap();
+                        play_other.send(packet.clone());
                     }
                 }
             }
@@ -134,58 +137,69 @@ pub fn broadcast_movement_system(
         let dpos = pos_to_proto_dpos(mov_new.pos, mov_old.0.pos);
 
         let whatever_packet = s2c::PlayPacket::EntityPosRotOng {
-            id: eid_in,
+            id: VarInt(eid_in),
             x: mov_new.pos.0.into(),
             y: mov_new.pos.1.into(),
             z: mov_new.pos.2.into(),
             yaw: angle_to_proto(mov_new.body_rot.1).into(),
             pitch: angle_to_proto(mov_new.body_rot.0).into(),
             on_ground: mov_new.ong.into(),
-        };
+        }
+        .to_encoded_expect();
 
         let body_packet = if mov_new.pos != mov_old.0.pos && mov_new.body_rot != mov_old.0.body_rot
         {
             if let Some((dx, dy, dz)) = dpos {
-                Some(s2c::PlayPacket::EntityDposRotOng {
-                    id: eid_in,
-                    dx: dx.into(),
-                    dy: dy.into(),
-                    dz: dz.into(),
-                    yaw: angle_to_proto(mov_new.body_rot.1).into(),
-                    pitch: angle_to_proto(mov_new.body_rot.0).into(),
-                    on_ground: mov_new.ong.into(),
-                })
+                Some(
+                    s2c::PlayPacket::EntityDposRotOng {
+                        id: VarInt(eid_in),
+                        dx: dx.into(),
+                        dy: dy.into(),
+                        dz: dz.into(),
+                        yaw: angle_to_proto(mov_new.body_rot.1).into(),
+                        pitch: angle_to_proto(mov_new.body_rot.0).into(),
+                        on_ground: mov_new.ong.into(),
+                    }
+                    .to_encoded_expect(),
+                )
             } else {
                 Some(whatever_packet)
             }
         } else if mov_new.pos != mov_old.0.pos {
             if let Some((dx, dy, dz)) = dpos {
-                Some(s2c::PlayPacket::EntityDposOng {
-                    id: eid_in,
-                    dx: dx.into(),
-                    dy: dy.into(),
-                    dz: dz.into(),
-                    on_ground: mov_new.ong.into(),
-                })
+                Some(
+                    s2c::PlayPacket::EntityDposOng {
+                        id: VarInt(eid_in),
+                        dx: dx.into(),
+                        dy: dy.into(),
+                        dz: dz.into(),
+                        on_ground: mov_new.ong.into(),
+                    }
+                    .to_encoded_expect(),
+                )
             } else {
                 Some(whatever_packet)
             }
         } else if mov_new.body_rot != mov_old.0.body_rot {
-            Some(s2c::PlayPacket::EntityRotOng {
-                id: eid_in,
-                yaw: angle_to_proto(mov_new.body_rot.1).into(),
-                pitch: angle_to_proto(mov_new.body_rot.0).into(),
-                on_ground: mov_new.ong.into(),
-            })
+            Some(
+                s2c::PlayPacket::EntityRotOng {
+                    id: VarInt(eid_in),
+                    yaw: angle_to_proto(mov_new.body_rot.1).into(),
+                    pitch: angle_to_proto(mov_new.body_rot.0).into(),
+                    on_ground: mov_new.ong.into(),
+                }
+                .to_encoded_expect(),
+            )
         } else {
             None
         };
 
         let head_packet = bool::then(mov_new.head_rot != mov_old.0.head_rot, || {
             s2c::PlayPacket::EntityHeadYaw {
-                id: eid_in,
+                id: VarInt(eid_in),
                 yaw: angle_to_proto(mov_new.body_rot.1).into(),
             }
+            .to_encoded_expect()
         });
 
         *mov_old = Old(*mov_new);
@@ -193,10 +207,8 @@ pub fn broadcast_movement_system(
         for (e_out, play_out) in others.iter() {
             if e_in != e_out {
                 play_out
-                    .send_packet_option(body_packet.as_ref())
-                    .unwrap()
-                    .send_packet_option(head_packet.as_ref())
-                    .unwrap();
+                    .send_option(body_packet.clone())
+                    .send_option(head_packet.clone());
             }
         }
     }
@@ -215,86 +227,99 @@ pub fn join_system(
             .entity(entity)
             .insert((Input { sneak: false }, Old(*movement)));
 
-        play.send_packet(&s2c::PlayPacket::PlayerTeleport {
-            x: movement.pos.0.into(),
-            y: movement.pos.1.into(),
-            z: movement.pos.2.into(),
-            yaw: movement.body_rot.1.into(),
-            pitch: movement.body_rot.0.into(),
-            relative: s2c::TeleportRelative::new(),
-            id: 0.into(),
-        })
-        .unwrap();
+        play.send(
+            s2c::PlayPacket::PlayerTeleport {
+                x: movement.pos.0.into(),
+                y: movement.pos.1.into(),
+                z: movement.pos.2.into(),
+                yaw: movement.body_rot.1.into(),
+                pitch: movement.body_rot.0.into(),
+                relative: s2c::TeleportRelative::new(),
+                id: 0.into(),
+            }
+            .to_encoded_expect(),
+        );
 
         for (entity_other, play_other, profile_other, movement_other) in others.iter() {
             let eid_other = eids.eid_of(&entity_other);
 
-            play_other
-                .send_packet(&s2c::PlayPacket::ServerPlayerInfo(s2c::PlayerInfoUpdates {
+            play_other.send(
+                s2c::PlayPacket::ServerPlayerInfo(player_info::Updates {
                     players: vec![profile.uuid],
-                    profile: Some(vec![s2c::PlayerProfile {
-                        username: profile.username.clone().try_into().unwrap(),
+                    profile: Some(vec![player_info::Profile {
+                        username: profile.username.clone(),
                         properties: vec![].into(),
                     }]),
                     gamemode: None,
                     listed: None,
                     ping: None,
                     nickname: None,
-                }))
-                .unwrap();
+                })
+                .to_encoded_expect(),
+            );
 
             if entity_other != entity {
                 play_other
-                    .send_packet(&s2c::PlayPacket::ServerPlayerInfo(s2c::PlayerInfoUpdates {
-                        players: vec![profile.uuid],
-                        profile: Some(vec![s2c::PlayerProfile {
-                            username: profile.username.clone().try_into().unwrap(),
+                    .send(
+                        s2c::PlayPacket::ServerPlayerInfo(player_info::Updates {
+                            players: vec![profile.uuid],
+                            profile: Some(vec![player_info::Profile {
+                                username: profile.username.clone(),
+                                properties: vec![].into(),
+                            }]),
+                            gamemode: None,
+                            listed: None,
+                            ping: None,
+                            nickname: None,
+                        })
+                        .to_encoded_expect(),
+                    )
+                    .send(
+                        s2c::PlayPacket::EntitySpawnPlayer {
+                            id: VarInt(eid),
+                            uuid: profile.uuid,
+                            x: movement.pos.0.into(),
+                            y: movement.pos.1.into(),
+                            z: movement.pos.2.into(),
+                            yaw: angle_to_proto(movement_other.body_rot.1).into(),
+                            pitch: angle_to_proto(movement_other.body_rot.0).into(),
+                        }
+                        .to_encoded_expect(),
+                    );
+
+                play.send(
+                    s2c::PlayPacket::ServerPlayerInfo(player_info::Updates {
+                        players: vec![profile_other.uuid],
+                        profile: Some(vec![player_info::Profile {
+                            username: profile_other.username.clone(),
                             properties: vec![].into(),
                         }]),
                         gamemode: None,
                         listed: None,
                         ping: None,
                         nickname: None,
-                    }))
-                    .unwrap()
-                    .send_packet(&s2c::PlayPacket::EntitySpawnPlayer {
-                        id: eid,
-                        uuid: profile.uuid,
-                        x: movement.pos.0.into(),
-                        y: movement.pos.1.into(),
-                        z: movement.pos.2.into(),
+                    })
+                    .to_encoded_expect(),
+                )
+                .send(
+                    s2c::PlayPacket::EntitySpawnPlayer {
+                        id: VarInt(eid_other),
+                        uuid: profile_other.uuid,
+                        x: movement_other.pos.0.into(),
+                        y: movement_other.pos.1.into(),
+                        z: movement_other.pos.2.into(),
                         yaw: angle_to_proto(movement_other.body_rot.1).into(),
                         pitch: angle_to_proto(movement_other.body_rot.0).into(),
-                    })
-                    .unwrap();
-
-                play.send_packet(&s2c::PlayPacket::ServerPlayerInfo(s2c::PlayerInfoUpdates {
-                    players: vec![profile_other.uuid],
-                    profile: Some(vec![s2c::PlayerProfile {
-                        username: profile_other.username.clone().try_into().unwrap(),
-                        properties: vec![].into(),
-                    }]),
-                    gamemode: None,
-                    listed: None,
-                    ping: None,
-                    nickname: None,
-                }))
-                .unwrap()
-                .send_packet(&s2c::PlayPacket::EntitySpawnPlayer {
-                    id: eid_other,
-                    uuid: profile_other.uuid,
-                    x: movement_other.pos.0.into(),
-                    y: movement_other.pos.1.into(),
-                    z: movement_other.pos.2.into(),
-                    yaw: angle_to_proto(movement_other.body_rot.1).into(),
-                    pitch: angle_to_proto(movement_other.body_rot.0).into(),
-                })
-                .unwrap()
-                .send_packet(&s2c::PlayPacket::EntityData {
-                    id: eid_other,
-                    values: vec![].into(),
-                })
-                .unwrap();
+                    }
+                    .to_encoded_expect(),
+                )
+                .send(
+                    s2c::PlayPacket::EntityData {
+                        id: VarInt(eid_other),
+                        values: vec![].into(),
+                    }
+                    .to_encoded_expect(),
+                );
             }
         }
     }
@@ -316,16 +341,14 @@ pub fn leave_system(
     }
 
     let uuid_packet = bool::then(!uuids.is_empty(), || {
-        s2c::PlayPacket::ServerPlayerRemove(uuids.into())
+        s2c::PlayPacket::ServerPlayerRemove(uuids.into()).to_encoded_expect()
     });
     let eid_packet = bool::then(!eids.is_empty(), || {
-        s2c::PlayPacket::EntityRemove(eids.into())
+        s2c::PlayPacket::EntityRemove(eids.into()).to_encoded_expect()
     });
 
     for (_, play) in players.iter() {
-        play.send_packet_option(uuid_packet.as_ref())
-            .unwrap()
-            .send_packet_option(eid_packet.as_ref())
-            .unwrap();
+        play.send_option(uuid_packet.clone())
+            .send_option(eid_packet.clone());
     }
 }

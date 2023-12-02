@@ -66,18 +66,18 @@ impl ConnectionState {
         match command {
             B2nEvent::Drop => Ok(Action::DropConnection),
             B2nEvent::Status(status) => {
-                s2c.send(s2c::StatusPacket::Response(status.into()).encode_owned()?)?;
+                s2c.send(s2c::StatusPacket::Response(status.into()).to_bytes()?)?;
                 Ok(Action::Continue)
             }
             B2nEvent::LoginSucceeded => {
                 Ok(Action::NewState(ConnectionState::Login { completed: true }))
             }
             B2nEvent::LoginPacket(packet) => {
-                s2c.send(packet.encode_owned()?)?;
+                s2c.send(packet.to_bytes()?)?;
                 Ok(Action::Continue)
             }
             B2nEvent::ConfigurationPacket(packet) => {
-                s2c.send(packet.encode_owned()?)?;
+                s2c.send(packet.to_bytes()?)?;
                 Ok(Action::Continue)
             }
         }
@@ -126,7 +126,7 @@ impl ConnectionState {
                                 s2c::LoginPacket::Disconnect {
                                     reason: JsonString(text!("Incompatible game version")),
                                 }
-                                .encode_owned()?,
+                                .to_bytes()?,
                             )?;
 
                             Err(Error::WrongVersion(protocol_version))?
@@ -139,7 +139,7 @@ impl ConnectionState {
 
                 match packet {
                     c2s::StatusPacket::Ping { payload } => {
-                        s2c.send(s2c::StatusPacket::Pong { payload }.encode_owned()?)?;
+                        s2c.send(s2c::StatusPacket::Pong { payload }.to_bytes()?)?;
                         return Ok(Action::DropConnection);
                     }
                     c2s::StatusPacket::Request => n2b.send(N2bEvent::NeedStatus)?,
@@ -152,7 +152,7 @@ impl ConnectionState {
 
                 match packet {
                     c2s::LoginPacket::LoginStart { username, uuid } => {
-                        n2b.send(N2bEvent::Authenticate(username.into(), uuid))?
+                        n2b.send(N2bEvent::Authenticate(username, uuid))?
                     }
                     c2s::LoginPacket::EncryptionResponse { .. } => todo!(),
                     c2s::LoginPacket::LoginPluginResponse { .. } => todo!(),
@@ -253,11 +253,15 @@ impl ConnectionState {
                         ..
                     } => n2b.send(N2bEvent::Window(packet::Window::ContainerClick {
                         sync_id: sync_id.into(),
-                        slot: slot,
+                        slot: slot.into(),
                         button: button.into(),
                         mode: mode.0 as u32,
-                        new_slots: new_slots.0,
-                        carried_item,
+                        new_slots: new_slots
+                            .0
+                            .into_iter()
+                            .map(|(n, s)| (n.into(), s.into()))
+                            .collect(),
+                        carried_item: carried_item.into(),
                     }))?,
                     c2s::PlayPacket::ContainerClose { sync_id } => {
                         n2b.send(N2bEvent::Window(packet::Window::ContainerClose {
@@ -404,7 +408,7 @@ impl ConnectionState {
                         }
                     }
                     c2s::PlayPacket::PlayerInventorySlot { slot, stack } => n2b.send(
-                        N2bEvent::Window(packet::Window::InventorySlot(slot.into(), stack)),
+                        N2bEvent::Window(packet::Window::InventorySlot(slot.into(), stack.into())),
                     )?,
                     c2s::PlayPacket::RecipeBookState { book, open, filter } => {
                         n2b.send(N2bEvent::Window(packet::Window::RecipeBook {
@@ -460,11 +464,11 @@ impl ConnectionState {
     ) -> Result<Action, Error> {
         match (command, self) {
             (keepalive::Message::Packet(id), ConnectionState::Configuration) => {
-                s2c.send(s2c::ConfigurationPacket::KeepAlive { id: id.into() }.encode_owned()?)?;
+                s2c.send(s2c::ConfigurationPacket::KeepAlive { id: id.into() }.to_bytes()?)?;
                 Ok(Action::Continue)
             }
             (keepalive::Message::Packet(id), ConnectionState::Play) => {
-                s2c.send(s2c::PlayPacket::NetKeepAlive { id: id.into() }.encode_owned()?)?;
+                s2c.send(s2c::PlayPacket::NetKeepAlive { id: id.into() }.to_bytes()?)?;
                 Ok(Action::Continue)
             }
             (keepalive::Message::Mismatch, _) => Ok(Action::DropConnection),

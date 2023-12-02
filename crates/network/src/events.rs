@@ -110,15 +110,15 @@ pub mod packet {
         },
         ContainerClick {
             sync_id: u8,
-            slot: c2s::OptionalSlot,
+            slot: Option<u16>,
             button: u8,
             mode: u32,
-            new_slots: Vec<(types::Primitive<u16>, types::ItemStackProto)>,
-            carried_item: types::ItemStackProto,
+            new_slots: Vec<(u16, Option<types::ItemStack<i32>>)>,
+            carried_item: Option<types::ItemStack<i32>>,
         },
         ContainerClose {
             sync_id: u8,
         },
-        InventorySlot(u16, types::ItemStackProto),
+        InventorySlot(u16, Option<types::ItemStack<i32>>),
     }
 }

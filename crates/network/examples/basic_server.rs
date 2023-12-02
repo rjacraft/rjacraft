@@ -55,7 +55,7 @@ fn status_system(In(entity): In<Entity>, world: &World) -> server_status::Server
     }
 }
 
-fn auth_system(In(_): In<(Entity, String, uuid::Uuid)>) -> AuthOutcome {
+fn auth_system(In(_): In<(Entity, UsernameString, uuid::Uuid)>) -> AuthOutcome {
     AuthOutcome::Fail(text!("Logging in is not supported"))
 }
 

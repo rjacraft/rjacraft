@@ -5,7 +5,7 @@ use rjacraft_macro::ProtocolType;
 
 use crate::{error, types::*, ProtocolType};
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum StatusPacket {
     #[variant(0x00)]
@@ -15,14 +15,7 @@ pub enum StatusPacket {
     Pong { payload: Primitive<i64> },
 }
 
-#[derive(Debug, Clone, ProtocolType)]
-pub struct ProfileProperty {
-    pub name: LenString<{ 1 << 15 }>,
-    pub value: LenString<{ 1 << 15 }>,
-    pub signature: BoolOption<LenString<{ 1 << 15 }>>,
-}
-
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum LoginPacket {
     #[variant(0x00)]
@@ -38,10 +31,7 @@ pub enum LoginPacket {
     #[variant(0x02)]
     Success {
         uuid: Uuid,
-        username: LenString<16>,
-        /// See [Mojang's API](https://wiki.vg/Mojang_API#UUID_to_Profile_and_Skin.2FCape) for the
-        /// meaning of these
-        properties: LenVec<ProfileProperty>,
+        profile: player_info::Profile,
     },
 
     #[variant(0x03)]
@@ -55,19 +45,19 @@ pub enum LoginPacket {
     },
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 pub struct Tag {
     pub name: Identifier,
     pub entries: LenVec<VarInt<i32>>,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 pub struct TagType {
     pub name: Identifier,
     pub tags: LenVec<Tag>,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum ConfigurationPacket {
     #[variant(0x00)]
@@ -89,7 +79,7 @@ pub enum ConfigurationPacket {
     Ping { payload: Primitive<i64> },
 
     #[variant(0x05)]
-    RegistryData(Nbt<CustomRegistries>),
+    RegistryData(Encoded<Nbt<CustomRegistries>>),
 
     #[variant(0x06)]
     ResourcePack {
@@ -103,10 +93,10 @@ pub enum ConfigurationPacket {
     FeatureFlags(LenVec<Identifier>),
 
     #[variant(0x08)]
-    UpdateTags(LenVec<TagType>),
+    UpdateTags(Encoded<LenVec<TagType>>),
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(Primitive<u8>)]
 pub enum EntityAnimation {
     #[variant(0)]
@@ -121,7 +111,7 @@ pub enum EntityAnimation {
     MagicCrit,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(Primitive<u8>)]
 pub enum Difficulty {
     #[variant(0)]
@@ -134,20 +124,20 @@ pub enum Difficulty {
     Hard,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 pub struct ChunkBiomeData {
     pub chunk_x: Primitive<i32>,
     pub chunk_z: Primitive<i32>,
-    palettes: net_chunk::ColumnPalettes<net_chunk::Paletted>,
+    palettes: Encoded<net_chunk::ColumnPalettes<net_chunk::Paletted>>,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 pub struct GlobalPos {
     pub dimension_name: Identifier,
     pub position: BlockPos,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(Primitive<u8>)]
 pub enum GameMode {
     #[variant(0)]
@@ -160,7 +150,7 @@ pub enum GameMode {
     Spectator,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(Primitive<i8>)]
 pub enum PreviousGameMode {
     #[variant(-1)]
@@ -188,86 +178,6 @@ pub struct PlayerAbilities {
     __: bool,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
-pub struct PlayerProfile {
-    pub username: LenString<16>,
-    pub properties: LenVec<ProfileProperty>,
-}
-
-/// About the fields: There's no way to express this nicely in Rust. The lengths of each present
-/// vector have to stay the same for this to be decodable.
-#[derive(Debug, Clone)]
-pub struct PlayerInfoUpdates {
-    pub players: Vec<Uuid>,
-    pub profile: Option<Vec<PlayerProfile>>,
-    // todo signature
-    pub gamemode: Option<Vec<GameMode>>,
-    pub listed: Option<Vec<Primitive<bool>>>,
-    pub ping: Option<Vec<VarInt<i32>>>,
-    pub nickname: Option<Vec<JsonText>>,
-}
-
-impl ProtocolType for PlayerInfoUpdates {
-    type DecodeError = error::Eof;
-    type EncodeError = error::Infallible;
-
-    fn decode(_buffer: &mut impl bytes::Buf) -> Result<Self, Self::DecodeError> {
-        todo!()
-    }
-
-    fn encode(&self, buffer: &mut impl bytes::BufMut) -> Result<(), Self::EncodeError> {
-        #[derive(ProtocolType)]
-        #[bitfield(u8)]
-        struct UsedProperties {
-            profile: bool,
-            signature: bool,
-            gamemode: bool,
-            listed: bool,
-            ping: bool,
-            nickname: bool,
-            __: bool,
-            __: bool,
-        }
-
-        UsedProperties::new()
-            .with_profile(self.profile.is_some())
-            .with_gamemode(self.gamemode.is_some())
-            .with_listed(self.listed.is_some())
-            .with_ping(self.ping.is_some())
-            .with_nickname(self.nickname.is_some())
-            .encode(buffer)?;
-
-        VarInt(self.players.len() as i32).encode(buffer)?;
-
-        for uuid in &self.players {
-            uuid.encode(buffer)?;
-            // there are no encode errors
-
-            for x in self.profile.iter().flatten() {
-                x.encode(buffer).unwrap();
-            }
-
-            for x in self.gamemode.iter().flatten() {
-                x.encode(buffer).unwrap();
-            }
-
-            for x in self.listed.iter().flatten() {
-                x.encode(buffer)?;
-            }
-
-            for x in self.ping.iter().flatten() {
-                x.encode(buffer)?;
-            }
-
-            for x in self.nickname.iter().flatten() {
-                x.encode(buffer).unwrap();
-            }
-        }
-
-        Ok(())
-    }
-}
-
 #[derive(ProtocolType)]
 #[bitfield(u8)]
 pub struct TeleportRelative {
@@ -281,7 +191,7 @@ pub struct TeleportRelative {
     __: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum SoundId {
     Protocol(u32),
     Identifier { id: Identifier, range: Option<f32> },
@@ -311,7 +221,7 @@ impl ProtocolType for SoundId {
     }
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum SoundCategory {
     #[variant(0)]
@@ -336,7 +246,7 @@ pub enum SoundCategory {
     Voice,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum PlayPacket {
     #[variant(0x01)]
@@ -406,8 +316,8 @@ pub enum PlayPacket {
     ContainerSlots {
         sync_id: Primitive<u8>,
         state_id: VarInt<i32>,
-        slots: LenVec<ItemStackProto>,
-        carried_item: ItemStackProto,
+        slots: LenVec<BoolOption<ItemStackProto>>,
+        carried_item: BoolOption<ItemStackProto>,
     },
 
     #[variant(0x15)]
@@ -422,7 +332,7 @@ pub enum PlayPacket {
         sync_id: Primitive<i8>,
         state_id: VarInt<i32>,
         number: Primitive<i8>,
-        slot: ItemStackProto,
+        slot: BoolOption<ItemStackProto>,
     },
 
     #[variant(0x1A)]
@@ -469,10 +379,10 @@ pub enum PlayPacket {
     ChunkData {
         chunk_x: Primitive<i32>,
         chunk_z: Primitive<i32>,
-        heightmaps: Nbt<net_chunk::ColumnHeightmaps>,
-        palettes: net_chunk::ColumnPalettes<net_chunk::FullPalettes>,
+        heightmaps: Encoded<Nbt<net_chunk::ColumnHeightmaps>>,
+        palettes: Encoded<net_chunk::ColumnPalettes<net_chunk::FullPalettes>>,
         block_entities: LenVec<(BlockPosColumn, BlockEntity)>,
-        light: net_chunk::ColumnLight,
+        light: Encoded<net_chunk::ColumnLight>,
     },
 
     /// Not tested
@@ -551,7 +461,7 @@ pub enum PlayPacket {
     ServerPlayerRemove(LenVec<Uuid>),
 
     #[variant(0x3D)]
-    ServerPlayerInfo(PlayerInfoUpdates),
+    ServerPlayerInfo(player_info::Updates),
 
     #[variant(0x3F)]
     PlayerTeleport {

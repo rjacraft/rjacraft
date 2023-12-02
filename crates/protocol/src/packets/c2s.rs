@@ -5,7 +5,7 @@ use rjacraft_macro::ProtocolType;
 
 use crate::{error, types::*, ProtocolType};
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum NextState {
     #[variant(1)]
@@ -14,7 +14,7 @@ pub enum NextState {
     Login,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum HandshakePacket {
     #[variant(0x00)]
@@ -26,7 +26,7 @@ pub enum HandshakePacket {
     },
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum StatusPacket {
     #[variant(0x00)]
@@ -36,7 +36,7 @@ pub enum StatusPacket {
     Ping { payload: Primitive<i64> },
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum LoginPacket {
     #[variant(0x00)]
@@ -59,7 +59,7 @@ pub enum LoginPacket {
     SuccessAck,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum ConfigurationPacket {
     #[variant(0x00)]
@@ -81,13 +81,13 @@ pub enum ConfigurationPacket {
     ResourcePack { result: VarInt<i32> },
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 pub struct ArgumentSignature {
     pub argument: LenString<16>,
     pub signature: [u8; 256],
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum ClientCommand {
     #[variant(0)]
@@ -109,7 +109,7 @@ pub struct SkinParts {
     __: bool,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum ChatMode {
     #[variant(0)]
@@ -120,7 +120,7 @@ pub enum ChatMode {
     Hidden,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum HandAbs {
     #[variant(0)]
@@ -129,7 +129,7 @@ pub enum HandAbs {
     Right,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum OptionalSlot {
     Some(u16),
     None,
@@ -151,6 +151,15 @@ impl ProtocolType for OptionalSlot {
 
     fn encode(&self, _buffer: &mut impl bytes::BufMut) -> Result<(), Self::EncodeError> {
         todo!()
+    }
+}
+
+impl From<OptionalSlot> for Option<u16> {
+    fn from(value: OptionalSlot) -> Self {
+        match value {
+            OptionalSlot::Some(x) => Some(x),
+            OptionalSlot::None => None,
+        }
     }
 }
 
@@ -176,7 +185,7 @@ pub enum HandRel {
     Offhand,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum InteractKind {
     #[variant(0)]
@@ -192,7 +201,7 @@ pub enum InteractKind {
     },
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum PlayerAction {
     #[variant(0)]
@@ -211,7 +220,7 @@ pub enum PlayerAction {
     SwapHands,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(Primitive<i8>)]
 pub enum Face {
     #[variant(0)]
@@ -241,7 +250,7 @@ pub struct PlayerInputFlags {
     __: bool,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum PlayerCommand {
     #[variant(0)]
@@ -264,7 +273,7 @@ pub enum PlayerCommand {
     Elytra,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, Clone, Copy, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum RecipeBook {
     #[variant(0)]
@@ -277,7 +286,7 @@ pub enum RecipeBook {
     Smoker,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum AdvancementCommand {
     #[variant(0)]
@@ -286,7 +295,7 @@ pub enum AdvancementCommand {
     CloseScreen,
 }
 
-#[derive(Debug, Clone, ProtocolType)]
+#[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
 pub enum PlayPacket {
     #[variant(0x00)]
@@ -340,8 +349,8 @@ pub enum PlayPacket {
         slot: OptionalSlot,
         button: Primitive<u8>,
         mode: VarInt<i32>,
-        new_slots: LenVec<(Primitive<u16>, ItemStackProto)>,
-        carried_item: ItemStackProto,
+        new_slots: LenVec<(Primitive<u16>, BoolOption<ItemStackProto>)>,
+        carried_item: BoolOption<ItemStackProto>,
     },
 
     #[variant(0x0E)]
@@ -426,7 +435,7 @@ pub enum PlayPacket {
     #[variant(0x2E)]
     PlayerInventorySlot {
         slot: Primitive<u16>,
-        stack: ItemStackProto,
+        stack: BoolOption<ItemStackProto>,
     },
 
     #[variant(0x32)]

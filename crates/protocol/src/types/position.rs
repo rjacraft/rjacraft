@@ -8,7 +8,6 @@ use crate::{error, ProtocolType};
 
 #[derive(ProtocolType)]
 #[bitfield(u64)]
-#[derive(PartialEq, Eq, Hash)]
 pub struct BlockPos {
     #[bits(12)]
     pub y: i16,
@@ -18,7 +17,7 @@ pub struct BlockPos {
     pub x: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct BlockPosColumn {
     pub x: u8,
     pub y: i16,
