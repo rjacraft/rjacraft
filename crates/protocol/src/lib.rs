@@ -22,20 +22,20 @@ pub trait ProtocolType: Sized {
     }
 
     fn to_bytes(&self) -> Result<bytes::Bytes, Self::EncodeError> {
-        Ok(types::Encoded::new(self)?.data())
+        Ok(self.to_encoded()?.data())
+    }
+
+    fn to_bytes_expect(&self) -> bytes::Bytes {
+        self.to_encoded_expect().data()
     }
 }
 
 /// Currently used by [`crate::frame`] to read packet length prefixes.
 #[async_trait::async_trait]
-pub trait ProtocolTypeRaw: ProtocolType {
-    async fn decode_raw(
-        read: &mut (impl io::AsyncRead + Unpin + Send),
-    ) -> io::Result<Result<Self, Self::DecodeError>>;
-    async fn encode_raw(
-        &self,
-        write: &mut (impl io::AsyncWrite + Unpin + Send),
-    ) -> io::Result<Result<(), Self::EncodeError>>;
+pub trait ProtocolTypeIo: Sized {
+    async fn decode_io(read: &mut (impl io::AsyncRead + Unpin + Send)) -> io::Result<Self>;
+    async fn encode_io(&self, write: &mut (impl io::AsyncWrite + Unpin + Send)) -> io::Result<()>;
+    fn written_size(&self) -> usize;
 }
 
 pub mod chunk;

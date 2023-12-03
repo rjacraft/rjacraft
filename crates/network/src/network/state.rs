@@ -1,5 +1,6 @@
 use rjacraft_macro::text;
 use rjacraft_protocol::{
+    frame,
     packets::{c2s, s2c},
     types::{self, *},
     ProtocolType,
@@ -10,46 +11,38 @@ use super::*;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Failed to read packet")]
+    #[error("Failed to decode packet")]
     DecodingHandshake(#[from] c2s::HandshakePacketDecodeError),
-    #[error("Failed to read packet")]
+    #[error("Failed to decode packet")]
     DecodingStatus(#[from] c2s::StatusPacketDecodeError),
-    #[error("Failed to write packet")]
-    EncodingStatus(#[from] s2c::StatusPacketEncodeError),
-    #[error("Failed to read packet")]
+    #[error("Failed to decode packet")]
     DecodingLogin(#[from] c2s::LoginPacketDecodeError),
-    #[error("Failed to write packet")]
-    EncodingLogin(#[from] s2c::LoginPacketEncodeError),
-    #[error("Failed to read packet")]
+    #[error("Failed to decode packet")]
     DecodingConfiguration(#[from] c2s::ConfigurationPacketDecodeError),
     #[error("Failed to decode brand")]
     DecodingBrand(#[source] types::len_string::DecodeError<128>),
-    #[error("Failed to write packet")]
-    EncodingConfiguration(#[from] s2c::ConfigurationPacketEncodeError),
-    #[error("Failed to read packet")]
+    #[error("Failed to decode packet")]
     DecodingPlay(#[from] c2s::PlayPacketDecodeError),
-    #[error("Failed to write packet")]
-    EncodingPlay(#[from] s2c::PlayPacketEncodeError),
     #[error("Wrong protocol version: {0:?}")]
     WrongVersion(rjacraft_protocol::ProtocolVersion),
     #[error("Got login ack despite not being logged in")]
     FakeLoginAck,
-    #[error("Couldn't send a raw packet")]
-    SendS2c(#[from] flume::SendError<bytes::Bytes>),
+    #[error("Couldn't write a raw packet")]
+    Writer(#[from] frame::WriterError),
     #[error("Couldn't send a message to Bevy")]
     SendN2b(#[from] flume::SendError<N2bEvent>),
     #[error("Couldn't send a message to keep alive")]
     SendKa(#[from] flume::SendError<i64>),
 }
 
-enum Action {
+pub enum Action {
     DropConnection,
     NewState(ConnectionState),
     Continue,
 }
 
 #[derive(Debug, Clone, Copy)]
-enum ConnectionState {
+pub enum ConnectionState {
     Handshake,
     Status,
     Login { completed: bool },
@@ -58,35 +51,10 @@ enum ConnectionState {
 }
 
 impl ConnectionState {
-    async fn on_b2n(
+    pub async fn on_frame<S: io::AsyncWrite + Unpin + Send>(
         self,
-        s2c: &flume::Sender<bytes::Bytes>,
-        command: B2nEvent,
-    ) -> Result<Action, Error> {
-        match command {
-            B2nEvent::Drop => Ok(Action::DropConnection),
-            B2nEvent::Status(status) => {
-                s2c.send(s2c::StatusPacket::Response(status.into()).to_bytes()?)?;
-                Ok(Action::Continue)
-            }
-            B2nEvent::LoginSucceeded => {
-                Ok(Action::NewState(ConnectionState::Login { completed: true }))
-            }
-            B2nEvent::LoginPacket(packet) => {
-                s2c.send(packet.to_bytes()?)?;
-                Ok(Action::Continue)
-            }
-            B2nEvent::ConfigurationPacket(packet) => {
-                s2c.send(packet.to_bytes()?)?;
-                Ok(Action::Continue)
-            }
-        }
-    }
-
-    async fn on_frame(
-        self,
-        frame: &mut bytes::Bytes,
-        s2c: &flume::Sender<bytes::Bytes>,
+        mut frame: bytes::Bytes,
+        writer: &mut frame::Writer<S>,
         n2b: &flume::Sender<N2bEvent>,
         to_ka: &flume::Sender<i64>,
     ) -> Result<Action, Error> {
@@ -102,7 +70,7 @@ impl ConnectionState {
                     server_address,
                     server_port,
                     next_state,
-                } = c2s::HandshakePacket::decode(frame)?;
+                } = c2s::HandshakePacket::decode(&mut frame)?;
 
                 debug!("handshake complete, {}", protocol_version);
 
@@ -122,12 +90,14 @@ impl ConnectionState {
                                 completed: false,
                             }));
                         } else {
-                            s2c.send(
-                                s2c::LoginPacket::Disconnect {
-                                    reason: JsonString(text!("Incompatible game version")),
-                                }
-                                .to_bytes()?,
-                            )?;
+                            writer
+                                .write_frame(
+                                    &s2c::LoginPacket::Disconnect {
+                                        reason: JsonString(text!("Incompatible game version")),
+                                    }
+                                    .to_bytes_expect(),
+                                )
+                                .await?;
 
                             Err(Error::WrongVersion(protocol_version))?
                         }
@@ -135,18 +105,20 @@ impl ConnectionState {
                 }
             }
             ConnectionState::Status => {
-                let packet = c2s::StatusPacket::decode(frame)?;
+                let packet = c2s::StatusPacket::decode(&mut frame)?;
 
                 match packet {
                     c2s::StatusPacket::Ping { payload } => {
-                        s2c.send(s2c::StatusPacket::Pong { payload }.to_bytes()?)?;
+                        writer
+                            .write_frame(&s2c::StatusPacket::Pong { payload }.to_bytes_expect())
+                            .await?;
                         return Ok(Action::DropConnection);
                     }
                     c2s::StatusPacket::Request => n2b.send(N2bEvent::NeedStatus)?,
                 }
             }
             ConnectionState::Login { completed } => {
-                let packet = c2s::LoginPacket::decode(frame)?;
+                let packet = c2s::LoginPacket::decode(&mut frame)?;
 
                 trace!("{packet:?}");
 
@@ -167,7 +139,7 @@ impl ConnectionState {
                 }
             }
             ConnectionState::Configuration => {
-                let packet = c2s::ConfigurationPacket::decode(frame)?;
+                let packet = c2s::ConfigurationPacket::decode(&mut frame)?;
 
                 trace!("{packet:?}");
 
@@ -185,7 +157,7 @@ impl ConnectionState {
                         }
                     }
                     c2s::ConfigurationPacket::FinishConfiguration => {
-                        n2b.send(N2bEvent::ConfigurationFinished(s2c.clone()))?;
+                        n2b.send(N2bEvent::ConfigurationFinished)?;
 
                         return Ok(Action::NewState(ConnectionState::Play));
                     }
@@ -195,7 +167,7 @@ impl ConnectionState {
                 }
             }
             ConnectionState::Play => {
-                let packet = c2s::PlayPacket::decode(frame)?;
+                let packet = c2s::PlayPacket::decode(&mut frame)?;
 
                 trace!("{packet:?}");
 
@@ -457,73 +429,15 @@ impl ConnectionState {
         Ok(Action::Continue)
     }
 
-    async fn on_keepalive(
-        self,
-        s2c: &flume::Sender<bytes::Bytes>,
-        command: keepalive::Message,
-    ) -> Result<Action, Error> {
-        match (command, self) {
-            (keepalive::Message::Packet(id), ConnectionState::Configuration) => {
-                s2c.send(s2c::ConfigurationPacket::KeepAlive { id: id.into() }.to_bytes()?)?;
-                Ok(Action::Continue)
+    pub fn keepalive_packet(self, id: i64) -> Option<bytes::Bytes> {
+        match self {
+            ConnectionState::Configuration => {
+                Some(s2c::ConfigurationPacket::KeepAlive { id: id.into() }.to_bytes_expect())
             }
-            (keepalive::Message::Packet(id), ConnectionState::Play) => {
-                s2c.send(s2c::PlayPacket::NetKeepAlive { id: id.into() }.to_bytes()?)?;
-                Ok(Action::Continue)
+            ConnectionState::Play => {
+                Some(s2c::PlayPacket::NetKeepAlive { id: id.into() }.to_bytes_expect())
             }
-            (keepalive::Message::Mismatch, _) => Ok(Action::DropConnection),
-            (keepalive::Message::Timeout, _) => Ok(Action::DropConnection),
-            _ => Ok(Action::Continue),
-        }
-    }
-}
-
-pub async fn state_machine_loop(
-    n2b: flume::Sender<N2bEvent>,
-    b2n: flume::Receiver<B2nEvent>,
-    to_ka: flume::Sender<i64>,
-    from_ka: flume::Receiver<keepalive::Message>,
-    s2c: flume::Sender<bytes::Bytes>,
-    c2s: flume::Receiver<bytes::Bytes>,
-) -> Result<(), Error> {
-    let mut state = ConnectionState::Handshake;
-
-    loop {
-        tokio::select! {
-            Ok(command) = b2n.recv_async() => {
-                match state.on_b2n(&s2c, command).await? {
-                    Action::DropConnection => return Ok(()),
-                    Action::NewState(x) => {
-                        debug!("{state:?} -> {x:?}");
-                        state = x
-                    },
-                    Action::Continue => {}
-                }
-            },
-            Ok(mut frame) = c2s.recv_async() => {
-                match state
-                    .on_frame(&mut frame, &s2c, &n2b, &to_ka)
-                    .instrument(info_span!("conn_state", ?state))
-                    .await?
-                {
-                    Action::DropConnection => return Ok(()),
-                    Action::NewState(x) => {
-                        debug!("{state:?} -> {x:?}");
-                        state = x
-                    },
-                    Action::Continue => {}
-                }
-            }
-            Ok(command) = from_ka.recv_async() => {
-                match state.on_keepalive(&s2c, command).await? {
-                    Action::DropConnection => return Ok(()),
-                    Action::NewState(x) => {
-                        debug!("{state:?} -> {x:?}");
-                        state = x
-                    },
-                    Action::Continue => {}
-                }
-            },
+            _ => None,
         }
     }
 }

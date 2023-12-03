@@ -22,16 +22,14 @@ pub struct Handshaken {
 
 #[derive(Component)]
 pub struct Play {
-    pub(crate) tx: flume::Sender<bytes::Bytes>,
+    pub(crate) b2n: flume::Sender<B2nEvent>,
 }
 
 impl Play {
     pub fn send(&self, packet: types::Encoded<s2c::PlayPacket>) -> &Self {
         trace!("{packet:?}");
 
-        self.tx
-            .send(packet.data())
-            .expect("failed to put packet on queue");
+        let _ = self.b2n.send(B2nEvent::Packet(packet.data()));
 
         self
     }

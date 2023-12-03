@@ -3,7 +3,7 @@
 use bytes::{Buf, BufMut};
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 
-use crate::{error, ProtocolType, ProtocolTypeRaw};
+use crate::{error, ProtocolType, ProtocolTypeIo};
 
 #[derive(Debug, thiserror::Error, from_never::FromNever)]
 pub enum DecodeError<const BITS: u32> {
@@ -55,26 +55,24 @@ fn encode_generic(buffer: &mut impl BufMut, mut value: u128) {
 
 async fn decode_generic_raw<const BITS: u32>(
     read: &mut (impl io::AsyncRead + Unpin + Send),
-) -> io::Result<Result<u128, DecodeError<BITS>>> {
+) -> io::Result<u128> {
     let mut result = 0;
     let mut bit = 0;
     let mut byte = [0];
 
     loop {
-        if read.read(&mut byte).await? == 0 {
-            return Ok(Err(DecodeError::Eof(error::Eof)));
-        }
+        read.read_exact(&mut byte).await?;
 
         result |= (byte[0] as u128 & 0b01111111) << bit;
 
         if byte[0] & 0b10000000 == 0 {
-            return Ok(Ok(result.into()));
+            return Ok(result.into());
         }
 
         bit += 7;
 
         if bit > BITS {
-            return Ok(Err(DecodeError::TooLarge));
+            return Err(io::Error::new(io::ErrorKind::Other, "var int is too large"));
         }
     }
 }
@@ -104,6 +102,12 @@ async fn encode_generic_raw(
     Ok(())
 }
 
+pub fn written_size<const BITS: u32>(value: u128) -> usize {
+    let used_bits = BITS - (value.leading_zeros() - (u128::BITS - BITS));
+
+    usize::div_ceil(used_bits as usize, 7).max(1)
+}
+
 #[derive(Debug)]
 pub struct VarInt<T>(pub T);
 
@@ -124,22 +128,19 @@ impl ProtocolType for VarInt<i32> {
 
 /// The var int that everyone calls var int
 #[async_trait::async_trait]
-impl ProtocolTypeRaw for VarInt<i32> {
-    async fn decode_raw(
-        read: &mut (impl io::AsyncRead + Unpin + Send),
-    ) -> io::Result<Result<Self, Self::DecodeError>> {
+impl ProtocolTypeIo for VarInt<i32> {
+    async fn decode_io(read: &mut (impl io::AsyncRead + Unpin + Send)) -> io::Result<Self> {
         decode_generic_raw::<{ i32::BITS }>(read)
             .await
-            .map(|x| x.map(|x| Self(x as i32)))
+            .map(|x| Self(x as i32))
     }
 
-    async fn encode_raw(
-        &self,
-        write: &mut (impl io::AsyncWrite + Unpin + Send),
-    ) -> io::Result<Result<(), Self::EncodeError>> {
-        encode_generic_raw(write, self.0 as u32 as u128).await?;
+    async fn encode_io(&self, write: &mut (impl io::AsyncWrite + Unpin + Send)) -> io::Result<()> {
+        encode_generic_raw(write, self.0 as u32 as u128).await
+    }
 
-        Ok(Ok(()))
+    fn written_size(&self) -> usize {
+        written_size::<{ i32::BITS }>(self.0 as u32 as u128)
     }
 }
 
@@ -172,22 +173,19 @@ impl ProtocolType for VarInt<i64> {
 }
 
 #[async_trait::async_trait]
-impl ProtocolTypeRaw for VarInt<i64> {
-    async fn decode_raw(
-        read: &mut (impl io::AsyncRead + Unpin + Send),
-    ) -> io::Result<Result<Self, Self::DecodeError>> {
+impl ProtocolTypeIo for VarInt<i64> {
+    async fn decode_io(read: &mut (impl io::AsyncRead + Unpin + Send)) -> io::Result<Self> {
         decode_generic_raw::<{ i64::BITS }>(read)
             .await
-            .map(|x| x.map(|x| Self(x as i64)))
+            .map(|x| Self(x as i64))
     }
 
-    async fn encode_raw(
-        &self,
-        write: &mut (impl io::AsyncWrite + Unpin + Send),
-    ) -> io::Result<Result<(), Self::EncodeError>> {
-        encode_generic_raw(write, self.0 as u64 as u128).await?;
+    async fn encode_io(&self, write: &mut (impl io::AsyncWrite + Unpin + Send)) -> io::Result<()> {
+        encode_generic_raw(write, self.0 as u64 as u128).await
+    }
 
-        Ok(Ok(()))
+    fn written_size(&self) -> usize {
+        written_size::<{ i64::BITS }>(self.0 as u32 as u128)
     }
 }
 
@@ -284,6 +282,16 @@ mod tests {
             let mut buffer = bytes::BytesMut::new();
             encode_generic(&mut buffer, input as u64 as u128);
             assert_eq!(buffer.chunk(), output);
+        }
+    }
+
+    #[test]
+    fn written_size_i64() {
+        for &(input, output) in DATA_I64 {
+            assert_eq!(
+                written_size::<{ i64::BITS }>(input as u64 as u128),
+                output.len()
+            );
         }
     }
 }

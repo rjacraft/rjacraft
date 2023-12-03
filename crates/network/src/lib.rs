@@ -24,10 +24,12 @@ pub struct Registries(pub types::Encoded<types::Nbt<types::CustomRegistries>>);
 #[derive(Resource)]
 pub struct Tags(pub types::Encoded<types::LenVec<s2c::TagType>>);
 
-pub struct UserSystems<Status, Auth, Brand> {
-    pub status: Status,
-    pub authenticate: Auth,
-    pub brand: Brand,
+pub struct NetworkConfig<Status, Auth, Brand> {
+    /// `None` means don't compress. `Some(x)` means compress above a certain length threshold.
+    pub compress: Option<u32>,
+    pub status_system: Status,
+    pub auth_system: Auth,
+    pub brand_system: Brand,
 }
 
 pub enum AuthOutcome {

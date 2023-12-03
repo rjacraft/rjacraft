@@ -61,10 +61,11 @@ fn main() {
         .add_plugins((
             NetworkPlugin {
                 addr: "0.0.0.0:25565",
-                n2b_system: IntoSystem::into_system(n2b_system(UserSystems {
-                    status: status_system,
-                    authenticate: auth_system,
-                    brand: brand_system,
+                n2b_system: IntoSystem::into_system(n2b_system(NetworkConfig {
+                    compress: None,
+                    status_system,
+                    auth_system,
+                    brand_system,
                 })),
             },
             bevy_app::ScheduleRunnerPlugin {

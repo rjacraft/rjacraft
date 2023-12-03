@@ -29,3 +29,4 @@ bitvec.workspace = true
 bitfield-struct.workspace = true
 bevy_ecs.workspace = true
 url.workspace = true
+flate2.workspace = true

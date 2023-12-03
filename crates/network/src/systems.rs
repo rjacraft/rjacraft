@@ -23,7 +23,7 @@ impl<E: event::Event> system::Command for SendEvent<E> {
 }
 
 pub fn n2b_system<SStatus, MStatus, SAuth, MAuth, SBrand, MBrand>(
-    mut systems: crate::UserSystems<SStatus, SAuth, SBrand>,
+    mut config: crate::NetworkConfig<SStatus, SAuth, SBrand>,
 ) -> impl FnMut(
     &World,
     Commands,
@@ -56,67 +56,76 @@ where
                         });
                     }
                     N2bEvent::NeedStatus => {
-                        let _ = peer
-                            .b2n
-                            .send(B2nEvent::Status(systems.status.run(entity, pset.p0())));
+                        let _ = peer.b2n.send(B2nEvent::Packet(
+                            s2c::StatusPacket::Response(
+                                config.status_system.run(entity, pset.p0()).into(),
+                            )
+                            .to_bytes_expect(),
+                        ));
                     }
                     N2bEvent::Authenticate(username_in, uuid_in) => {
-                        let outcome = systems
-                            .authenticate
+                        let outcome = config
+                            .auth_system
                             .run((entity, username_in, uuid_in), pset.p1());
 
                         match outcome {
                             crate::AuthOutcome::Success(uuid_out, profile_out) => {
+                                let _ = peer.b2n.send(B2nEvent::Compression(config.compress));
                                 let _ = peer.b2n.send(B2nEvent::LoginSucceeded);
-                                let _ = peer.b2n.send(B2nEvent::LoginPacket(
+                                let _ = peer.b2n.send(B2nEvent::Packet(
                                     s2c::LoginPacket::Success {
                                         uuid: uuid_out,
                                         profile: profile_out,
-                                    },
+                                    }
+                                    .to_bytes_expect(),
                                 ));
                             }
                             crate::AuthOutcome::Fail(reason) => {
-                                let _ = peer.b2n.send(B2nEvent::LoginPacket(
+                                let _ = peer.b2n.send(B2nEvent::Packet(
                                     s2c::LoginPacket::Disconnect {
                                         reason: reason.into(),
-                                    },
+                                    }
+                                    .to_bytes_expect(),
                                 ));
                                 let _ = peer.b2n.send(B2nEvent::Drop);
                             }
                         };
                     }
                     N2bEvent::NeedConfiguration => {
-                        let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
+                        let _ = peer.b2n.send(B2nEvent::Packet(
                             s2c::ConfigurationPacket::RegistryData(
                                 world.resource::<crate::Registries>().0.clone(),
-                            ),
+                            )
+                            .to_bytes_expect(),
                         ));
 
-                        let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
+                        let _ = peer.b2n.send(B2nEvent::Packet(
                             s2c::ConfigurationPacket::UpdateTags(
                                 world.resource::<crate::Tags>().0.clone(),
-                            ),
+                            )
+                            .to_bytes_expect(),
                         ));
 
-                        if let Some(brand_string) = systems.brand.run(entity, pset.p2()) {
-                            let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
+                        if let Some(brand_string) = config.brand_system.run(entity, pset.p2()) {
+                            let _ = peer.b2n.send(B2nEvent::Packet(
                                 s2c::ConfigurationPacket::PluginMessage {
                                     channel: id!("brand"),
                                     data: crate::BrandString::to_bytes(&brand_string)
                                         .expect("failed to encode brand string")
                                         .try_into()
                                         .expect("brand string too long"),
-                                },
+                                }
+                                .to_bytes_expect(),
                             ));
                         }
 
-                        let _ = peer.b2n.send(B2nEvent::ConfigurationPacket(
-                            s2c::ConfigurationPacket::FinishConfiguration,
+                        let _ = peer.b2n.send(B2nEvent::Packet(
+                            s2c::ConfigurationPacket::FinishConfiguration.to_bytes_expect(),
                         ));
                     }
-                    N2bEvent::ConfigurationFinished(play_tx) => {
+                    N2bEvent::ConfigurationFinished => {
                         commands.entity(entity).insert(Play {
-                            tx: play_tx.clone(),
+                            b2n: peer.b2n.clone(),
                         });
                     }
                     N2bEvent::TeleportConfirm(_) => {} // todo
