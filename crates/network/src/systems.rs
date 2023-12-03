@@ -91,16 +91,16 @@ where
                             }
                         };
                     }
-                    N2bEvent::NeedConfiguration => {
+                    N2bEvent::NeedConfig => {
                         let _ = peer.b2n.send(B2nEvent::Packet(
-                            s2c::ConfigurationPacket::RegistryData(
+                            s2c::ConfigPacket::RegistryData(
                                 world.resource::<crate::Registries>().0.clone(),
                             )
                             .to_bytes_expect(),
                         ));
 
                         let _ = peer.b2n.send(B2nEvent::Packet(
-                            s2c::ConfigurationPacket::UpdateTags(
+                            s2c::ConfigPacket::UpdateTags(
                                 world.resource::<crate::Tags>().0.clone(),
                             )
                             .to_bytes_expect(),
@@ -108,7 +108,7 @@ where
 
                         if let Some(brand_string) = config.brand_system.run(entity, pset.p2()) {
                             let _ = peer.b2n.send(B2nEvent::Packet(
-                                s2c::ConfigurationPacket::PluginMessage {
+                                s2c::ConfigPacket::PluginMessage {
                                     channel: id!("brand"),
                                     data: crate::BrandString::to_bytes(&brand_string)
                                         .expect("failed to encode brand string")
@@ -120,10 +120,10 @@ where
                         }
 
                         let _ = peer.b2n.send(B2nEvent::Packet(
-                            s2c::ConfigurationPacket::FinishConfiguration.to_bytes_expect(),
+                            s2c::ConfigPacket::FinishConfig.to_bytes_expect(),
                         ));
                     }
-                    N2bEvent::ConfigurationFinished => {
+                    N2bEvent::ConfigFinished => {
                         commands.entity(entity).insert(Play {
                             b2n: peer.b2n.clone(),
                         });

@@ -18,7 +18,7 @@ pub enum Error {
     #[error("Failed to decode packet")]
     DecodingLogin(#[from] c2s::LoginPacketDecodeError),
     #[error("Failed to decode packet")]
-    DecodingConfiguration(#[from] c2s::ConfigurationPacketDecodeError),
+    DecodingConfig(#[from] c2s::ConfigPacketDecodeError),
     #[error("Failed to decode brand")]
     DecodingBrand(#[source] types::len_string::DecodeError<128>),
     #[error("Failed to decode packet")]
@@ -46,7 +46,7 @@ pub enum ConnectionState {
     Handshake,
     Status,
     Login { completed: bool },
-    Configuration,
+    Config,
     Play,
 }
 
@@ -60,7 +60,7 @@ impl ConnectionState {
     ) -> Result<Action, Error> {
         // Handshake handles the handshake sequence
         // Status hands the response off to Bevy
-        // Login and configuration handle low-level details and the switching
+        // Login and config handle low-level details and the switching
         // Play just translates the packets into neat Bevy events
 
         match self {
@@ -130,21 +130,21 @@ impl ConnectionState {
                     c2s::LoginPacket::LoginPluginResponse { .. } => todo!(),
                     c2s::LoginPacket::SuccessAck => {
                         if completed {
-                            n2b.send(N2bEvent::NeedConfiguration)?;
-                            return Ok(Action::NewState(ConnectionState::Configuration));
+                            n2b.send(N2bEvent::NeedConfig)?;
+                            return Ok(Action::NewState(ConnectionState::Config));
                         } else {
                             Err(Error::FakeLoginAck)?
                         }
                     }
                 }
             }
-            ConnectionState::Configuration => {
-                let packet = c2s::ConfigurationPacket::decode(&mut frame)?;
+            ConnectionState::Config => {
+                let packet = c2s::ConfigPacket::decode(&mut frame)?;
 
                 trace!("{packet:?}");
 
                 match packet {
-                    c2s::ConfigurationPacket::PluginMessage { channel, data } => {
+                    c2s::ConfigPacket::PluginMessage { channel, data } => {
                         let mut data: bytes::Bytes = data.into();
 
                         if let ("minecraft", "brand") = channel.parts() {
@@ -156,14 +156,14 @@ impl ConnectionState {
                             }))?;
                         }
                     }
-                    c2s::ConfigurationPacket::FinishConfiguration => {
-                        n2b.send(N2bEvent::ConfigurationFinished)?;
+                    c2s::ConfigPacket::FinishConfig => {
+                        n2b.send(N2bEvent::ConfigFinished)?;
 
                         return Ok(Action::NewState(ConnectionState::Play));
                     }
-                    c2s::ConfigurationPacket::KeepAlive { id } => to_ka.send(id.into())?,
-                    c2s::ConfigurationPacket::Pong { .. } => todo!(),
-                    c2s::ConfigurationPacket::ResourcePack { .. } => todo!(),
+                    c2s::ConfigPacket::KeepAlive { id } => to_ka.send(id.into())?,
+                    c2s::ConfigPacket::Pong { .. } => todo!(),
+                    c2s::ConfigPacket::ResourcePack { .. } => todo!(),
                 }
             }
             ConnectionState::Play => {
@@ -431,8 +431,8 @@ impl ConnectionState {
 
     pub fn keepalive_packet(self, id: i64) -> Option<bytes::Bytes> {
         match self {
-            ConnectionState::Configuration => {
-                Some(s2c::ConfigurationPacket::KeepAlive { id: id.into() }.to_bytes_expect())
+            ConnectionState::Config => {
+                Some(s2c::ConfigPacket::KeepAlive { id: id.into() }.to_bytes_expect())
             }
             ConnectionState::Play => {
                 Some(s2c::PlayPacket::NetKeepAlive { id: id.into() }.to_bytes_expect())

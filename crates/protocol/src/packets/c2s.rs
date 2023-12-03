@@ -61,7 +61,7 @@ pub enum LoginPacket {
 
 #[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
-pub enum ConfigurationPacket {
+pub enum ConfigPacket {
     #[variant(0x00)]
     PluginMessage {
         channel: Identifier,
@@ -69,7 +69,7 @@ pub enum ConfigurationPacket {
     },
 
     #[variant(0x01)]
-    FinishConfiguration,
+    FinishConfig,
 
     #[variant(0x02)]
     KeepAlive { id: Primitive<i64> },

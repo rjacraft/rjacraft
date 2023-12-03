@@ -59,7 +59,7 @@ pub struct TagType {
 
 #[derive(Debug, ProtocolType)]
 #[variant(VarInt<i32>)]
-pub enum ConfigurationPacket {
+pub enum ConfigPacket {
     #[variant(0x00)]
     PluginMessage {
         channel: Identifier,
@@ -70,7 +70,7 @@ pub enum ConfigurationPacket {
     Disconnect { reason: JsonText },
 
     #[variant(0x02)]
-    FinishConfiguration,
+    FinishConfig,
 
     #[variant(0x03)]
     KeepAlive { id: Primitive<i64> },
