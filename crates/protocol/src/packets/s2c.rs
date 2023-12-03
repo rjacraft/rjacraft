@@ -29,7 +29,7 @@ pub enum LoginPacket {
     },
 
     #[variant(0x02)]
-    Success {
+    ToConfigRequest {
         uuid: Uuid,
         profile: player_info::Profile,
     },
@@ -70,7 +70,7 @@ pub enum ConfigPacket {
     Disconnect { reason: JsonText },
 
     #[variant(0x02)]
-    FinishConfig,
+    ToPlayRequest,
 
     #[variant(0x03)]
     KeepAlive { id: Primitive<i64> },

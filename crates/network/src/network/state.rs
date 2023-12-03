@@ -128,7 +128,7 @@ impl ConnectionState {
                     }
                     c2s::LoginPacket::EncryptionResponse { .. } => todo!(),
                     c2s::LoginPacket::LoginPluginResponse { .. } => todo!(),
-                    c2s::LoginPacket::SuccessAck => {
+                    c2s::LoginPacket::ToConfig => {
                         if completed {
                             n2b.send(N2bEvent::NeedConfig)?;
                             return Ok(Action::NewState(ConnectionState::Config));
@@ -156,7 +156,7 @@ impl ConnectionState {
                             }))?;
                         }
                     }
-                    c2s::ConfigPacket::FinishConfig => {
+                    c2s::ConfigPacket::ToPlay => {
                         n2b.send(N2bEvent::ConfigFinished)?;
 
                         return Ok(Action::NewState(ConnectionState::Play));

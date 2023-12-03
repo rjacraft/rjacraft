@@ -73,7 +73,7 @@ where
                                 let _ = peer.b2n.send(B2nEvent::Compression(config.compress));
                                 let _ = peer.b2n.send(B2nEvent::LoginSucceeded);
                                 let _ = peer.b2n.send(B2nEvent::Packet(
-                                    s2c::LoginPacket::Success {
+                                    s2c::LoginPacket::ToConfigRequest {
                                         uuid: uuid_out,
                                         profile: profile_out,
                                     }
@@ -120,7 +120,7 @@ where
                         }
 
                         let _ = peer.b2n.send(B2nEvent::Packet(
-                            s2c::ConfigPacket::FinishConfig.to_bytes_expect(),
+                            s2c::ConfigPacket::ToPlayRequest.to_bytes_expect(),
                         ));
                     }
                     N2bEvent::ConfigFinished => {

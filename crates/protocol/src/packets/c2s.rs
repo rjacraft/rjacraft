@@ -56,7 +56,7 @@ pub enum LoginPacket {
     },
 
     #[variant(0x03)]
-    SuccessAck,
+    ToConfig,
 }
 
 #[derive(Debug, ProtocolType)]
@@ -69,7 +69,7 @@ pub enum ConfigPacket {
     },
 
     #[variant(0x01)]
-    FinishConfig,
+    ToPlay,
 
     #[variant(0x02)]
     KeepAlive { id: Primitive<i64> },
