@@ -1,4 +1,4 @@
-//! Functions for asychronously decoding and encoding packet frames
+//! Functions for asynchronously decoding and encoding packet frames
 
 use core::num;
 use std::io::{Read, Write};
