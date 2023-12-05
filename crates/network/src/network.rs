@@ -1,7 +1,7 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, pin};
 
 use rjacraft_protocol::{frame::*, packets::*, types::*, ProtocolType, ProtocolVersion};
-use tokio::{io, net, pin};
+use tokio::{io, net, time};
 use tracing::*;
 
 use super::traced_error;
@@ -53,8 +53,10 @@ enum PeerLoopError {
     Writing(#[from] WriterError),
     #[error(transparent)]
     StateMachine(#[from] state::Error),
-    #[error("Keep alive error")]
-    KeepAlive(#[from] keepalive::Error),
+    #[error("Keepalive ID mismatch. Expected: {expected:?}, got: {got}")]
+    KaMismatch { expected: Option<i64>, got: i64 },
+    #[error("Keepalive timeout exceeded")]
+    Timeout,
 }
 
 async fn peer_loop(
@@ -62,6 +64,10 @@ async fn peer_loop(
     n2b: flume::Sender<N2bEvent>,
     b2n: flume::Receiver<B2nEvent>,
 ) -> Result<(), PeerLoopError> {
+    // the point of this pinning mess is that we want to avoid spawning any tasks and storing any
+    // messages
+
+    let start_time = time::Instant::now();
     let mut state = state::ConnectionState::Handshake;
     let (read, write) = stream.into_split();
     let mut reader = Reader {
@@ -73,18 +79,18 @@ async fn peer_loop(
         compress: None,
     };
 
-    let mut read_task = Box::pin(reader.read_frame());
-
-    let (to_ka_tx, to_ka_rx) = flume::unbounded::<i64>();
-    let (from_ka_tx, from_ka_rx) = flume::unbounded::<i64>();
-    let ka_task = keepalive::keepalive_loop(from_ka_tx, to_ka_rx);
-    pin!(ka_task);
+    // TODO: eliminating this allocation would be the last optimization we can do.
+    //   unfortunately, rust does not have a way to drop something and then replace it such that
+    //   whatever it references opens up again
+    let mut reading = Box::pin(reader.read_frame());
+    let mut keepalive = pin::pin!(keepalive::KeepAlive::start(start_time));
+    let mut keepalive_id = None;
 
     loop {
         tokio::select! {
-            result = &mut read_task => {
+            result = &mut reading => {
                 match state
-                    .on_frame(result?, &mut writer, &n2b, &to_ka_tx)
+                    .on_frame(result?, &mut writer, &n2b)
                     .instrument(info_span!("conn_state", ?state))
                     .await?
                 {
@@ -94,12 +100,21 @@ async fn peer_loop(
                         state = x
                     },
                     state::Action::Continue => {}
+                    state::Action::RefreshKa(id_in) => 'a: {
+                        if let Some(id_out) = keepalive_id {
+                            if id_out == id_in {
+                                keepalive.set(keepalive::KeepAlive::start(start_time));
+                                break 'a;
+                            }
+                        }
+
+                        return Err(PeerLoopError::KaMismatch { expected: keepalive_id, got: id_in });
+                    }
                 }
 
-                drop(read_task);
-                read_task = Box::pin(reader.read_frame());
+                drop(reading);
+                reading = Box::pin(reader.read_frame());
             },
-
             Ok(command) = b2n.recv_async() => {
                 match command {
                     B2nEvent::Drop => return Ok(()),
@@ -115,20 +130,25 @@ async fn peer_loop(
                             .to_bytes_expect(),
                         ).await?;
 
-                        drop(read_task);
+                        drop(reading);
                         reader.compress = threshold.is_some();
-                        read_task = Box::pin(reader.read_frame());
+                        reading = Box::pin(reader.read_frame());
                         writer.compress = threshold;
 
                         debug!("set compression to {threshold:?}");
                     }
                 }
             },
-            Ok(command) = from_ka_rx.recv_async() => if let Some(x) = state.keepalive_packet(command) {
-                writer.write_frame(&x).await?;
-            },
-
-            error = &mut ka_task => return Err(error.into()),
+            element = &mut keepalive => {
+                if let Some(id) = element {
+                    if let Some(x) = state.keepalive_packet(id) {
+                        keepalive_id = Some(id);
+                        writer.write_frame(&x).await?;
+                    }
+                } else {
+                    return Err(PeerLoopError::Timeout);
+                }
+            }
         }
     }
 }

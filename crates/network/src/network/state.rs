@@ -39,6 +39,7 @@ pub enum Action {
     DropConnection,
     NewState(ConnectionState),
     Continue,
+    RefreshKa(i64),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -56,7 +57,6 @@ impl ConnectionState {
         mut frame: bytes::Bytes,
         writer: &mut frame::Writer<S>,
         n2b: &flume::Sender<N2bEvent>,
-        to_ka: &flume::Sender<i64>,
     ) -> Result<Action, Error> {
         // Handshake handles the handshake sequence
         // Status hands the response off to Bevy
@@ -161,7 +161,7 @@ impl ConnectionState {
 
                         return Ok(Action::NewState(ConnectionState::Play));
                     }
-                    c2s::ConfigPacket::KeepAlive { id } => to_ka.send(id.into())?,
+                    c2s::ConfigPacket::KeepAlive { id } => return Ok(Action::RefreshKa(id.into())),
                     c2s::ConfigPacket::Pong { .. } => todo!(),
                     c2s::ConfigPacket::ResourcePack { .. } => todo!(),
                 }
@@ -183,7 +183,9 @@ impl ConnectionState {
                             content: message.into(),
                         }))?
                     }
-                    c2s::PlayPacket::NetKeepAlive { id } => to_ka.send(id.into())?,
+                    c2s::PlayPacket::NetKeepAlive { id } => {
+                        return Ok(Action::RefreshKa(id.into()))
+                    }
                     c2s::PlayPacket::ClientCommand(c2s::ClientCommand::Respawn) => {
                         n2b.send(N2bEvent::Input(packet::Input::Respawn))?
                     }
