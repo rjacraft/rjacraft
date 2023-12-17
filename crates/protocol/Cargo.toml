@@ -14,8 +14,9 @@ repository.workspace = true
 tokio = { workspace = true, features = ["io-util"] }
 thiserror.workspace = true
 bytes.workspace = true
-uuid.workspace = true
+uuid = { workspace = true, features = ["serde"] }
 nevermore.workspace = true
 paste.workspace = true
-serde.workspace = true
+serde = { workspace = true, features = ["derive"] }
+
 serde_json.workspace = true
