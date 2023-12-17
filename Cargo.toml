@@ -19,7 +19,6 @@ bevy_ecs = "0.11.3"
 bevy_app = "0.11.3"
 
 # Async
-async-trait = "0.1.74"
 tokio = { version = "1.32", default-features = false }
 flume = "0.11.0"
 
@@ -30,7 +29,6 @@ subenum = "1.1"
 serde = "1.0"
 serde_json = "1.0"
 bytes = "1.4"
-thiserror = "1.0"
 uuid = "1.4"
 cesu8 = "1.1"
 
@@ -41,14 +39,15 @@ document-features = "0.2.7"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 
-# Macro utils
+# Utilities
+nevermore = "0.1.1"
+thiserror = "1.0"
 paste = "1.0"
 
 # Own crates
 rjacraft_core = { path = "crates/core" }
 rjacraft_network = { path = "crates/network" }
 rjacraft_protocol = { path = "crates/protocol" }
-from_never = { path = "crates/from_never" }
 
 # Bevy-specific profile setup aimed at better performace while developing
 

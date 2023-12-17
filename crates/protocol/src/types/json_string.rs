@@ -16,7 +16,7 @@ pub enum DecodeError<const MAX_SIZE: usize> {
     Json(#[from] serde_json::Error),
 }
 
-#[derive(Debug, thiserror::Error, from_never::FromNever)]
+#[derive(Debug, thiserror::Error, nevermore::FromNever)]
 pub enum EncodeError<const MAX_SIZE: usize> {
     #[error(transparent)]
     Overrun(#[from] error::Overrun<MAX_SIZE>),

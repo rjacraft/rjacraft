@@ -1,6 +1,6 @@
 //! Server-bound packets
 
-pub use self::{configuration::*, handshake::*, login::*, play::*, status::*};
+pub use self::{configuration::*, handshake::*, login::*, status::*};
 use crate::packets::prelude::*;
 
 mod configuration;

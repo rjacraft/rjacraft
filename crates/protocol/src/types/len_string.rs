@@ -10,7 +10,7 @@ use crate::{error, ProtocolType};
 #[derive(Debug, Clone)]
 pub struct LenString<const MAX_SIZE: usize>(pub(super) String);
 
-#[derive(Debug, thiserror::Error, from_never::FromNever)]
+#[derive(Debug, thiserror::Error, nevermore::FromNever)]
 pub enum DecodeError<const MAX_SIZE: usize> {
     #[error(transparent)]
     Eof(#[from] error::Eof),
