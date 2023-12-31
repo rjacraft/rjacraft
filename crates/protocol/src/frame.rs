@@ -78,9 +78,9 @@ where
         trace!(
             length = inner_buffer.len(),
             dir = "recv",
-            compress = compressed.then(|| "zlib"),
+            compress = compressed.then_some("zlib"),
             compressed_length,
-            encrypt = self.source.decryptor.is_some().then(|| "aes/cfb8"),
+            encrypt = self.source.decryptor.is_some().then_some("aes/cfb8"),
             "\n{:?}",
             inner_buffer.hex_conf(HEX_CONFIG)
         );
@@ -151,9 +151,9 @@ where
         trace!(
             length = inner_buffer.len(),
             dir = "send",
-            compress = compressed.then(|| "zlib"),
+            compress = compressed.then_some("zlib"),
             compressed_length,
-            encrypt = self.sink.encryptor.is_some().then(|| "aes/cfb8"),
+            encrypt = self.sink.encryptor.is_some().then_some("aes/cfb8"),
             "\n{:?}",
             inner_buffer.hex_conf(HEX_CONFIG)
         );

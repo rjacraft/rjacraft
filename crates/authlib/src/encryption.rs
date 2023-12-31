@@ -10,7 +10,7 @@ impl ServerHash {
         let mut hasher = sha1::Sha1::new();
 
         hasher.update(b"");
-        hasher.update(&shared_secret);
+        hasher.update(shared_secret);
         hasher.update(&rsa_der::public_key_to_der(
             &public_key.n().to_bytes_be(),
             &public_key.e().to_bytes_be(),

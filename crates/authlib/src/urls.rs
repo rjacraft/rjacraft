@@ -98,6 +98,6 @@ impl Builder {
         parts.authority = self.authority;
         parts.path_and_query = Some(uri::PathAndQuery::from_str(&pq).map_err(|e| e.to_string())?);
 
-        Ok(uri::Uri::from_parts(parts).map_err(|e| e.to_string())?)
+        uri::Uri::from_parts(parts).map_err(|e| e.to_string())
     }
 }

@@ -66,7 +66,7 @@ async fn decode_generic_raw<const BITS: u32>(
         result |= (byte[0] as u128 & 0b01111111) << bit;
 
         if byte[0] & 0b10000000 == 0 {
-            return Ok(result.into());
+            return Ok(result);
         }
 
         bit += 7;

@@ -213,7 +213,7 @@ impl ProtocolType for SoundId {
             Self::Identifier { id, range } => {
                 VarInt(0).encode(buffer)?;
                 id.encode(buffer)?;
-                BoolOption(range.map(|x| Primitive(x))).encode(buffer)?;
+                BoolOption(range.map(Primitive)).encode(buffer)?;
             }
         }
 

@@ -127,12 +127,12 @@ impl ProtocolType for EntityDataValues {
 
 impl From<Vec<(u8, Property)>> for EntityDataValues {
     fn from(value: Vec<(u8, Property)>) -> Self {
-        Self(value.into_iter().map(|x| x.into()).collect())
+        Self(value)
     }
 }
 
 impl From<EntityDataValues> for Vec<(u8, Property)> {
     fn from(value: EntityDataValues) -> Self {
-        value.0.into_iter().map(|x| x.into()).collect()
+        value.0
     }
 }

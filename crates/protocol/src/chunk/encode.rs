@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{hash_map, HashMap};
 
 use bytes::BufMut;
 
@@ -52,8 +52,8 @@ fn encode_paletted<const SIDE: usize>(
     for layer in section {
         for row in layer {
             for &protocol_id in row {
-                if !palette_lookup.contains_key(&protocol_id) {
-                    palette_lookup.insert(protocol_id, palette_array.len());
+                if let hash_map::Entry::Vacant(e) = palette_lookup.entry(protocol_id) {
+                    e.insert(palette_array.len());
                     palette_array.push(VarInt(protocol_id as i32));
                 }
 

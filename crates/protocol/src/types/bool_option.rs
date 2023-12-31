@@ -23,7 +23,7 @@ impl<T: ProtocolType> ProtocolType for BoolOption<T> {
         let super::Primitive(marker) = super::Primitive::<bool>::decode(buffer)?;
 
         Ok(Self(if marker {
-            Some(T::decode(buffer).map_err(|e| DecodeError::Element(e))?)
+            Some(T::decode(buffer).map_err(DecodeError::Element)?)
         } else {
             None
         }))

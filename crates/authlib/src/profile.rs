@@ -64,7 +64,7 @@ impl TryFrom<Base64JsonString> for PropertyValueTextures {
 
     fn try_from(value: Base64JsonString) -> Result<Self, Self::Error> {
         let bytes = base64::engine::general_purpose::STANDARD
-            .decode(&value.0)
+            .decode(value.0)
             .map_err(de::Error::custom)?;
 
         serde_json::from_slice(&bytes).map_err(de::Error::custom)

@@ -52,7 +52,7 @@ impl<T: ProtocolType> ProtocolType for LenVec<T> {
         super::VarInt::<i32>(self.0.len().try_into()?).encode(buffer)?;
 
         for el in &self.0 {
-            el.encode(buffer).map_err(|e| EncodeError::Element(e))?;
+            el.encode(buffer).map_err(EncodeError::Element)?;
         }
 
         Ok(())

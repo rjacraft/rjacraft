@@ -20,9 +20,9 @@ impl fmt::Display for Name {
     }
 }
 
-impl Into<String> for Name {
-    fn into(self) -> String {
-        self.0
+impl From<Name> for String {
+    fn from(value: Name) -> Self {
+        value.0
     }
 }
 

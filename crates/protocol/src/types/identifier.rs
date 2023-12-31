@@ -74,7 +74,7 @@ impl FromStr for Identifier {
             Err(error::Overrun(s.len()))?;
         }
 
-        let mut split = s.split(":");
+        let mut split = s.split(':');
 
         let left = split.next().unwrap();
         let right = split.next();

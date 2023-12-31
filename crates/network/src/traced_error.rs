@@ -10,7 +10,7 @@ impl<T: error::Error> fmt::Display for TracedError<T> {
             write!(f, "    > {}", current)?;
 
             if let Some(new) = current.source() {
-                write!(f, "\n")?;
+                writeln!(f)?;
                 current = new;
             } else {
                 break;

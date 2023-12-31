@@ -64,9 +64,7 @@ unsafe impl system::SystemParam for WorldMutex {
     type State = ();
     type Item<'world, 'state> = Self;
 
-    fn init_state(_world: &mut World, _system_meta: &mut system::SystemMeta) -> Self::State {
-        ()
-    }
+    fn init_state(_world: &mut World, _system_meta: &mut system::SystemMeta) -> Self::State {}
 
     unsafe fn get_param<'world, 'state>(
         _state: &'state mut Self::State,

@@ -92,7 +92,7 @@ impl ProtocolType for profile::Property {
             } => {
                 LenString::<{ PROPERTY_FIELD_SIZE }>("textures".into()).encode(buffer)?;
                 LenString::<{ PROPERTY_FIELD_SIZE }>::try_from(
-                    base64::engine::general_purpose::STANDARD.encode(&value),
+                    base64::engine::general_purpose::STANDARD.encode(value),
                 )
                 .map_err(PropertyEncodeError::Value)?
                 .encode(buffer)?;
@@ -100,7 +100,7 @@ impl ProtocolType for profile::Property {
                 if let Some(signature) = signature {
                     buffer.put_u8(1);
                     LenString::<{ PROPERTY_FIELD_SIZE }>::try_from(
-                        base64::engine::general_purpose::STANDARD.encode(&signature),
+                        base64::engine::general_purpose::STANDARD.encode(signature),
                     )
                     .map_err(PropertyEncodeError::Signature)?
                     .encode(buffer)?;

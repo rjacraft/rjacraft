@@ -18,7 +18,7 @@ fn parse_identifier(s: &str) -> Result<Identifier, String> {
         Err("too long".to_string())?;
     }
 
-    let mut split = s.split(":");
+    let mut split = s.split(':');
 
     let left = split.next().unwrap();
     let right = split.next();
