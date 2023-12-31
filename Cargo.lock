@@ -1503,7 +1503,6 @@ dependencies = [
 name = "rjacraft_authlib"
 version = "0.0.1"
 dependencies = [
- "base64 0.21.5",
  "form_urlencoded",
  "http",
  "hyper",

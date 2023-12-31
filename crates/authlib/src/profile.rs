@@ -1,7 +1,6 @@
 use std::str;
 
-use base64::Engine;
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_with::base64::Base64;
 
 mod name;
@@ -54,21 +53,6 @@ pub struct PropertyValue<T> {
     pub signature_required: bool,
     #[serde(flatten)]
     pub value: T,
-}
-
-#[derive(Deserialize)]
-pub struct Base64JsonString(String);
-
-impl TryFrom<Base64JsonString> for PropertyValueTextures {
-    type Error = serde_json::Error;
-
-    fn try_from(value: Base64JsonString) -> Result<Self, Self::Error> {
-        let bytes = base64::engine::general_purpose::STANDARD
-            .decode(value.0)
-            .map_err(de::Error::custom)?;
-
-        serde_json::from_slice(&bytes).map_err(de::Error::custom)
-    }
 }
 
 #[serde_with::serde_as]
