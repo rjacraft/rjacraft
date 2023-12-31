@@ -3,12 +3,14 @@
 //! # Credits
 //! This crate is a substantial reproduction of [wiki.vg](https://wiki.vg).
 
+use std::{error::Error, future::Future};
+
 use tokio::io;
 
 /// A packet or any part of a packet.
 pub trait ProtocolType: Sized {
-    type DecodeError: std::error::Error + 'static;
-    type EncodeError: std::error::Error + 'static;
+    type DecodeError: Error + 'static;
+    type EncodeError: Error + 'static;
 
     fn decode(buffer: &mut impl bytes::Buf) -> Result<Self, Self::DecodeError>;
     fn encode(&self, buffer: &mut impl bytes::BufMut) -> Result<(), Self::EncodeError>;
@@ -31,10 +33,16 @@ pub trait ProtocolType: Sized {
 }
 
 /// Currently used by [`crate::frame`] to read packet length prefixes.
-#[async_trait::async_trait]
 pub trait ProtocolTypeIo: Sized {
-    async fn decode_io(read: &mut (impl io::AsyncRead + Unpin + Send)) -> io::Result<Self>;
-    async fn encode_io(&self, write: &mut (impl io::AsyncWrite + Unpin + Send)) -> io::Result<()>;
+    fn decode_io(
+        read: &mut (impl io::AsyncRead + Unpin + Send),
+    ) -> impl Future<Output = io::Result<Self>>;
+
+    fn encode_io(
+        &self,
+        write: &mut (impl io::AsyncWrite + Unpin + Send),
+    ) -> impl Future<Output = io::Result<()>>;
+
     fn written_size(&self) -> usize;
 }
 

@@ -41,13 +41,13 @@ where
 {
     /// Reads a raw frame from a source. The output future is **not cancellable**.
     pub async fn read_frame(&mut self) -> Result<bytes::Bytes, ReaderError> {
-        let VarInt::<i32>(outer_length) = VarInt::decode_io(&mut self.source).await?;
+        let VarInt(outer_length) = VarInt::<i32>::decode_io(&mut self.source).await?;
         let mut inner_buffer;
         let compressed;
         let compressed_length;
 
         if self.compress {
-            let VarInt::<i32>(inner_length) = VarInt::decode_io(&mut self.source).await?;
+            let VarInt(inner_length) = VarInt::<i32>::decode_io(&mut self.source).await?;
             let next_length = outer_length as usize - VarInt::<i32>(inner_length).written_size();
 
             if inner_length == 0 {

@@ -127,7 +127,6 @@ impl ProtocolType for VarInt<i32> {
 }
 
 /// The var int that everyone calls var int
-#[async_trait::async_trait]
 impl ProtocolTypeIo for VarInt<i32> {
     async fn decode_io(read: &mut (impl io::AsyncRead + Unpin + Send)) -> io::Result<Self> {
         decode_generic_raw::<{ i32::BITS }>(read)
@@ -172,7 +171,6 @@ impl ProtocolType for VarInt<i64> {
     }
 }
 
-#[async_trait::async_trait]
 impl ProtocolTypeIo for VarInt<i64> {
     async fn decode_io(read: &mut (impl io::AsyncRead + Unpin + Send)) -> io::Result<Self> {
         decode_generic_raw::<{ i64::BITS }>(read)
