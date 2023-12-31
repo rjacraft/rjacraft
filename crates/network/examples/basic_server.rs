@@ -19,7 +19,6 @@ fn main() {
             NetworkPlugin {
                 addr: "0.0.0.0:25565",
                 n2b_system: IntoSystem::into_system(n2b_system(NetworkConfig {
-                    compress: None,
                     status_system,
                     auth_system,
                     brand_system,
@@ -56,8 +55,8 @@ fn status_system(In(entity): In<Entity>, world: &World) -> server_status::Server
     }
 }
 
-fn auth_system(In(_): In<(Entity, UsernameString, uuid::Uuid)>) -> AuthOutcome {
-    AuthOutcome::Fail(text!("Logging in is not supported"))
+async fn auth_system(In(auth): In<auth::Handle>) -> auth::Result {
+    Err(text!("Logging in is not supported"))
 }
 
 fn brand_system(_peer: In<Entity>) -> Option<BrandString> {

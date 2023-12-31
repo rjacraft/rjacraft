@@ -27,7 +27,7 @@ pin-project = "1.1"
 # Encoding
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_with = { version = "3.4", features = ["json"] }
+serde_with = "3.4"
 bytes = "1.4"
 thiserror = "1.0"
 uuid = { version = "1.4", features = ["serde"] }
@@ -36,6 +36,26 @@ bitvec = "1.0"
 bitfield-struct = "0.5"
 url = { version = "2.5", features = ["serde"] }
 flate2 = "1.0"
+form_urlencoded = "1.2"
+base64 = "0.21"
+
+# Cryptography
+sha1 = "0.10"
+rsa = "0.4"
+rsa-der = "0.2"
+aes = "0.8"
+cfb8 = "0.8"
+cipher = "0.4"
+typenum = "1.17"
+rand = "0.8"
+
+# HTTP
+http = "0.2"
+hyper = "0.14"
+hyper-tls = "0.5"
+
+# Numbers
+num-bigint = "0.4"
 
 # Documentation
 document-features = "0.2"
@@ -56,6 +76,7 @@ quote = "1.0"
 rjacraft_macro = { path = "crates/macro" }
 rjacraft_network = { path = "crates/network" }
 rjacraft_protocol = { path = "crates/protocol" }
+rjacraft_authlib = { path = "crates/authlib" }
 from_never = { path = "crates/from_never" }
 
 # Bevy-specific profile setup aimed at better performace while developing

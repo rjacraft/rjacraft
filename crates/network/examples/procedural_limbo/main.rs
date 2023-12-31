@@ -22,7 +22,6 @@ fn main() {
             NetworkPlugin {
                 addr: "0.0.0.0:25565",
                 n2b_system: IntoSystem::into_system(n2b_system(NetworkConfig {
-                    compress: Some(256),
                     status_system,
                     auth_system,
                     brand_system,
@@ -70,14 +69,16 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
     }
 }
 
-fn auth_system(In((_, username, uuid)): In<(Entity, UsernameString, Uuid)>) -> AuthOutcome {
-    AuthOutcome::Success(
-        uuid,
+async fn auth_system(In(auth): In<auth::Handle>) -> auth::Result {
+    auth.compress(Some(256));
+
+    Ok((
+        auth.uuid,
         player_info::Profile {
-            username,
+            username: auth.username.clone(),
             properties: vec![].into(),
         },
-    )
+    ))
 }
 
 fn brand_system(_peer: In<Entity>) -> Option<BrandString> {

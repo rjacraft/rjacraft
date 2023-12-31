@@ -11,6 +11,8 @@ use super::*;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("Inappropriate packet for the state")]
+    InappropriatePacket,
     #[error("Failed to decode packet")]
     DecodingHandshake(#[from] c2s::HandshakePacketDecodeError),
     #[error("Failed to decode packet")]
@@ -25,14 +27,12 @@ pub enum Error {
     DecodingPlay(#[from] c2s::PlayPacketDecodeError),
     #[error("Wrong protocol version: {0:?}")]
     WrongVersion(rjacraft_protocol::ProtocolVersion),
-    #[error("Got login ack despite not being logged in")]
-    FakeLoginAck,
     #[error("Couldn't write a raw packet")]
     Writer(#[from] frame::WriterError),
     #[error("Couldn't send a message to Bevy")]
     SendN2b(#[from] flume::SendError<N2bEvent>),
-    #[error("Couldn't send a message to keep alive")]
-    SendKa(#[from] flume::SendError<i64>),
+    #[error("Couldn't transfer an encryption response")]
+    EncryptionResponse,
 }
 
 pub enum Action {
@@ -42,22 +42,29 @@ pub enum Action {
     RefreshKa(i64),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub enum ConnectionState {
     Handshake,
     Status,
-    Login { completed: bool },
+    Login,
+    EncryptionSetup(Option<oneshot::Sender<(Vec<u8>, Vec<u8>)>>),
+    LoginInactive,
+    LoginSucceeded,
     Config,
     Play,
 }
 
 impl ConnectionState {
-    pub async fn on_frame<S: io::AsyncWrite + Unpin + Send>(
-        self,
+    #[instrument(skip(frame, writer, n2b))]
+    pub async fn on_frame<C, S>(
+        &mut self,
         mut frame: bytes::Bytes,
-        writer: &mut frame::Writer<S>,
+        writer: &mut frame::Writer<C, S>,
         n2b: &flume::Sender<N2bEvent>,
-    ) -> Result<Action, Error> {
+    ) -> Result<Action, Error>
+    where
+        frame::encrypted_stream::EncryptWrite<C, S>: io::AsyncWrite + Unpin + Send,
+    {
         // Handshake handles the handshake sequence
         // Status hands the response off to Bevy
         // Login and config handle low-level details and the switching
@@ -86,9 +93,7 @@ impl ConnectionState {
                     }
                     c2s::NextState::Login => {
                         if protocol_version == rjacraft_protocol::SUPPORTED_PROTOCOL {
-                            return Ok(Action::NewState(ConnectionState::Login {
-                                completed: false,
-                            }));
+                            return Ok(Action::NewState(ConnectionState::Login));
                         } else {
                             writer
                                 .write_frame(
@@ -117,25 +122,48 @@ impl ConnectionState {
                     c2s::StatusPacket::Request => n2b.send(N2bEvent::NeedStatus)?,
                 }
             }
-            ConnectionState::Login { completed } => {
+            ConnectionState::Login => {
                 let packet = c2s::LoginPacket::decode(&mut frame)?;
 
                 trace!("{packet:?}");
 
-                match packet {
-                    c2s::LoginPacket::LoginStart { username, uuid } => {
-                        n2b.send(N2bEvent::Authenticate(username, uuid))?
-                    }
-                    c2s::LoginPacket::EncryptionResponse { .. } => todo!(),
-                    c2s::LoginPacket::LoginPluginResponse { .. } => todo!(),
-                    c2s::LoginPacket::ToConfig => {
-                        if completed {
-                            n2b.send(N2bEvent::NeedConfig)?;
-                            return Ok(Action::NewState(ConnectionState::Config));
-                        } else {
-                            Err(Error::FakeLoginAck)?
-                        }
-                    }
+                if let c2s::LoginPacket::LoginStart { username, uuid } = packet {
+                    n2b.send(N2bEvent::Authenticate(uuid, username))?;
+                    return Ok(Action::NewState(ConnectionState::LoginInactive));
+                } else {
+                    Err(Error::InappropriatePacket)?
+                }
+            }
+            ConnectionState::EncryptionSetup(tx) => {
+                let packet = c2s::LoginPacket::decode(&mut frame)?;
+
+                trace!("{packet:?}");
+
+                if let c2s::LoginPacket::Encrypt {
+                    shared_secret,
+                    nonce,
+                } = packet
+                {
+                    tx.take()
+                        .unwrap()
+                        .send((shared_secret.into(), nonce.into()))
+                        .map_err(|_| Error::EncryptionResponse)?;
+                    return Ok(Action::NewState(ConnectionState::LoginInactive));
+                } else {
+                    Err(Error::InappropriatePacket)?
+                }
+            }
+            ConnectionState::LoginInactive => Err(Error::InappropriatePacket)?,
+            ConnectionState::LoginSucceeded => {
+                let packet = c2s::LoginPacket::decode(&mut frame)?;
+
+                trace!("{packet:?}");
+
+                if let c2s::LoginPacket::ToConfig = packet {
+                    n2b.send(N2bEvent::NeedConfig)?;
+                    return Ok(Action::NewState(ConnectionState::Config));
+                } else {
+                    Err(Error::InappropriatePacket)?
                 }
             }
             ConnectionState::Config => {
@@ -186,6 +214,7 @@ impl ConnectionState {
                     c2s::PlayPacket::NetKeepAlive { id } => {
                         return Ok(Action::RefreshKa(id.into()))
                     }
+                    c2s::PlayPacket::PlayerSession { .. } => {}
                     c2s::PlayPacket::ClientCommand(c2s::ClientCommand::Respawn) => {
                         n2b.send(N2bEvent::Input(packet::Input::Respawn))?
                     }
@@ -431,7 +460,7 @@ impl ConnectionState {
         Ok(Action::Continue)
     }
 
-    pub fn keepalive_packet(self, id: i64) -> Option<bytes::Bytes> {
+    pub fn keepalive_packet(&self, id: i64) -> Option<bytes::Bytes> {
         match self {
             ConnectionState::Config => {
                 Some(s2c::ConfigPacket::KeepAlive { id: id.into() }.to_bytes_expect())

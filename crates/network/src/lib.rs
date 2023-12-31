@@ -11,10 +11,12 @@ mod events;
 mod network;
 mod systems;
 mod traced_error;
+mod world_mutex;
 
+pub mod auth;
 pub mod prebuilt_registries;
 
-pub use self::{components::*, events::*, systems::n2b_system};
+pub use self::{components::*, events::*, systems::n2b_system, world_mutex::WorldMutex};
 
 #[derive(Resource)]
 pub struct Runtime(pub tokio::runtime::Runtime);
@@ -25,19 +27,11 @@ pub struct Registries(pub types::Encoded<types::Nbt<types::CustomRegistries>>);
 pub struct Tags(pub types::Encoded<types::LenVec<s2c::TagType>>);
 
 pub struct NetworkConfig<Status, Auth, Brand> {
-    /// `None` means don't compress. `Some(x)` means compress above a certain length threshold.
-    pub compress: Option<u32>,
     pub status_system: Status,
     pub auth_system: Auth,
     pub brand_system: Brand,
 }
 
-pub enum AuthOutcome {
-    Success(uuid::Uuid, types::player_info::Profile),
-    Fail(types::Text),
-}
-
-pub type UsernameString = types::LenString<16>;
 pub type BrandString = types::LenString<128>;
 
 pub struct NetworkPlugin<A, S> {
@@ -66,7 +60,8 @@ where
             });
         };
 
-        app.add_event::<PeerDisconnected>()
+        app.insert_resource(world_mutex::WorldMutex::new())
+            .add_event::<PeerDisconnected>()
             .add_event::<C2sPacket<events::packet::ClientBrand>>()
             .add_event::<C2sPacket<events::packet::ChatMessage>>()
             .add_event::<C2sPacket<events::packet::Command>>()
@@ -85,6 +80,13 @@ where
                 )
                     .chain(),
             )
-            .add_systems(PostUpdate, systems::delete_disconnects_system);
+            .add_systems(
+                PostUpdate,
+                (
+                    systems::delete_disconnects_system,
+                    world_mutex::accept_locks,
+                )
+                    .chain(),
+            );
     }
 }

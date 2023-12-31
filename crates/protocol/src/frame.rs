@@ -11,6 +11,8 @@ use types::VarInt;
 
 use crate::*;
 
+pub mod encrypted_stream;
+
 const HEX_CONFIG: HexConfig = HexConfig {
     title: false,
     ascii: true,
@@ -28,33 +30,37 @@ pub enum ReaderError {
     DecodingLength(#[from] types::varint::I32DecodeError),
 }
 
-pub struct Reader<S> {
-    pub source: S,
+pub struct Reader<C, S> {
+    pub source: encrypted_stream::DecryptRead<C, S>,
     pub compress: bool,
 }
 
-impl<S: io::AsyncRead + Unpin + Send> Reader<S> {
+impl<C, S> Reader<C, S>
+where
+    encrypted_stream::DecryptRead<C, S>: io::AsyncRead + Unpin + Send,
+{
     /// Reads a raw frame from a source. The output future is **not cancellable**.
     pub async fn read_frame(&mut self) -> Result<bytes::Bytes, ReaderError> {
-        let VarInt::<i32>(frame_length) = VarInt::decode_io(&mut self.source).await?;
+        let VarInt::<i32>(outer_length) = VarInt::decode_io(&mut self.source).await?;
         let mut inner_buffer;
         let compressed;
         let compressed_length;
 
         if self.compress {
             let VarInt::<i32>(inner_length) = VarInt::decode_io(&mut self.source).await?;
+            let next_length = outer_length as usize - VarInt::<i32>(inner_length).written_size();
 
             if inner_length == 0 {
                 compressed = false;
                 compressed_length = None;
 
-                inner_buffer = vec![0; frame_length as usize - 1];
+                inner_buffer = vec![0; next_length];
                 self.source.read_exact(&mut inner_buffer).await?;
             } else {
                 compressed = true;
                 compressed_length = Some(inner_length);
 
-                let mut compressed_buffer = vec![0; frame_length as usize - 1];
+                let mut compressed_buffer = vec![0; next_length];
                 self.source.read_exact(&mut compressed_buffer).await?;
 
                 let mut decoder = ZlibDecoder::new(&compressed_buffer[..]);
@@ -65,15 +71,16 @@ impl<S: io::AsyncRead + Unpin + Send> Reader<S> {
             compressed = false;
             compressed_length = None;
 
-            inner_buffer = vec![0; frame_length as usize];
+            inner_buffer = vec![0; outer_length as usize];
             self.source.read_exact(&mut inner_buffer).await?;
         }
 
         trace!(
             length = inner_buffer.len(),
             dir = "recv",
-            compressed,
+            compress = compressed.then(|| "zlib"),
             compressed_length,
+            encrypt = self.source.decryptor.is_some().then(|| "aes/cfb8"),
             "\n{:?}",
             inner_buffer.hex_conf(HEX_CONFIG)
         );
@@ -90,15 +97,18 @@ pub enum WriterError {
     Io(#[from] io::Error),
 }
 
-pub struct Writer<S> {
-    pub sink: S,
+pub struct Writer<C, S> {
+    pub sink: encrypted_stream::EncryptWrite<C, S>,
     pub compress: Option<u32>,
 }
 
-impl<S: io::AsyncWrite + Unpin + Send> Writer<S> {
+impl<C, S> Writer<C, S>
+where
+    encrypted_stream::EncryptWrite<C, S>: io::AsyncWrite + Unpin + Send,
+{
     /// Writes a raw frame to a writer. The output future is **not cancellable**.
     pub async fn write_frame(&mut self, inner_buffer: &[u8]) -> Result<(), WriterError> {
-        let compresssed;
+        let compressed;
         let compressed_length;
 
         let inner_length: i32 = inner_buffer
@@ -108,14 +118,14 @@ impl<S: io::AsyncWrite + Unpin + Send> Writer<S> {
 
         if let Some(threshold) = self.compress {
             if inner_buffer.len() < threshold as usize {
-                compresssed = false;
+                compressed = false;
                 compressed_length = None;
 
                 VarInt(inner_length + 1).encode_io(&mut self.sink).await?;
                 VarInt(0i32).encode_io(&mut self.sink).await?;
                 self.sink.write_all(inner_buffer).await?;
             } else {
-                compresssed = true;
+                compressed = true;
 
                 let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
                 encoder.write_all(inner_buffer)?;
@@ -131,7 +141,7 @@ impl<S: io::AsyncWrite + Unpin + Send> Writer<S> {
                 self.sink.write_all(&compressed_buffer).await?;
             }
         } else {
-            compresssed = false;
+            compressed = false;
             compressed_length = None;
 
             VarInt(inner_length).encode_io(&mut self.sink).await?;
@@ -141,8 +151,9 @@ impl<S: io::AsyncWrite + Unpin + Send> Writer<S> {
         trace!(
             length = inner_buffer.len(),
             dir = "send",
-            compresssed,
+            compress = compressed.then(|| "zlib"),
             compressed_length,
+            encrypt = self.sink.encryptor.is_some().then(|| "aes/cfb8"),
             "\n{:?}",
             inner_buffer.hex_conf(HEX_CONFIG)
         );

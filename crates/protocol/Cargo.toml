@@ -21,7 +21,7 @@ paste.workspace = true
 async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde_with.workspace = true
+serde_with = { workspace = true, features = ["json"] }
 tracing.workspace = true
 pretty-hex.workspace = true
 valence_nbt.workspace = true
@@ -30,3 +30,7 @@ bitfield-struct.workspace = true
 bevy_ecs.workspace = true
 url.workspace = true
 flate2.workspace = true
+cipher.workspace = true
+pin-project.workspace = true
+rjacraft_authlib.workspace = true
+base64.workspace = true

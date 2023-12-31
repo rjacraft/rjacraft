@@ -22,10 +22,10 @@ pub enum LoginPacket {
     Disconnect { reason: JsonText },
 
     #[variant(0x01)]
-    EncryptionRequest {
+    ServerIdentity {
         server_id: LenString<20>,
         public_key: LenVec<u8>,
-        verify_token: LenVec<u8>,
+        nonce: LenVec<u8>,
     },
 
     #[variant(0x02)]

@@ -81,7 +81,7 @@ where
 
 impl ProtocolType for LenVec<u8> {
     type DecodeError = DecodeError<error::Eof>;
-    type EncodeError = error::Infallible;
+    type EncodeError = num::TryFromIntError;
 
     fn decode(buffer: &mut impl Buf) -> Result<Self, Self::DecodeError> {
         let super::VarInt::<i32>(len) = super::VarInt::decode(buffer)?;
@@ -94,6 +94,8 @@ impl ProtocolType for LenVec<u8> {
     }
 
     fn encode(&self, buffer: &mut impl BufMut) -> Result<(), Self::EncodeError> {
+        super::VarInt::<i32>(self.0.len().try_into()?).encode(buffer)?;
+
         buffer.put(self.0.as_slice());
 
         Ok(())

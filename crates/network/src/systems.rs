@@ -1,9 +1,11 @@
+use std::future;
+
 use bevy_ecs::{event, prelude::*, system};
 use rjacraft_macro::*;
 use rjacraft_protocol::{packets::*, ProtocolType};
 use tracing::*;
 
-use crate::{components::*, events::*, network::*};
+use crate::{auth, components::*, events::*, network::*};
 
 pub fn new_peer_system(new_peer_rx: flume::Receiver<NewPeer>) -> impl FnMut(Commands) {
     move |mut commands: Commands| {
@@ -22,25 +24,23 @@ impl<E: event::Event> system::Command for SendEvent<E> {
     }
 }
 
-pub fn n2b_system<SStatus, MStatus, SAuth, MAuth, SBrand, MBrand>(
+pub fn n2b_system<SStatus, MStatus, SAuth, MAuth, FAuth, SBrand, MBrand>(
     mut config: crate::NetworkConfig<SStatus, SAuth, SBrand>,
 ) -> impl FnMut(
     &World,
     Commands,
     Query<(Entity, &Peer)>,
+    Res<crate::Runtime>,
     ParamSet<(SStatus::Param, SAuth::Param, SBrand::Param)>,
 ) + Clone
 where
     SStatus: SystemParamFunction<MStatus, In = Entity, Out = rjacraft_protocol::types::ServerStatus>
         + Clone,
-    SAuth: SystemParamFunction<
-            MAuth,
-            In = (Entity, crate::UsernameString, uuid::Uuid),
-            Out = crate::AuthOutcome,
-        > + Clone,
+    SAuth: SystemParamFunction<MAuth, In = auth::Handle, Out = FAuth> + Clone,
+    FAuth: future::Future<Output = auth::Result> + Send + 'static,
     SBrand: SystemParamFunction<MBrand, In = Entity, Out = Option<crate::BrandString>> + Clone,
 {
-    move |world, mut commands, query, mut pset| {
+    move |world, mut commands, query, rt, mut pset| {
         for (entity, peer) in query.iter() {
             for msg in peer.n2b.try_iter() {
                 match msg {
@@ -63,33 +63,35 @@ where
                             .to_bytes_expect(),
                         ));
                     }
-                    N2bEvent::Authenticate(username_in, uuid_in) => {
-                        let outcome = config
-                            .auth_system
-                            .run((entity, username_in, uuid_in), pset.p1());
+                    N2bEvent::Authenticate(uuid_in, username_in) => {
+                        let future = config.auth_system.run(
+                            auth::Handle {
+                                peer: entity,
+                                uuid: uuid_in,
+                                username: username_in,
+                                b2n: peer.b2n.clone(),
+                            },
+                            pset.p1(),
+                        );
 
-                        match outcome {
-                            crate::AuthOutcome::Success(uuid_out, profile_out) => {
-                                let _ = peer.b2n.send(B2nEvent::Compression(config.compress));
-                                let _ = peer.b2n.send(B2nEvent::LoginSucceeded);
-                                let _ = peer.b2n.send(B2nEvent::Packet(
-                                    s2c::LoginPacket::ToConfigRequest {
-                                        uuid: uuid_out,
-                                        profile: profile_out,
-                                    }
-                                    .to_bytes_expect(),
-                                ));
-                            }
-                            crate::AuthOutcome::Fail(reason) => {
-                                let _ = peer.b2n.send(B2nEvent::Packet(
-                                    s2c::LoginPacket::Disconnect {
-                                        reason: reason.into(),
-                                    }
-                                    .to_bytes_expect(),
-                                ));
-                                let _ = peer.b2n.send(B2nEvent::Drop);
-                            }
-                        };
+                        let b2n = peer.b2n.clone();
+                        rt.0.spawn(async move {
+                            match future.await {
+                                Ok((uuid_out, username_out)) => {
+                                    let _ =
+                                        b2n.send(B2nEvent::LoginSuccess(uuid_out, username_out));
+                                }
+                                Err(reason) => {
+                                    let _ = b2n.send(B2nEvent::Packet(
+                                        s2c::LoginPacket::Disconnect {
+                                            reason: reason.into(),
+                                        }
+                                        .to_bytes_expect(),
+                                    ));
+                                    let _ = b2n.send(B2nEvent::Drop);
+                                }
+                            };
+                        });
                     }
                     N2bEvent::NeedConfig => {
                         let _ = peer.b2n.send(B2nEvent::Packet(

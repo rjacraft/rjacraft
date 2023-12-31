@@ -31,6 +31,12 @@ serde_json.workspace = true
 uuid.workspace = true
 valence_nbt.workspace = true
 pin-project.workspace = true
+rsa.workspace = true
+rsa-der.workspace = true
+aes.workspace = true
+cfb8.workspace = true
+rand.workspace = true
+rjacraft_authlib.workspace = true
 
 [dev-dependencies]
 tracing-subscriber.workspace = true

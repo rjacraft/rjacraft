@@ -51,9 +51,3 @@ impl<const MAX_SIZE: usize, T> From<T> for JsonString<MAX_SIZE, T> {
         Self(value)
     }
 }
-
-// impl<T> From<JsonString<T>> for T {
-//     fn from(value: JsonString<T>) -> Self {
-//         value.0
-//     }
-// }

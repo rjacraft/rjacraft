@@ -1,0 +1,31 @@
+[package]
+name = "rjacraft_authlib"
+description = "A port of Mojang's authlib."
+categories = ["asynchronous", "api-bindings"]
+keywords = ["rjacraft", "tokio", "minecraft", "mojang", "authlib"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+http.workspace = true
+hyper = { workspace = true, features = ["client", "http1", "http2", "tcp"] }
+hyper-tls.workspace = true
+serde.workspace = true
+serde_with = { workspace = true, features = ["base64", "json"] }
+serde_json.workspace = true
+uuid.workspace = true
+form_urlencoded.workspace = true
+url.workspace = true
+sha1.workspace = true
+num-bigint.workspace = true
+rsa.workspace = true
+rsa-der.workspace = true
+base64.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

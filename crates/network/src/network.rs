@@ -1,7 +1,8 @@
 use std::{net::SocketAddr, pin};
 
+use cfb8::cipher::KeyIvInit;
 use rjacraft_protocol::{frame::*, packets::*, types::*, ProtocolType, ProtocolVersion};
-use tokio::{io, net, time};
+use tokio::{io, net, sync::oneshot, time};
 use tracing::*;
 
 use super::traced_error;
@@ -20,8 +21,10 @@ pub type NewPeer = (
 pub enum B2nEvent {
     Drop,
     Packet(bytes::Bytes),
-    LoginSucceeded,
-    Compression(Option<u32>),
+    LoginSuccess(Uuid, player_info::Profile),
+    Compress(Option<u32>),
+    Encrypt([u8; 16]),
+    NeedEncryptionResponse(oneshot::Sender<(Vec<u8>, Vec<u8>)>),
 }
 
 #[derive(Debug)]
@@ -29,7 +32,7 @@ pub enum N2bEvent {
     Disconnected,
     HandshakeComplete(ProtocolVersion, String, u16),
     NeedStatus,
-    Authenticate(crate::UsernameString, Uuid),
+    Authenticate(Uuid, rjacraft_authlib::profile::Name),
     NeedConfig,
     ConfigFinished,
     TeleportConfirm(i32),
@@ -71,11 +74,17 @@ async fn peer_loop(
     let mut state = state::ConnectionState::Handshake;
     let (read, write) = stream.into_split();
     let mut reader = Reader {
-        source: read,
+        source: encrypted_stream::DecryptRead {
+            decryptor: None,
+            source: read,
+        },
         compress: false,
     };
     let mut writer = Writer {
-        sink: write,
+        sink: encrypted_stream::EncryptWrite {
+            encryptor: None,
+            sink: write,
+        },
         compress: None,
     };
 
@@ -88,10 +97,54 @@ async fn peer_loop(
 
     loop {
         tokio::select! {
+            biased;
+
+            Ok(command) = b2n.recv_async() => {
+                match command {
+                    B2nEvent::Drop => return Ok(()),
+                    B2nEvent::Packet(packet) => writer.write_frame(&packet).await?,
+                    B2nEvent::LoginSuccess(uuid, profile) => {
+                        state = state::ConnectionState::LoginSucceeded;
+
+                        writer.write_frame(&
+                            s2c::LoginPacket::ToConfigRequest { uuid, profile }.to_bytes_expect(),
+                        ).await?;
+                    }
+                    B2nEvent::Compress(threshold) => {
+                        writer.write_frame(&
+                            s2c::LoginPacket::SetCompression {
+                                threshold: threshold.map(|x| x as i32).unwrap_or(-1).into(),
+                            }
+                            .to_bytes_expect(),
+                        ).await?;
+
+                        drop(reading);
+                        reader.compress = threshold.is_some();
+                        reading = Box::pin(reader.read_frame());
+                        writer.compress = threshold;
+
+                        debug!("set compression to {threshold:?}");
+                    }
+                    B2nEvent::Encrypt(secret) => {
+                        drop(reading);
+                        reader.source.decryptor = Some(
+                            cfb8::Decryptor::<aes::Aes128>::new(&secret.into(), &secret.into())
+                        );
+                        reading = Box::pin(reader.read_frame());
+                        writer.sink.encryptor = Some(
+                            cfb8::Encryptor::<aes::Aes128>::new(&secret.into(), &secret.into())
+                        );
+
+                        debug!("enabled encryption");
+                    }
+                    B2nEvent::NeedEncryptionResponse(tx) => {
+                        state = state::ConnectionState::EncryptionSetup(Some(tx));
+                    }
+                }
+            },
             result = &mut reading => {
                 match state
                     .on_frame(result?, &mut writer, &n2b)
-                    .instrument(info_span!("conn_state", ?state))
                     .await?
                 {
                     state::Action::DropConnection => return Ok(()),
@@ -114,30 +167,6 @@ async fn peer_loop(
 
                 drop(reading);
                 reading = Box::pin(reader.read_frame());
-            },
-            Ok(command) = b2n.recv_async() => {
-                match command {
-                    B2nEvent::Drop => return Ok(()),
-                    B2nEvent::Packet(packet) => writer.write_frame(&packet).await?,
-                    B2nEvent::LoginSucceeded => {
-                        state = state::ConnectionState::Login { completed: true }
-                    }
-                    B2nEvent::Compression(threshold) => {
-                        writer.write_frame(&
-                            s2c::LoginPacket::SetCompression {
-                                threshold: threshold.map(|x| x as i32).unwrap_or(-1).into(),
-                            }
-                            .to_bytes_expect(),
-                        ).await?;
-
-                        drop(reading);
-                        reader.compress = threshold.is_some();
-                        reading = Box::pin(reader.read_frame());
-                        writer.compress = threshold;
-
-                        debug!("set compression to {threshold:?}");
-                    }
-                }
             },
             element = &mut keepalive => {
                 if let Some(id) = element {

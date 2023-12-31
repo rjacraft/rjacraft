@@ -40,12 +40,15 @@ pub enum StatusPacket {
 #[variant(VarInt<i32>)]
 pub enum LoginPacket {
     #[variant(0x00)]
-    LoginStart { username: LenString<16>, uuid: Uuid },
+    LoginStart {
+        username: rjacraft_authlib::profile::Name,
+        uuid: Uuid,
+    },
 
     #[variant(0x01)]
-    EncryptionResponse {
+    Encrypt {
         shared_secret: LenVec<u8>,
-        verify_token: LenVec<u8>,
+        nonce: LenVec<u8>,
     },
 
     #[variant(0x02)]
@@ -319,6 +322,12 @@ pub enum PlayPacket {
         signature: BoolOption<[u8; 256]>,
         message_count: VarInt<i32>,
         acknowledged: BitVec<u64>,
+    },
+
+    #[variant(0x06)]
+    PlayerSession {
+        id: Uuid,
+        todo: RemainingBytes<{ 1 << 20 }>,
     },
 
     #[variant(0x08)]
