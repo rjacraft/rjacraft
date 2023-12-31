@@ -55,7 +55,7 @@ fn status_system(In(entity): In<Entity>, world: &World) -> server_status::Server
     }
 }
 
-async fn auth_system(In(auth): In<auth::Handle>) -> auth::Result {
+async fn auth_system(In(_auth): In<auth::Handle>) -> auth::Result {
     Err(text!("Logging in is not supported"))
 }
 
