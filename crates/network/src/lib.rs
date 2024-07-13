@@ -58,7 +58,7 @@ where
         };
 
         let mut status = self.status.clone();
-        status.initialize(&mut app.world);
+        status.initialize(app.world_mut());
 
         let event_tx_system =
             move |mut commands: Commands, world: &World, peers: Query<(Entity, &Peer)>| {
@@ -112,7 +112,7 @@ fn event_rx_sysetm(
     mut play: EventReader<PlayPacketOut>,
     world: &World,
 ) {
-    for event in conf.into_iter() {
+    for event in conf.read() {
         let peer = world.get::<Peer>(event.peer).unwrap();
         peer.msg_in
             .send(net_thread::PeerMsgIn::ConfigurationPacket(
@@ -121,7 +121,7 @@ fn event_rx_sysetm(
             .unwrap();
     }
 
-    for event in play.into_iter() {
+    for event in play.read() {
         let peer = world.get::<Peer>(event.peer).unwrap();
         peer.msg_in
             .send(net_thread::PeerMsgIn::PlayPacket(event.packet.clone()))
@@ -130,14 +130,14 @@ fn event_rx_sysetm(
 }
 
 fn delete_disconnects_system(mut events: EventReader<PeerDisconnected>, mut commands: Commands) {
-    for event in events.into_iter() {
+    for event in events.read() {
         debug!("despawning the peer entity");
         commands.entity(event.peer).despawn();
     }
 }
 
 fn drop_system(mut events: EventReader<DropPeer>, world: &World) {
-    for event in events.into_iter() {
+    for event in events.read() {
         let peer = world.get::<Peer>(event.peer).unwrap();
         peer.msg_in.send(net_thread::PeerMsgIn::Drop).unwrap();
     }
