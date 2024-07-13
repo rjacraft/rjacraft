@@ -1,5 +1,60 @@
-# Created by https://www.toptal.com/developers/gitignore/api/rust,jetbrains+all,visualstudiocode,vim
-# Edit at https://www.toptal.com/developers/gitignore?templates=rust,jetbrains+all,visualstudiocode,vim
+# Created by https://www.toptal.com/developers/gitignore/api/vim,rust,jetbrains+all,visualstudiocode,emacs,direnv
+# Edit at https://www.toptal.com/developers/gitignore?templates=vim,rust,jetbrains+all,visualstudiocode,emacs,direnv
+
+### direnv ###
+.direnv
+# .envrc
+
+### Emacs ###
+# -*- mode: gitignore; -*-
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Org-mode
+.org-id-locations
+*_archive
+
+# flymake-mode
+*_flymake.*
+
+# eshell files
+/eshell/history
+/eshell/lastdir
+
+# elpa packages
+/elpa/
+
+# reftex files
+*.rel
+
+# AUCTeX auto folder
+/auto/
+
+# cask packages
+.cask/
+dist/
+
+# Flycheck
+flycheck_*.el
+
+# server auth directory
+/server/
+
+# projectiles files
+.projectile
+
+# directory configuration
+.dir-locals.el
+
+# network security
+/network-security.data
+
 
 ### JetBrains+all ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
@@ -122,7 +177,6 @@ Sessionx.vim
 
 # Temporary
 .netrwhist
-*~
 # Auto-generated tag files
 tags
 # Persistent undo
@@ -147,4 +201,5 @@ tags
 .history
 .ionide
 
-# End of https://www.toptal.com/developers/gitignore/api/rust,jetbrains+all,visualstudiocode,vim
+# End of https://www.toptal.com/developers/gitignore/api/vim,rust,jetbrains+all,visualstudiocode,emacs,direnv
+
