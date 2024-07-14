@@ -9,8 +9,8 @@ pub enum PeerMsgIn {
     Drop,
     StatusPacket(s2c::StatusPacket),
     // LoginPacket(cb::LoginPacket),
-    ConfigurationPacket(s2c::ConfigurationPacket),
-    PlayPacket(s2c::PlayPacket),
+    ConfigurationPacket(#[allow(dead_code)] s2c::ConfigurationPacket),
+    PlayPacket(#[allow(dead_code)] s2c::PlayPacket),
 }
 
 pub enum PeerMsgOut {

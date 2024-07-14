@@ -53,7 +53,7 @@ fn status_system(_peer: In<Entity>) -> server_status::ServerStatus {
 }
 
 fn handle_disconnect(mut events: EventReader<PeerDisconnected>) {
-    for event in events.iter() {
+    for event in events.read() {
         info!("disconnect: {:?}", event);
     }
 }
